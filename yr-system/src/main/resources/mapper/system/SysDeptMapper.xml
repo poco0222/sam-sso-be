@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.system.mapper.SysDeptMapper">
+
+    <!--
+        @file 部门 Mapper，收敛共享 SQL 片段与树查询语义
+        @author PopoY
+        @date 2026-03-24
+    -->
+
+    <resultMap type="SysDept" id="SysDeptResult">
+        <id property="deptId" column="dept_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="ancestors" column="ancestors"/>
+        <result property="deptCode" column="dept_code"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="orderNum" column="order_num"/>
+        <result property="leader" column="leader"/>
+        <result property="phone" column="phone"/>
+        <result property="email" column="email"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="orgId" column="org_id"/>
+        <result property="parentName" column="parent_name"/>
+        <result property="createBy" column="create_by"/>
+        <result property="accounteUnit" column="accounte_unit"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="isUserDefaultDept" column="is_user_default_dept"/>
+        <result property="userDeptId" column="user_dept_id"/>
+    </resultMap>
+
+    <sql id="selectDeptVo">
+        select d.dept_id,
+               d.parent_id,
+               d.ancestors,
+               d.dept_code,
+               d.dept_name,
+               d.order_num,
+               d.leader,
+               d.phone,
+               d.email,
+               d.status,
+               d.del_flag,
+               d.accounte_unit,
+               d.org_id,
+               d.create_by,
+               d.create_time
+        from sys_dept d
+    </sql>
+
+    <!-- PopoY: 抽取 sys_dept 基础列，逐步替换高风险星号查询。 -->
+    <sql id="selectDeptBaseColumns">
+        dept_id,
+        parent_id,
+        ancestors,
+        dept_code,
+        dept_name,
+        order_num,
+        leader,
+        phone,
+        email,
+        status,
+        del_flag,
+        accounte_unit,
+        org_id,
+        create_by,
+        create_time,
+        update_by,
+        update_time
+    </sql>
+    <select id="selectDeptRoleTreeList" parameterType="SysDept" resultType="com.yr.common.core.domain.entity.SysDeptRoleVo">
+        SELECT e.id, e.dept_id, e.parent_id, e.role_id, e.tree_name, e.node_type, e.accounte_unit
+        FROM (
+            SELECT CONCAT('D', dept_id) AS id,
+                   dept_id,
+                   CONCAT('D', parent_id) AS parent_id,
+                   null AS role_id,
+                   dept_name AS tree_name,
+                   'D' AS node_type,
+                   accounte_unit
+            FROM sys_dept
+            WHERE del_flag = '0'
+              AND org_id = #{orgId}
+            UNION ALL
+            SELECT CONCAT('R', d.role_id) AS id,
+                   c.dept_id,
+                   CONCAT('D', c.dept_id) AS parent_id,
+                   d.role_id,
+                   d.role_name AS tree_name,
+                   'R' AS node_type,
+                   null AS accounte_unit
+            FROM (
+                SELECT DISTINCT aa.dept_id, b.role_id
+                FROM sys_user_dept aa
+                         JOIN sys_dept bb on aa.dept_id = bb.dept_id
+                         JOIN sys_user_role b on aa.user_id = b.user_id
+                WHERE bb.org_id = #{orgId}
+                  AND b.role_id is not null
+            ) c
+                     LEFT JOIN sys_role d on c.role_id = d.role_id
+        ) e
+        ORDER BY e.dept_id, e.parent_id
+    </select>
+    <select id="selectDeptList" parameterType="SysDept" resultMap="SysDeptResult">
+        <include refid="selectDeptVo"/>
+        where d.del_flag = '0' and d.org_id = #{orgId}
+        <if test="parentId != null and parentId != 0">
+            and parent_id = #{parentId}
+        </if>
+        <if test="deviceParentId != null and deviceParentId != 0">
+            and (dept_id = #{deviceParentId} or CONCAT(',', ancestors, ',') LIKE CONCAT('%,', #{deviceParentId}, ',%'))
+        </if>
+        <if test="deptCode != null and deptCode != ''">
+            AND dept_code like concat('%', #{deptCode}, '%')
+        </if>
+        <if test="deptName != null and deptName != ''">
+            AND dept_name like concat('%', #{deptName}, '%')
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <!-- 数据范围过滤 -->
+        ${params.dataScope}
+        order by d.parent_id, d.order_num
+    </select>
+
+    <select id="selectDeptListByRoleId" resultType="Integer">
+        select d.dept_id
+        from sys_dept d
+        left join sys_role_dept rd on d.dept_id = rd.dept_id
+        where rd.role_id = #{roleId}
+        <if test="deptCheckStrictly">
+            and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id =
+            rd.dept_id and rd.role_id = #{roleId})
+        </if>
+        order by d.parent_id, d.order_num
+    </select>
+
+    <select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult">
+        <include refid="selectDeptVo"/>
+        where dept_id = #{deptId}
+    </select>
+
+    <select id="checkDeptExistUser" parameterType="Long" resultType="int">
+        select count(1)
+        from sys_user
+        where dept_id = #{deptId}
+          and del_flag = '0'
+    </select>
+
+    <select id="hasChildByDeptId" parameterType="Long" resultType="int">
+        select count(1)
+        from sys_dept
+        where del_flag = '0'
+          and parent_id = #{deptId}
+        limit 1
+    </select>
+
+    <select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult">
+        select
+        <include refid="selectDeptBaseColumns"/>
+        from sys_dept
+        where find_in_set(#{deptId}, ancestors)
+    </select>
+
+    <select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
+        select count(*)
+        from sys_dept
+        where status = 0
+          and del_flag = '0'
+          and find_in_set(#{deptId}, ancestors)
+    </select>
+
+    <select id="checkDeptCodeUnique" resultMap="SysDeptResult">
+        <include refid="selectDeptVo"/>
+        where dept_code=#{deptCode} and org_id = #{orgId} limit 1
+    </select>
+
+    <insert id="insertDept" parameterType="SysDept">
+        insert into sys_dept(
+        <if test="deptId != null and deptId != 0">dept_id,</if>
+        <if test="parentId != null and parentId != 0">parent_id,</if>
+        <if test="deptCode != null and deptCode != ''">dept_code,</if>
+        <if test="deptName != null and deptName != ''">dept_name,</if>
+        <if test="ancestors != null and ancestors != ''">ancestors,</if>
+        <if test="orderNum != null and orderNum != ''">order_num,</if>
+        <if test="leader != null and leader != ''">leader,</if>
+        <if test="phone != null and phone != ''">phone,</if>
+        <if test="email != null and email != ''">email,</if>
+        <if test="status != null">status,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
+        <if test="accounteUnit != null and accounteUnit != ''">accounte_unit,</if>
+
+        create_time,
+        org_id
+        )values(
+        <if test="deptId != null and deptId != 0">#{deptId},</if>
+        <if test="parentId != null and parentId != 0">#{parentId},</if>
+        <if test="deptCode != null and deptCode != ''">#{deptCode},</if>
+        <if test="deptName != null and deptName != ''">#{deptName},</if>
+        <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+        <if test="orderNum != null and orderNum != ''">#{orderNum},</if>
+        <if test="leader != null and leader != ''">#{leader},</if>
+        <if test="phone != null and phone != ''">#{phone},</if>
+        <if test="email != null and email != ''">#{email},</if>
+        <if test="status != null">#{status},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
+        <if test="accounteUnit != null and accounteUnit != ''">#{accounteUnit},</if>
+        sysdate(),
+        #{orgId}
+        )
+    </insert>
+
+    <update id="updateDept" parameterType="SysDept">
+        update sys_dept
+        <set>
+            <if test="parentId != null and parentId != 0">parent_id = #{parentId},</if>
+            <if test="deptCode != null and deptCode != ''">dept_code = #{deptCode},</if>
+            <if test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
+            <if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+            <if test="orderNum != null and orderNum != ''">order_num = #{orderNum},</if>
+            <if test="leader != null">leader = #{leader},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="accounteUnit != null and accounteUnit != ''">accounte_unit = #{accounteUnit},</if>
+            update_time = sysdate()
+        </set>
+        where dept_id = #{deptId}
+    </update>
+
+    <update id="updateDeptChildren" parameterType="java.util.List">
+        update sys_dept set ancestors =
+        <foreach collection="depts" item="item" index="index"
+                 separator=" " open="case dept_id" close="end">
+            when #{item.deptId} then #{item.ancestors}
+        </foreach>
+        where dept_id in
+        <foreach collection="depts" item="item" index="index"
+                 separator="," open="(" close=")">
+            #{item.deptId}
+        </foreach>
+    </update>
+
+    <update id="updateDeptStatusNormal" parameterType="Long">
+        update sys_dept set status = '0' where dept_id in
+        <foreach collection="array" item="deptId" open="(" separator="," close=")">
+            #{deptId}
+        </foreach>
+    </update>
+
+    <delete id="deleteDeptById" parameterType="Long">
+        update sys_dept
+        set del_flag = '2'
+        where dept_id = #{deptId}
+    </delete>
+
+    <select id="selectSysDeptByDeptId" parameterType="Long" resultType="com.yr.common.core.domain.entity.SysDept">
+        select
+        <include refid="selectDeptBaseColumns"/>
+        from sys_dept
+        where dept_id = #{deptId}
+    </select>
+
+    <select id="selectByDeptCode" parameterType="String" resultType="com.yr.common.core.domain.entity.SysDept">
+        <include refid="selectDeptVo"/>
+        where dept_code=#{deptCode}
+    </select>
+
+    <select id="selectSysDept" resultType="com.yr.common.core.domain.entity.SysDept">
+        select dept_code, dept_name
+        from sys_dept
+        where dept_code != "-"
+          and status = "0"
+    </select>
+
+    <select id="selectSysDeptByDeptCode" parameterType="String" resultType="com.yr.common.core.domain.entity.SysDept">
+        select
+        <include refid="selectDeptBaseColumns"/>
+        from sys_dept
+        where dept_code = #{deptCode}
+    </select>
+
+
+    <select id="queryByDeptCodeList" parameterType="com.yr.common.core.domain.entity.SysDept"
+            resultType="com.yr.common.core.domain.entity.SysDept">
+        SELECT
+        <include refid="selectDeptBaseColumns"/>
+        FROM sys_dept
+        <where>
+            <if test="deptCode != null  and deptCode != ''">and dept_code = #{deptCode}</if>
+            <if test="deptId != null  and deptId != ''">and dept_id = #{deptId}</if>
+        </where>
+    </select>
+
+    <select id="selectSysDeptByDeptCodeBatch" parameterType="String"
+            resultType="com.yr.common.core.domain.entity.SysDept">
+        select dept_id, parent_id, dept_code, dept_name from sys_dept where status = 0 and del_flag = 0 and dept_code in
+        <foreach collection="array" item="deptCode" open="(" separator="," close=")">
+            #{deptCode}
+        </foreach>
+    </select>
+
+    <select id="selectByUserNameAndIsDefault" parameterType="string"
+            resultType="com.yr.common.core.domain.entity.SysDept">
+        select
+        <include refid="selectDeptBaseColumns"/>
+        from sys_dept
+        where dept_id = (select dept_id
+                         from sys_user_dept
+                         where user_id = (select user_id
+                                          from sys_user
+                                          where user_name = #{userName}
+                                            and is_default = 1))
+    </select>
+
+</mapper>

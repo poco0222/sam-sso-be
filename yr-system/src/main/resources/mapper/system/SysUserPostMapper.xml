@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.system.mapper.SysUserPostMapper">
+
+    <resultMap type="SysUserPost" id="SysUserPostResult">
+        <result property="userId" column="user_id"/>
+        <result property="postId" column="post_id"/>
+    </resultMap>
+
+    <!-- PopoY: 用户岗位关联仅保留显式列，避免 select * 造成隐式映射漂移。 -->
+    <sql id="selectSysUserPostColumns">
+        user_id,
+        post_id
+    </sql>
+
+    <delete id="deleteUserPostByUserId" parameterType="Long">
+        delete
+        from sys_user_post
+        where user_id = #{userId}
+    </delete>
+
+    <select id="countUserPostById" resultType="Integer">
+        select count(1)
+        from sys_user_post
+        where post_id = #{postId}
+    </select>
+
+    <delete id="deleteUserPost" parameterType="Long">
+        delete from sys_user_post where user_id in
+        <foreach collection="array" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </delete>
+
+    <insert id="batchUserPost">
+        insert into sys_user_post(user_id, post_id) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            (#{item.userId},#{item.postId})
+        </foreach>
+    </insert>
+
+    <delete id="removeAssignUser">
+        delete from sys_user_post where post_id = #{postId} and user_id in
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </delete>
+
+    <insert id="addAssignUser">
+        insert into sys_user_post(user_id, post_id) values
+        <foreach item="item" index="index" collection="userIds" separator=",">
+            (#{item},#{postId})
+        </foreach>
+    </insert>
+
+    <select id="countUserPost" resultType="java.lang.Integer">
+        select count(*)
+        from sys_user_post
+        where user_id = #{userId}
+          and post_id = #{postId}
+    </select>
+
+    <select id="selectSysUserPostByPostId" parameterType="Long" resultType="com.yr.system.domain.SysUserPost">
+        select
+        <include refid="selectSysUserPostColumns"/>
+        from sys_user_post
+        where user_id = #{userId}
+    </select>
+
+</mapper>

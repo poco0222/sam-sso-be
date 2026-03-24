@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 文件用途：为附件目录 leaf_code 补充唯一约束；作者：Codex；创建日期：2026-03-16 -->
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="sys_attach_2026-03-16-001" author="codex" context="attach leaf code unique">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1)
+                FROM (
+                    SELECT leaf_code
+                    FROM sys_attach_category
+                    WHERE leaf_code IS NOT NULL
+                      AND leaf_code &lt;&gt; ''
+                    GROUP BY leaf_code
+                    HAVING COUNT(1) &gt; 1
+                ) duplicated_leaf_codes
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE sys_attach_category
+            DROP INDEX sys_attach_category_n1,
+            ADD UNIQUE KEY sys_attach_category_u1 (leaf_code)
+        </sql>
+    </changeSet>
+</databaseChangeLog>

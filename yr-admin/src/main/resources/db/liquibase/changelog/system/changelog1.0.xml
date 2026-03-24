@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 文件用途：系统初始化 Liquibase 变更集；作者：yangsenlin/Codex；更新时间：2026-03-10 -->
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    <!--<property name="now" value="sysdate" dbms="oracle"/>-->
+    <property name="now" value="now()" dbms="mysql,h2"/>
+    <property name="amount" value="decimal(20,2)"/>
+
+    <changeSet id="sys_duty_2021-09-23-001" author="yangsenlin" context="新增职务表、用户与职务关系表">
+        <!-- 已有库启用 Liquibase 时允许跳过重复建表，避免因历史手工建表导致迁移失败。 -->
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_duty` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `parent_id` bigint(20) NOT NULL COMMENT '父职务id',
+            `ancestors` varchar(50) NOT NULL COMMENT '祖级列表',
+            `duty_code` varchar(50) NOT NULL COMMENT '职务编码',
+            `duty_name` varchar(50) NOT NULL COMMENT '职务名称',
+            `order_num` int(3) DEFAULT '0' COMMENT '显示顺序',
+            `org_id` bigint(20) NOT NULL COMMENT '组织ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_duty_u1` (`org_id`,`duty_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='职务信息表';
+        </sql>
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user_duty` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `user_id` bigint(20) NOT NULL COMMENT '用户ID，sys_user.user_id',
+            `duty_id` bigint(20) NOT NULL COMMENT '职务ID，sys_duty.id',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_user_duty_u1` (`user_id`,`duty_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户与职务关联表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sys_rank_2021-09-26-001" author="yangsenlin" context="新增职级表、用户与职级关系表">
+        <!-- 已有库启用 Liquibase 时允许跳过重复建表，避免因历史手工建表导致迁移失败。 -->
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_rank` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `parent_id` bigint(20) NOT NULL COMMENT '父职级id',
+            `ancestors` varchar(50) NOT NULL COMMENT '祖级列表',
+            `rank_code` varchar(50) NOT NULL COMMENT '职级编码',
+            `rank_name` varchar(50) NOT NULL COMMENT '职级名称',
+            `rank_type` char(1) NOT NULL COMMENT '分类（0目录 1职级），只有职级才能分配用户',
+            `order_num` int(3) DEFAULT '0' COMMENT '显示顺序',
+            `org_id` bigint(20) NOT NULL COMMENT '组织ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_rank_u1` (`org_id`,`rank_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='职级信息表';
+        </sql>
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user_rank` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `user_id` bigint(20) NOT NULL COMMENT '用户ID，sys_user.user_id',
+            `rank_id` bigint(20) NOT NULL COMMENT '职级ID，sys_rank.id',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_user_rank_u1` (`user_id`,`rank_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户与职级关联表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sys_duty_2021-09-30-001" author="yangsenlin" context="初始化职务表数据">
+        <!-- 历史库可能已经导入过初始化数据，此处改为幂等插入。 -->
+        <sql>
+            INSERT IGNORE INTO `sys_duty` VALUES ('1', '0', '0', '-', '湖南华菱钢铁集团有限责任公司', '0', '1', '2021-09-30 11:36:36', '-1', '2021-09-30 11:36:36', '-1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('2', '0', '0', '-', '湖南华菱钢铁股份有限公司', '0', '2', '2021-09-30 11:38:21', '1', '2021-09-30 11:38:21', '1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('3', '0', '0', '-', '湖南华菱电子商务有限公司', '0', '3', '2021-09-30 11:39:44', '1', '2021-09-30 11:39:44', '1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('4', '0', '0', '-', '湖南华菱电子商务有限公司', '0', '4', '2021-09-30 11:42:44', '1', '2021-09-30 11:42:44', '1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('5', '0', '0', '-', '湖南迪策投资有限公司', '0', '5', '2021-09-30 11:42:54', '1', '2021-09-30 11:42:54', '1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('6', '0', '0', '-', '湖南华联云创信息科技有限公司', '0', '6', '2021-09-30 11:43:09', '1', '2021-09-30 11:43:09', '1', '1');
+            INSERT IGNORE INTO `sys_duty` VALUES ('7', '0', '0', '-', '湖南华晟能源投资发展有限公司', '0', '7', '2021-09-30 11:43:18', '1', '2021-09-30 11:43:18', '1', '1');
+        </sql>
+    </changeSet>
+    <changeSet id="sys_rank_2021-09-30-001" author="yangsenlin" context="初始化职级表数据">
+        <!-- 历史库可能已经导入过初始化数据，此处改为幂等插入。 -->
+        <sql>
+            INSERT IGNORE INTO `sys_rank` VALUES ('1', '0', '0', '-', '湖南华菱钢铁集团有限责任公司', '0', '0', '1', '2021-09-30 11:36:56', '-1', '2021-09-30 11:36:56', '-1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('2', '0', '0', '-', '湖南华菱钢铁股份有限公司', '0', '0', '2', '2021-09-30 11:38:21', '1', '2021-09-30 11:38:21', '1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('3', '0', '0', '-', '湖南华菱电子商务有限公司', '0', '0', '3', '2021-09-30 11:39:44', '1', '2021-09-30 11:39:44', '1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('4', '0', '0', '-', '湖南华菱电子商务有限公司', '0', '0', '4', '2021-09-30 11:42:44', '1', '2021-09-30 11:42:44', '1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('5', '0', '0', '-', '湖南迪策投资有限公司', '0', '0', '5', '2021-09-30 11:42:54', '1', '2021-09-30 11:42:54', '1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('6', '0', '0', '-', '湖南华联云创信息科技有限公司', '0', '0', '6', '2021-09-30 11:43:09', '1', '2021-09-30 11:43:09', '1', '1');
+            INSERT IGNORE INTO `sys_rank` VALUES ('7', '0', '0', '-', '湖南华晟能源投资发展有限公司', '0', '0', '7', '2021-09-30 11:43:18', '1', '2021-09-30 11:43:18', '1', '1');
+        </sql>
+    </changeSet>
+
+    <changeSet id="sys_attach_2022-01-06-001" author="yangsenlin" context="初始化附件相关表结构">
+        <!-- 已有库启用 Liquibase 时允许跳过重复建表，避免因历史手工建表导致迁移失败。 -->
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_attach_category` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '父级目录ID',
+            `ancestors` varchar(100) NOT NULL DEFAULT '0' COMMENT '祖级列表',
+            `category_name` varchar(50) NOT NULL COMMENT '目录名称',
+            `description` varchar(255) DEFAULT NULL COMMENT '描述',
+            `category_level` int(3) NOT NULL DEFAULT '1' COMMENT '目录层级，自动计算',
+            `leaf_flag` char(1) NOT NULL DEFAULT '0' COMMENT '是否叶子节点，0：目录，1：叶子节点',
+            `leaf_code` varchar(50) DEFAULT NULL COMMENT '叶子节点编码，唯一（代码里上传附件时用到的标识）',
+            `leaf_dict_code` varchar(32) DEFAULT NULL COMMENT '字典编码，用于区分同一叶子节点下不同类型的附件',
+            `allowed_file_type` varchar(100) DEFAULT NULL COMMENT '允许上传的附件类型，叶子节点必填',
+            `allowed_file_size` decimal(20,0) DEFAULT NULL COMMENT '允许上传的附件最大长度，叶子节点必填',
+            `org_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '组织ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            KEY `sys_attach_category_n1` (`leaf_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='附件目录表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_attachment` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `category_id` bigint(20) NOT NULL COMMENT '附件目录ID，sys_attach_category.id',
+            `attach_name` varchar(100) NOT NULL COMMENT '附件名称',
+            `business_id` varchar(40) NOT NULL COMMENT '业务主键',
+            `business_type` varchar(32) DEFAULT NULL COMMENT '字典值，对应sys_attach_category.leaf_dict_code',
+            `org_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '组织ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            KEY `sys_attachment_n1` (`category_id`),
+            KEY `sys_attachment_n2` (`business_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='附件表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_file` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '表ID，主键',
+            `attachment_id` bigint(20) DEFAULT NULL COMMENT '附件ID,sys_attachment.id',
+            `file_name` varchar(100) DEFAULT NULL COMMENT '文件名称',
+            `file_path` varchar(255) DEFAULT NULL COMMENT '文件虚拟路径',
+            `file_size` decimal(20,0) DEFAULT NULL COMMENT '文件大小',
+            `file_type` varchar(255) DEFAULT NULL COMMENT '文件类型',
+            `org_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '组织ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
+            `create_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '创建人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录修改时间',
+            `update_by` bigint(20) NOT NULL DEFAULT '-1' COMMENT '最后更新人ID',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号，用来处理锁',
+            PRIMARY KEY (`id`),
+            KEY `sys_file_n1` (`attachment_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统文件表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sys_attach_2022-01-06-002" author="yangsenlin" context="初始化附件相关菜单数据">
+        <!-- 历史库若已存在附件相关菜单，则直接标记已执行，避免重复插入菜单。 -->
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1)
+                FROM sys_menu
+                WHERE perms IN (
+                    'system:attachCategory:list',
+                    'system:attachCategory:add',
+                    'system:attachCategory:edit',
+                    'system:attach:page',
+                    'system:attach:upload',
+                    'system:attach:remove',
+                    'system:attach:preview',
+                    'system:attach:download'
+                )
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('附件管理', '1', '12', 'attach', NULL, '1', '0', 'M', '0', '0', NULL, 'education', 'admin', sysdate(), '', NULL, '');
+            SET @parentid1 = @@IDENTITY;
+
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('附件目录', @parentid1, '1', 'attachCategory', 'system/attach/attach-category', '1', '0', 'C', '0', '0', 'system:attachCategory:list', 'table', 'admin', sysdate(), '', NULL, '');
+            SET @parentid2 = @@IDENTITY;
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('修改目录', @parentid2, '2', '', NULL, '1', '0', 'F', '0', '0', 'system:attachCategory:edit', '#', 'admin', sysdate(), '', NULL, '');
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('新增目录', @parentid2, '1', '', NULL, '1', '0', 'F', '0', '0', 'system:attachCategory:add', '#', 'admin', sysdate(), '', NULL, '');
+
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('文件管理', @parentid1, '2', 'attach', 'system/attach/attach', '1', '0', 'C', '0', '0', 'system:attach:page', 'list', 'admin', sysdate(), '', NULL, '');
+            SET @parentid3 = @@IDENTITY;
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('下载附件', @parentid3, '4', '', NULL, '1', '0', 'F', '0', '0', 'system:attach:download', '#', 'admin', sysdate(), '', NULL, '');
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('预览附件', @parentid3, '3', '', NULL, '1', '0', 'F', '0', '0', 'system:attach:preview', '#', 'admin', sysdate(), '', NULL, '');
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('删除附件', @parentid3, '2', '', NULL, '1', '0', 'F', '0', '0', 'system:attach:remove', '#', 'admin', sysdate(), '', NULL, '');
+            INSERT INTO `sys_menu` (`menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES ('上传附件', @parentid3, '1', '', NULL, '1', '0', 'F', '0', '0', 'system:attach:upload', '#', 'admin', sysdate(), '', NULL, '');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.system.mapper.SysPostMapper">
+
+    <resultMap type="SysPost" id="SysPostResult">
+        <id property="postId" column="post_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="ancestors" column="ancestors"/>
+        <result property="postCode" column="post_code"/>
+        <result property="postName" column="post_name"/>
+        <result property="postSort" column="post_sort"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="orgId" column="org_id"/>
+        <result property="postType" column="post_type"/>
+    </resultMap>
+
+    <sql id="selectPostVo">
+        select post_id,
+               parent_id,
+               ancestors,
+               post_code,
+               post_name,
+               post_sort,
+               status,
+               org_id,
+               post_type,
+               create_by,
+               create_time,
+               remark
+        from sys_post
+    </sql>
+
+    <!-- PopoY: 显式列出岗位完整字段，避免子树查询和单条查询继续依赖 select *。 -->
+    <sql id="selectPostFullColumns">
+        post_id,
+        parent_id,
+        ancestors,
+        post_code,
+        post_name,
+        post_sort,
+        status,
+        org_id,
+        post_type,
+        create_by,
+        create_time,
+        update_by,
+        update_time,
+        remark
+    </sql>
+
+    <select id="selectPostList" parameterType="SysPost" resultMap="SysPostResult">
+        <include refid="selectPostVo"/>
+        <where>
+            org_id = #{orgId}
+            <if test="postCode != null and postCode != ''">
+                AND post_code like concat('%', #{postCode}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="postName != null and postName != ''">
+                AND post_name like concat('%', #{postName}, '%')
+            </if>
+        </where>
+        order by parent_id, post_sort
+    </select>
+
+    <select id="selectPostAll" resultMap="SysPostResult">
+        <include refid="selectPostVo"/>
+    </select>
+
+    <select id="selectPostById" parameterType="Long" resultMap="SysPostResult">
+        <include refid="selectPostVo"/>
+        where post_id = #{postId}
+    </select>
+
+    <select id="selectPostListByUserId" parameterType="Long" resultType="Integer">
+        select p.post_id
+        from sys_post p
+                 left join sys_user_post up on up.post_id = p.post_id
+                 left join sys_user u on u.user_id = up.user_id
+        where u.user_id = #{userId}
+    </select>
+
+    <select id="selectPostsByUserName" parameterType="String" resultMap="SysPostResult">
+        select p.post_id, p.post_name, p.post_code
+        from sys_post p
+                 left join sys_user_post up on up.post_id = p.post_id
+                 left join sys_user u on u.user_id = up.user_id
+        where u.user_name = #{userName}
+    </select>
+
+    <select id="checkPostCodeUnique" resultMap="SysPostResult">
+        <include refid="selectPostVo"/>
+        where post_code=#{postCode} and org_id = #{orgId} limit 1
+    </select>
+
+    <update id="updatePost" parameterType="SysPost">
+        update sys_post
+        <set>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+            <if test="postCode != null and postCode != ''">post_code = #{postCode},</if>
+            <if test="postName != null and postName != ''">post_name = #{postName},</if>
+            <if test="postSort != null and postSort != ''">post_sort = #{postSort},</if>
+            <if test="postType != null and postType != ''">post_type = #{postType},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where post_id = #{postId}
+    </update>
+
+    <insert id="insertPost" parameterType="SysPost" useGeneratedKeys="true" keyProperty="postId">
+        insert into sys_post(
+        <if test="postId != null and postId != 0">post_id,</if>
+        <if test="parentId != null">parent_id,</if>
+        <if test="ancestors != null and ancestors != ''">ancestors,</if>
+        <if test="postCode != null and postCode != ''">post_code,</if>
+        <if test="postName != null and postName != ''">post_name,</if>
+        <if test="postSort != null and postSort != ''">post_sort,</if>
+        <if test="postType != null and postType != ''">post_type,</if>
+        <if test="status != null and status != ''">status,</if>
+        <if test="orgId != null">org_id,</if>
+        <if test="remark != null and remark != ''">remark,</if>
+        <if test="createBy != null and createBy != ''">create_by,</if>
+        create_time
+        )values(
+        <if test="postId != null and postId != 0">#{postId},</if>
+        <if test="parentId != null">#{parentId},</if>
+        <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+        <if test="postCode != null and postCode != ''">#{postCode},</if>
+        <if test="postName != null and postName != ''">#{postName},</if>
+        <if test="postSort != null and postSort != ''">#{postSort},</if>
+        <if test="postType != null and postType != ''">#{postType},</if>
+        <if test="status != null and status != ''">#{status},</if>
+        <if test="orgId != null">#{orgId},</if>
+        <if test="remark != null and remark != ''">#{remark},</if>
+        <if test="createBy != null and createBy != ''">#{createBy},</if>
+        sysdate()
+        )
+    </insert>
+
+    <delete id="deletePostById" parameterType="Long">
+        delete
+        from sys_post
+        where post_id = #{postId}
+    </delete>
+
+    <delete id="deletePostByIds" parameterType="Long">
+        delete from sys_post where post_id in
+        <foreach collection="array" item="postId" open="(" separator="," close=")">
+            #{postId}
+        </foreach>
+    </delete>
+
+
+    <select id="selectNormalChildrenPostById" resultType="java.lang.Integer">
+        select count(*)
+        from sys_post
+        where status = 0
+          and find_in_set(#{postId}, ancestors)
+    </select>
+
+    <select id="selectChildrenPostById" resultMap="SysPostResult">
+        select
+        <include refid="selectPostFullColumns"/>
+        from sys_post
+        where find_in_set(#{postId}, ancestors)
+    </select>
+
+    <update id="updatePostChildren">
+        update sys_post set ancestors =
+        <foreach collection="posts" item="item" index="index" separator=" " open="case post_id" close="end">
+            when #{item.postId} then #{item.ancestors}
+        </foreach>
+        where post_id in
+        <foreach collection="posts" item="item" index="index" separator="," open="(" close=")">
+            #{item.postId}
+        </foreach>
+    </update>
+
+    <update id="updatePostStatusNormal">
+        update sys_post set status = '0' where post_id in
+        <foreach collection="postIds" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <select id="hasChildByPostId" resultType="java.lang.Integer">
+        select count(1)
+        from sys_post
+        where parent_id = #{postId} limit 1
+    </select>
+
+    <select id="listUserAssignPostUserId" resultMap="SysPostResult">
+        SELECT sp.post_id, sp.post_code, sp.post_name, sp.status, sp.org_id
+        FROM sys_post sp
+                 JOIN sys_user_post sup on sp.post_id = sup.post_id and sup.user_id = #{userId}
+        WHERE sp.org_id = #{orgId}
+        ORDER BY status, post_sort
+    </select>
+
+    <select id="selectPostsByUserId" resultType="com.yr.system.domain.SysPost">
+        SELECT sp.post_name
+        FROM sys_post sp
+                 JOIN sys_user_post sup on sp.post_id = sup.post_id AND sup.user_id = #{userId}
+        WHERE sp.org_id = #{orgId}
+    </select>
+
+    <select id = "selectSysPostByPostName" parameterType="Long" resultType="com.yr.system.domain.SysPost">
+        select
+        <include refid="selectPostFullColumns"/>
+        from sys_post
+        where post_id = #{postId}
+    </select>
+</mapper>

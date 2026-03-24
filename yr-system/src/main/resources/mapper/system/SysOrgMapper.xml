@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.system.mapper.SysOrgMapper">
+
+    <resultMap type="SysOrg" id="SysOrgResult">
+        <result property="orgId" column="org_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="ancestors" column="ancestors"/>
+        <result property="orgCode" column="org_code"/>
+        <result property="orgName" column="org_name"/>
+        <result property="orderNum" column="order_num"/>
+        <result property="leader" column="leader"/>
+        <result property="remark" column="remark"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createAt" column="create_at"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateAt" column="update_at"/>
+    </resultMap>
+
+    <sql id="selectSysOrgVo">
+        select org_id,
+               parent_id,
+               ancestors,
+               org_code,
+               org_name,
+               order_num,
+               leader,
+               remark,
+               status,
+               create_by,
+               create_at,
+               update_by,
+               update_at
+        from sys_org
+    </sql>
+
+    <select id="selectSysOrgList" parameterType="SysOrg" resultMap="SysOrgResult">
+        <include refid="selectSysOrgVo"/>
+        <where>
+            <if test="orgCode != null  and orgCode != ''">and org_code like concat('%', #{orgCode}, '%')</if>
+            <if test="orgName != null  and orgName != ''">and org_name like concat('%', #{orgName}, '%')</if>
+            <if test="status != null  and status != ''">and status = #{status}</if>
+        </where>
+        order by parent_id, order_num
+    </select>
+
+    <select id="selectSysOrgById" parameterType="Long" resultMap="SysOrgResult">
+        <include refid="selectSysOrgVo"/>
+        where org_id = #{orgId}
+    </select>
+
+    <select id="checkOrgCodeUnique" parameterType="String" resultType="int">
+        select count(1)
+        from sys_org
+        where org_code = #{orgCode} limit 1
+    </select>
+
+    <select id="hasChildByOrgId" parameterType="Long" resultType="int">
+        select count(1)
+        from sys_org
+        where parent_id = #{orgId} limit 1
+    </select>
+
+    <select id="selectNormalChildrenOrgById" resultType="java.lang.Integer">
+        select count(*)
+        from sys_org
+        where status = 0
+          and find_in_set(#{orgId}, ancestors)
+    </select>
+
+    <select id="selectChildrenOrgById" resultType="com.yr.common.core.domain.entity.SysOrg">
+        select org_id,
+               parent_id,
+               ancestors,
+               org_code,
+               org_name,
+               order_num,
+               leader,
+               remark,
+               status,
+               create_by,
+               create_at,
+               update_by,
+               update_at
+        from sys_org
+        where find_in_set(#{orgId}, ancestors)
+    </select>
+
+    <update id="updateOrgChildren">
+        update sys_org set ancestors =
+        <foreach collection="orgs" item="item" index="index" separator=" " open="case org_id" close="end">
+            when #{item.orgId} then #{item.ancestors}
+        </foreach>
+        where org_id in
+        <foreach collection="orgs" item="item" index="index" separator="," open="(" close=")">
+            #{item.orgId}
+        </foreach>
+    </update>
+
+    <update id="updateOrgStatusNormal">
+        update sys_org set status = '0' where org_id in
+        <foreach collection="orgIds" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <insert id="insertSysOrg" parameterType="SysOrg" useGeneratedKeys="true" keyProperty="orgId">
+        insert into sys_org
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="parentId != null">parent_id,</if>
+            <if test="ancestors != null and ancestors != ''">ancestors,</if>
+            <if test="orgCode != null and orgCode != ''">org_code,</if>
+            <if test="orgName != null and orgName != ''">org_name,</if>
+            <if test="orderNum != null and orderNum != ''">order_num,</if>
+            <if test="leader != null and leader != ''">leader,</if>
+            <if test="remark != null">remark,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createAt != null">create_at,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateAt != null">update_at,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="parentId != null">#{parentId},</if>
+            <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+            <if test="orgCode != null and orgCode != ''">#{orgCode},</if>
+            <if test="orgName != null and orgName != ''">#{orgName},</if>
+            <if test="orderNum != null and orderNum != ''">#{orderNum},</if>
+            <if test="leader != null and leader != ''">#{leader},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createAt != null">#{createAt},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateAt != null">#{updateAt},</if>
+        </trim>
+    </insert>
+
+    <update id="updateSysOrg" parameterType="SysOrg">
+        update sys_org
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+            <if test="orgCode != null and orgCode != ''">org_code = #{orgCode},</if>
+            <if test="orgName != null and orgName != ''">org_name = #{orgName},</if>
+            <if test="orderNum != null and orgName != ''">order_num = #{orderNum},</if>
+            <if test="leader != null and orgName != ''">leader = #{leader},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createAt != null">create_at = #{createAt},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateAt != null">update_at = #{updateAt},</if>
+        </trim>
+        where org_id = #{orgId}
+    </update>
+
+    <delete id="deleteSysOrgById" parameterType="Long">
+        delete
+        from sys_org
+        where org_id = #{orgId}
+    </delete>
+
+    <delete id="deleteSysOrgByIds" parameterType="String">
+        delete from sys_org where org_id in
+        <foreach item="orgId" collection="array" open="(" separator="," close=")">
+            #{orgId}
+        </foreach>
+    </delete>
+</mapper>

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.yr.system.mapper.SysUserDeptMapper">
+    <!--
+      @file 用户部门关联 Mapper SQL
+      @author PopoY
+      @date 2026-03-24
+    -->
+
+    <!-- PopoY: 抽取用户部门关联与部门基础列，避免 select * / sd.* 带来 schema drift。 -->
+    <sql id="selectSysUserDeptColumns">
+        id,
+        user_id,
+        dept_id,
+        is_default,
+        enabled,
+        create_by,
+        create_at,
+        update_by,
+        update_at,
+        object_version_number
+    </sql>
+
+    <sql id="selectDeptColumnsWithAlias">
+        sd.dept_id,
+        sd.parent_id,
+        sd.ancestors,
+        sd.dept_code,
+        sd.dept_name,
+        sd.order_num,
+        sd.leader,
+        sd.phone,
+        sd.email,
+        sd.status,
+        sd.del_flag,
+        sd.accounte_unit,
+        sd.org_id,
+        sd.create_by,
+        sd.create_time,
+        sd.update_by,
+        sd.update_time
+    </sql>
+
+    <select id="pageDeptAssignUserByDeptId" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
+        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time, sud.id as
+        user_dept_id, sud.is_default as is_user_default_dept
+        FROM sys_user su
+        JOIN sys_user_dept sud on su.user_id = sud.user_id and sud.dept_id = #{deptId}
+        <where>
+            <if test="param.userName != null and param.userName != ''">
+                AND su.user_name like concat('%', #{param.userName}, '%')
+            </if>
+            <if test="param.phonenumber != null and param.phonenumber != ''">
+                AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
+            </if>
+        </where>
+    </select>
+
+    <select id="pageDeptUnAssignUserByDeptId" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
+        SELECT
+        su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time
+        FROM
+        sys_user su
+        JOIN sys_user_org suo ON su.user_id = suo.user_id AND suo.org_id = #{orgId} AND suo.enabled = 1
+        WHERE
+        su.user_id NOT IN (
+        SELECT
+        sud.user_id
+        FROM
+        sys_user_dept sud
+        WHERE
+        sud.dept_id = #{deptId}
+        )
+        <if test="param.userName != null and param.userName != ''">
+            AND su.user_name like concat('%', #{param.userName}, '%')
+        </if>
+        <if test="param.phonenumber != null and param.phonenumber != ''">
+            AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
+        </if>
+    </select>
+
+    <select id="pageDeptByUserId" resultMap="com.yr.system.mapper.SysDeptMapper.SysDeptResult">
+        select d.dept_id,
+               d.parent_id,
+               d.ancestors,
+               d.dept_code,
+               d.dept_name,
+               d.order_num,
+               d.status,
+               d.org_id,
+               sud.is_default as is_user_default_dept,
+               su.nick_name   as update_by,
+               sud.update_at  as update_time,
+               sud.id         as user_dept_id
+        from sys_dept d
+                 join sys_user_dept sud on d.dept_id = sud.dept_id and sud.user_id = #{userId} and sud.enabled = 1
+                 left join sys_user su on su.user_id = sud.update_by
+        where d.del_flag = '0'
+          and d.org_id = #{orgId}
+        order by sud.is_default desc, d.parent_id, d.order_num
+    </select>
+
+    <select id="selectDefaultUserDeptId" resultType="java.lang.Long">
+        select sud.id
+        from sys_user_dept sud
+                 join sys_dept sd on sud.dept_id = sd.dept_id and sd.org_id = #{orgId}
+        where sud.user_id = #{userId}
+          and sud.is_default = 1
+    </select>
+
+    <update id="clearDefaultUserDept">
+        update sys_user_dept
+        set is_default = null
+        where id = #{id}
+    </update>
+
+    <select id="selectDeptByUserIdAndOrgId" resultMap="com.yr.system.mapper.SysDeptMapper.SysDeptResult">
+        select
+        <include refid="selectDeptColumnsWithAlias"/>,
+        sud.id as user_dept_id
+        from sys_dept sd
+        join sys_user_dept sud on sud.dept_id = sd.dept_id and sud.user_id = #{userId}
+        where sd.org_id = #{orgId}
+        <if test="defaultDept != null and defaultDept == 'Y'.toString()">
+            and sud.is_default = 1
+        </if>
+    </select>
+
+    <select id="selectByUserIdAndIsDefault" parameterType="Long" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where user_id = #{userId}
+          and is_default = 1
+    </select>
+
+    <select id="selectByUserId" parameterType="Long" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where user_id = #{userId}
+    </select>
+
+    <select id="selectSysUserDeptByDeptId" parameterType="Long" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where dept_id = #{deptId}
+    </select>
+
+    <select id="selectAllUserByDeptId" parameterType="Long" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where dept_id in (select dept_id from sys_dept where dept_id = #{deptId} or parent_id = #{deptId})
+    </select>
+
+    <select id="getDeptByUserName" parameterType="String" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where user_id = (select user_id from sys_user where user_name = #{userName})
+    </select>
+
+    <select id="batchSelectUserByDeptId" parameterType="long[]" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where dept_id in
+        <foreach item="item" index="index" collection="array" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="selectByUserIdArrayAndIsDefault" parameterType="long[]"
+            resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where user_id in
+        <foreach item="item" index="index" collection="array" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and is_default = 1
+    </select>
+
+    <select id="getDeptByUserNameArray" parameterType="String" resultType="com.yr.system.domain.entity.SysUserDept">
+        select
+        <include refid="selectSysUserDeptColumns"/>
+        from sys_user_dept
+        where user_id in (select user_id from sys_user where user_name in
+        <foreach item="item" index="index" collection="array" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and del_flag = 0 and status = 0
+        )
+        and is_default = 1
+    </select>
+
+</mapper>

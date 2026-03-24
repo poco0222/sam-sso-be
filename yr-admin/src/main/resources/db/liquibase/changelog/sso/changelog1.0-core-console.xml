@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  @file 身份中心一期核心控制台 Liquibase 变更集
+  @author PopoY
+  @date 2026-03-24
+-->
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="sso-core-console-001" author="PopoY" context="一期核心表基线">
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_org` (
+            `org_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '组织ID',
+            `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '父组织ID',
+            `ancestors` varchar(255) NOT NULL DEFAULT '0' COMMENT '祖级列表',
+            `org_code` varchar(64) NOT NULL COMMENT '组织编码',
+            `org_name` varchar(128) NOT NULL COMMENT '组织名称',
+            `order_num` int(11) NOT NULL DEFAULT '0' COMMENT '显示顺序',
+            `leader` varchar(64) DEFAULT NULL COMMENT '负责人',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0正常 1停用）',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`org_id`),
+            UNIQUE KEY `sys_org_u1` (`org_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='组织信息表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_dept` (
+            `dept_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '部门ID',
+            `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '父部门ID',
+            `ancestors` varchar(255) NOT NULL DEFAULT '0' COMMENT '祖级列表',
+            `dept_code` varchar(64) NOT NULL COMMENT '部门编码',
+            `dept_name` varchar(128) NOT NULL COMMENT '部门名称',
+            `order_num` int(11) NOT NULL DEFAULT '0' COMMENT '显示顺序',
+            `leader` varchar(64) DEFAULT NULL COMMENT '负责人',
+            `phone` varchar(32) DEFAULT NULL COMMENT '联系电话',
+            `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0正常 1停用）',
+            `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标识（0存在 2删除）',
+            `accounte_unit` char(1) DEFAULT '1' COMMENT '核算单位（0是 1否）',
+            `is_client_flag` char(1) DEFAULT '0' COMMENT '是否客户端部门',
+            `org_id` bigint(20) NOT NULL COMMENT '所属组织ID',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`dept_id`),
+            UNIQUE KEY `sys_dept_u1` (`org_id`, `dept_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='部门信息表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user` (
+            `user_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '用户ID',
+            `dept_id` bigint(20) DEFAULT NULL COMMENT '默认部门ID',
+            `user_name` varchar(64) NOT NULL COMMENT '登录账号',
+            `nick_name` varchar(64) NOT NULL COMMENT '用户昵称',
+            `email` varchar(128) DEFAULT NULL COMMENT '邮箱',
+            `phonenumber` varchar(32) DEFAULT NULL COMMENT '手机号',
+            `sex` char(1) DEFAULT '2' COMMENT '性别',
+            `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
+            `password` varchar(255) DEFAULT NULL COMMENT '密码',
+            `salt` varchar(64) DEFAULT NULL COMMENT '密码盐值',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '账号状态（0正常 1停用）',
+            `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标识（0存在 2删除）',
+            `login_ip` varchar(128) DEFAULT NULL COMMENT '最后登录IP',
+            `login_date` datetime DEFAULT NULL COMMENT '最后登录时间',
+            `first_login` char(1) DEFAULT '1' COMMENT '是否首次登录',
+            `org_id` bigint(20) DEFAULT NULL COMMENT '默认组织ID',
+            `org_name` varchar(128) DEFAULT NULL COMMENT '默认组织名称快照',
+            `approve_login` varchar(64) DEFAULT 'mgmt' COMMENT '允许登录平台',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            PRIMARY KEY (`user_id`),
+            UNIQUE KEY `sys_user_u1` (`user_name`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户信息表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user_org` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '用户组织关系ID',
+            `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+            `org_id` bigint(20) NOT NULL COMMENT '组织ID',
+            `is_default` int(1) DEFAULT NULL COMMENT '是否默认组织',
+            `enabled` int(1) NOT NULL DEFAULT '1' COMMENT '是否启用',
+            `create_by` bigint(20) DEFAULT NULL COMMENT '创建人ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` bigint(20) DEFAULT NULL COMMENT '更新人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_user_org_u1` (`user_id`, `org_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户组织关系表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user_dept` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '用户部门关系ID',
+            `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+            `dept_id` bigint(20) NOT NULL COMMENT '部门ID',
+            `is_default` int(1) DEFAULT NULL COMMENT '是否默认部门',
+            `enabled` int(1) NOT NULL DEFAULT '1' COMMENT '是否启用',
+            `create_by` bigint(20) DEFAULT NULL COMMENT '创建人ID',
+            `create_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` bigint(20) DEFAULT NULL COMMENT '更新人ID',
+            `update_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `object_version_number` bigint(20) NOT NULL DEFAULT '1' COMMENT '行版本号',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `sys_user_dept_u1` (`user_id`, `dept_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户部门关系表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_role` (
+            `role_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '角色ID',
+            `role_name` varchar(64) NOT NULL COMMENT '角色名称',
+            `role_key` varchar(128) NOT NULL COMMENT '角色权限标识',
+            `role_sort` int(11) NOT NULL DEFAULT '0' COMMENT '角色排序',
+            `data_scope` char(1) NOT NULL DEFAULT '1' COMMENT '数据范围',
+            `menu_check_strictly` tinyint(1) NOT NULL DEFAULT '1' COMMENT '菜单树联动',
+            `dept_check_strictly` tinyint(1) NOT NULL DEFAULT '1' COMMENT '部门树联动',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态',
+            `del_flag` char(1) NOT NULL DEFAULT '0' COMMENT '删除标识',
+            `org_id` bigint(20) DEFAULT NULL COMMENT '组织ID',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            PRIMARY KEY (`role_id`),
+            UNIQUE KEY `sys_role_u1` (`org_id`, `role_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_menu` (
+            `menu_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '菜单ID',
+            `menu_name` varchar(128) NOT NULL COMMENT '菜单名称',
+            `parent_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '父菜单ID',
+            `order_num` int(11) NOT NULL DEFAULT '0' COMMENT '显示顺序',
+            `path` varchar(255) DEFAULT NULL COMMENT '路由地址',
+            `component` varchar(255) DEFAULT NULL COMMENT '组件路径',
+            `is_frame` char(1) NOT NULL DEFAULT '1' COMMENT '是否外链（0是 1否）',
+            `is_cache` char(1) NOT NULL DEFAULT '0' COMMENT '是否缓存（0缓存 1不缓存）',
+            `menu_type` char(1) NOT NULL DEFAULT 'C' COMMENT '菜单类型（M目录 C菜单 F按钮）',
+            `visible` char(1) NOT NULL DEFAULT '0' COMMENT '显示状态（0显示 1隐藏）',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '菜单状态（0正常 1停用）',
+            `perms` varchar(128) DEFAULT NULL COMMENT '权限标识',
+            `icon` varchar(100) DEFAULT NULL COMMENT '菜单图标',
+            `platform` varchar(32) DEFAULT 'mgmt' COMMENT '所属平台',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            PRIMARY KEY (`menu_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='菜单权限表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_role_menu` (
+            `role_id` bigint(20) NOT NULL COMMENT '角色ID',
+            `menu_id` bigint(20) NOT NULL COMMENT '菜单ID',
+            PRIMARY KEY (`role_id`, `menu_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关系表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_user_role` (
+            `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+            `role_id` bigint(20) NOT NULL COMMENT '角色ID',
+            PRIMARY KEY (`user_id`, `role_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关系表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_config` (
+            `config_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '参数主键',
+            `config_name` varchar(128) NOT NULL COMMENT '参数名称',
+            `config_key` varchar(128) NOT NULL COMMENT '参数键名',
+            `config_value` varchar(500) NOT NULL COMMENT '参数键值',
+            `config_type` char(1) NOT NULL DEFAULT 'N' COMMENT '系统内置（Y是 N否）',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            PRIMARY KEY (`config_id`),
+            UNIQUE KEY `sys_config_u1` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='参数配置表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sso-core-console-002" author="PopoY" context="一期控制台菜单种子">
+        <sql>
+            INSERT IGNORE INTO `sys_menu`
+            (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `platform`, `create_by`, `create_time`, `remark`)
+            VALUES
+            (9000, '身份管理', 0, 90, 'identity', 'layout', '1', '0', 'M', '0', '0', NULL, 'peoples', 'mgmt', 'system', now(), '身份中心一期控制台根菜单');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

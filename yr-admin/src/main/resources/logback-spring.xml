@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration scan="true" scanPeriod="60 seconds">
+    <!-- 属性文件:在properties/yml文件中找到对应的配置项 -->
+    <springProperty scope="context" name="FILE_PATH" source="logging.file.path"/>
+
+    <!-- 日志输出格式 -->
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger - [%method] - %msg%n"/>
+
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- DEV使用DEBUG级别 -->
+    <springProfile name="dev">
+        <!--        文件日志-DEV-->
+        <appender name="dev_file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>DEBUG</level>
+            </filter>
+            <append>true</append>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <file>${FILE_PATH}/sam-project-be-empty.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <FileNamePattern>${FILE_PATH}/debug-%d{yyyy-MM-dd}.log.gz</FileNamePattern>
+                <MaxHistory>7</MaxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <!-- 异步输出 -->
+        <appender name="async_dev" class="ch.qos.logback.classic.AsyncAppender">
+            <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 -->
+            <discardingThreshold>0</discardingThreshold>
+            <!-- 更改默认的队列的深度,该值会影响性能.默认值为256 -->
+            <queueSize>1024</queueSize>
+            <!-- 添加附加的appender,最多只能添加一个 -->
+            <appender-ref ref="dev_file"/>
+        </appender>
+    </springProfile>
+
+
+    <!-- PROD使用WARN级别 -->
+    <springProfile name="prod">
+        <!--        文件日志 prod-->
+        <appender name="prod_file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>DEBUG</level>
+            </filter>
+            <append>true</append>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <file>${FILE_PATH}/sam-project-be-empty.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <FileNamePattern>${FILE_PATH}/debug-%d{yyyy-MM-dd}.log.gz</FileNamePattern>
+                <MaxHistory>7</MaxHistory>
+            </rollingPolicy>
+        </appender>
+        <!--        原配置文件定义了debug和warn两个级别相同的日志文件输出，这种配置方式不正确，保留原文件内容。-->
+        <!--        一定注意：使用文件类日志(appender)的时候，一定不能使用相同的文件名，否则会导致日志输出失败。-->
+        <!--        <appender name="prod_warn" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+        <!--            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">-->
+        <!--                <level>WARN</level>-->
+        <!--            </filter>-->
+        <!--            <append>true</append>-->
+        <!--            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">-->
+        <!--                <pattern>${LOG_PATTERN}</pattern>-->
+        <!--                <charset>UTF-8</charset>-->
+        <!--            </encoder>-->
+        <!--            <file>${FILE_PATH}/sam-project-be-empty.log</file>-->
+        <!--            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+        <!--                <FileNamePattern>${FILE_PATH}/warn-%d{yyyy-MM-dd}.log.gz</FileNamePattern>-->
+        <!--                <MaxHistory>15</MaxHistory>-->
+        <!--            </rollingPolicy>-->
+        <!--        </appender>-->
+
+        <!-- 异步输出 -->
+        <appender name="async_prod" class="ch.qos.logback.classic.AsyncAppender">
+            <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 -->
+            <discardingThreshold>0</discardingThreshold>
+            <!-- 更改默认的队列的深度,该值会影响性能.默认值为256 -->
+            <queueSize>1024</queueSize>
+            <!-- 添加附加的appender,最多只能添加一个 -->
+            <appender-ref ref="prod_file"/>
+        </appender>
+    </springProfile>
+
+    <!--<logger name="com.yr" level="INFO"/>-->
+    <!--<logger name="org.springframework" level="INFO"/>-->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <springProfile name="dev">
+            <appender-ref ref="async_dev"/>
+        </springProfile>
+        <springProfile name="prod">
+            <appender-ref ref="async_prod"/>
+        </springProfile>
+        <!--        <springProfile name="UAT">-->
+        <!--            <appender-ref ref="ASYNC_UAT"/>-->
+        <!--        </springProfile>-->
+    </root>
+
+    <!--    保留UAT profile的配置，但实际不使用，剔除干扰。by brallow-->
+    <!--    &lt;!&ndash; UAT使用INFO级别 &ndash;&gt;-->
+    <!--    <springProfile name="UAT">-->
+    <!--        <appender name="INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+    <!--            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">-->
+    <!--                <level>INFO</level>-->
+    <!--            </filter>-->
+    <!--            <append>true</append>-->
+    <!--            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">-->
+    <!--                <pattern>${LOG_PATTERN}</pattern>-->
+    <!--                <charset>UTF-8</charset>-->
+    <!--            </encoder>-->
+    <!--            <file>${FILE_PATH}/info.log</file>-->
+    <!--            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+    <!--                <FileNamePattern>${FILE_PATH}/info-%d{yyyy-MM-dd}.log.gz</FileNamePattern>-->
+    <!--                <MaxHistory>7</MaxHistory>-->
+    <!--            </rollingPolicy>-->
+    <!--        </appender>-->
+
+    <!--        &lt;!&ndash; 异步输出 &ndash;&gt;-->
+    <!--        <appender name="ASYNC_UAT" class="ch.qos.logback.classic.AsyncAppender">-->
+    <!--            &lt;!&ndash; 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 &ndash;&gt;-->
+    <!--            <discardingThreshold>0</discardingThreshold>-->
+    <!--            &lt;!&ndash; 更改默认的队列的深度,该值会影响性能.默认值为256 &ndash;&gt;-->
+    <!--            <queueSize>1024</queueSize>-->
+    <!--            &lt;!&ndash; 添加附加的appender,最多只能添加一个 &ndash;&gt;-->
+    <!--            <appender-ref ref="INFO"/>-->
+    <!--        </appender>-->
+    <!--    </springProfile>-->
+</configuration>

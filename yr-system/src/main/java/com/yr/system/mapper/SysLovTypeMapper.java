@@ -1,0 +1,61 @@
+package com.yr.system.mapper;
+
+import com.yr.common.core.domain.entity.SysLovType;
+
+import java.util.List;
+
+/**
+ * 值集视图 数据层
+ *
+ * @author Youngron
+ * @date 2021-09-13
+ */
+public interface SysLovTypeMapper {
+    /**
+     * 查询值集视图
+     *
+     * @param lovId 值集视图ID
+     * @return 值集视图
+     */
+    public SysLovType selectLovTypeById(Long lovId);
+
+    /**
+     * 查询值集视图列表
+     *
+     * @param sysLovType 值集视图
+     * @return 值集视图集合
+     */
+    public List<SysLovType> selectLovTypeList(SysLovType sysLovType);
+
+    /**
+     * 新增值集视图
+     *
+     * @param sysLovType 值集视图
+     * @return 结果
+     */
+    public int insertLovType(SysLovType sysLovType);
+
+    /**
+     * 修改值集视图
+     *
+     * @param sysLovType 值集视图
+     * @return 结果
+     */
+    public int updateLovType(SysLovType sysLovType);
+
+    /**
+     * 校验视图类型称是否唯一
+     *
+     * @param lovType 视图类型
+     * @return 结果
+     */
+    public SysLovType checkLovTypeUnique(String lovType);
+
+    /**
+     * 查询值集视图配置
+     *
+     * @param lovType 视图类型
+     * @return 结果
+     */
+    public SysLovType selectLovByType(String lovType);
+}

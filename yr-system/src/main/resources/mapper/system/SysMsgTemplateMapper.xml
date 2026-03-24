@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.system.mapper.SysMsgTemplateMapper">
+
+    <!--
+        @file 消息模板 Mapper，收敛分页查询 SQL 拼装语义
+        @author PopoY
+        @date 2026-03-24
+    -->
+
+    <!--    &lt;!&ndash; 通用查询映射结果 &ndash;&gt;-->
+    <resultMap id="MsgTemplateBaseMap" type="com.yr.system.domain.entity.SysMsgTemplate">
+        <id column="id" property="id"/>
+        <result column="msg_code" property="msgCode"/>
+        <result column="msg_name" property="msgName"/>
+        <result column="msg_content" property="msgContent"/>
+        <result column="status" property="status"/>
+        <result column="create_at" property="createAt"/>
+        <result column="update_at" property="updateAt"/>
+        <result column="create_by" property="createBy"/>
+        <result column="update_by" property="updateBy"/>
+        <result column="remark" property="remark"/>
+        <result column="msg_params" property="msgParams"/>
+        <result column="object_version_number" property="objectVersionNumber"/>
+        <result column="title" property="title"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id
+        , msg_code, msg_name, msg_content, status, create_at, update_at, create_by, update_by, remark, msg_params,title
+    </sql>
+
+    <select id="pageList" resultMap="MsgTemplateBaseMap">
+        select
+        <include refid="Base_Column_List"/>
+        from sys_msg_template
+        <where>
+            <if test="null != request.msgCode and request.msgCode != ''">
+                and msg_code = #{request.msgCode}
+            </if>
+
+            <if test="null != request.msgName and request.msgName != ''">
+                and msg_name like concat('%', #{request.msgName}, '%')
+            </if>
+
+            <if test="null != request.status and request.status != '' and request.status != '-1'">
+                and status = #{request.status}
+            </if>
+        </where>
+
+        order by create_at desc
+    </select>
+
+</mapper>

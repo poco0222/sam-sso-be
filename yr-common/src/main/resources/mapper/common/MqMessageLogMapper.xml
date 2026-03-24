@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yr.common.mapper.MqMessageLogMapper">
+
+    <select id="selectRetryList" resultType="com.yr.common.core.domain.MqMessageLog">
+        SELECT id, msg_id, msg_key, topic, tag, action_type, body,
+               send_status, consume_status, retry_count, max_retry,
+               next_retry_time, error_msg, create_by, create_time
+        FROM mq_message_log
+        WHERE send_status = 2
+          AND retry_count &lt; max_retry
+          AND next_retry_time &lt;= NOW()
+        ORDER BY next_retry_time ASC
+        LIMIT 100
+    </select>
+
+    <update id="updateSendStatus">
+        UPDATE mq_message_log
+        SET send_status = #{sendStatus},
+            msg_id = #{msgId},
+            error_msg = #{errorMsg},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateConsumeStatus">
+        UPDATE mq_message_log
+        SET consume_status = #{consumeStatus},
+            error_msg = #{errorMsg},
+            update_time = NOW()
+        WHERE msg_key = #{msgKey}
+          AND consume_status != 1
+    </update>
+
+    <update id="incrementRetryCount">
+        UPDATE mq_message_log
+        SET retry_count = retry_count + 1,
+            next_retry_time = DATE_ADD(NOW(), INTERVAL POWER(2, retry_count) MINUTE),
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

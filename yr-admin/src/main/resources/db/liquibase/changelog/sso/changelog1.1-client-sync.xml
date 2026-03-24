@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  @file 身份中心一期客户端与同步任务 Liquibase 变更集
+  @author PopoY
+  @date 2026-03-24
+-->
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="sso-client-sync-001" author="PopoY" context="一期客户端与同步任务表">
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sso_client` (
+            `client_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '客户端ID',
+            `client_code` varchar(64) NOT NULL COMMENT '客户端编码',
+            `client_name` varchar(128) NOT NULL COMMENT '客户端名称',
+            `client_secret` varchar(255) NOT NULL COMMENT '客户端密钥',
+            `redirect_uris` text COMMENT '回调地址列表',
+            `allow_password_login` char(1) NOT NULL DEFAULT 'Y' COMMENT '是否允许密码登录',
+            `allow_wxwork_login` char(1) NOT NULL DEFAULT 'N' COMMENT '是否允许企业微信登录',
+            `sync_enabled` char(1) NOT NULL DEFAULT 'Y' COMMENT '是否启用同步',
+            `status` char(1) NOT NULL DEFAULT '0' COMMENT '状态（0正常 1停用）',
+            `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`client_id`),
+            UNIQUE KEY `sso_client_u1` (`client_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='身份中心客户端表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sso_sync_task` (
+            `task_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '同步任务ID',
+            `task_type` varchar(32) NOT NULL COMMENT '任务类型',
+            `trigger_type` varchar(32) NOT NULL COMMENT '触发方式',
+            `target_client_code` varchar(64) DEFAULT NULL COMMENT '目标客户端编码',
+            `batch_no` varchar(64) DEFAULT NULL COMMENT '批次号',
+            `status` varchar(32) NOT NULL COMMENT '任务状态',
+            `payload_json` text COMMENT '任务载荷',
+            `result_summary` varchar(500) DEFAULT NULL COMMENT '结果摘要',
+            `retry_count` int(11) NOT NULL DEFAULT '0' COMMENT '重试次数',
+            `execute_at` datetime DEFAULT NULL COMMENT '执行时间',
+            `id_strategy` varchar(64) DEFAULT NULL COMMENT 'ID策略',
+            `ownership_transfer_status` varchar(64) DEFAULT NULL COMMENT '主权转移状态',
+            `source_batch_no` varchar(64) DEFAULT NULL COMMENT '来源批次号',
+            `import_snapshot_at` datetime DEFAULT NULL COMMENT '导入快照时间',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`task_id`),
+            KEY `sso_sync_task_n1` (`task_type`, `status`),
+            KEY `sso_sync_task_n2` (`target_client_code`, `batch_no`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='身份中心同步任务表';
+        </sql>
+
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sso_sync_task_item` (
+            `item_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '同步任务明细ID',
+            `task_id` bigint(20) NOT NULL COMMENT '任务ID',
+            `entity_type` varchar(64) NOT NULL COMMENT '实体类型',
+            `source_id` varchar(64) DEFAULT NULL COMMENT '来源ID',
+            `target_id` varchar(64) DEFAULT NULL COMMENT '目标ID',
+            `status` varchar(32) NOT NULL COMMENT '明细状态',
+            `detail_json` text COMMENT '明细载荷',
+            `error_message` varchar(500) DEFAULT NULL COMMENT '错误信息',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`item_id`),
+            KEY `sso_sync_task_item_n1` (`task_id`, `status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='身份中心同步任务明细表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sso-client-sync-002" author="PopoY" context="一期客户端与同步任务菜单种子">
+        <sql>
+            INSERT IGNORE INTO `sys_menu`
+            (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `platform`, `create_by`, `create_time`, `remark`)
+            VALUES
+            (9001, '客户端管理', 9000, 1, 'client', 'client/index', '1', '0', 'C', '0', '0', 'sso:client:list', 'link', 'mgmt', 'system', now(), '身份中心客户端管理菜单'),
+            (9002, '同步任务控制台', 9000, 2, 'sync-task', 'sync-task/index', '1', '0', 'C', '0', '0', 'sso:sync-task:list', 'job', 'mgmt', 'system', now(), '身份中心同步任务控制台菜单');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

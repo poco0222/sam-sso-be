@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.yr.system.mapper.SysUserDutyMapper">
+
+    <select id="pageAssignUser" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
+        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time, sud.id as
+        user_duty_id
+        FROM sys_user su
+        JOIN sys_user_duty sud on su.user_id = sud.user_id and sud.duty_id = #{dutyId}
+        <where>
+            <if test="param.userName != null and param.userName != ''">
+                AND su.user_name like concat('%', #{param.userName}, '%')
+            </if>
+            <if test="param.phonenumber != null and param.phonenumber != ''">
+                AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
+            </if>
+        </where>
+    </select>
+
+    <select id="pageUnAssignUser" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
+        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time
+        FROM sys_user su
+        JOIN sys_user_org suo ON su.user_id = suo.user_id AND suo.org_id = #{orgId}
+        WHERE
+        su.user_id not in (
+        select sud.user_id from sys_user_duty sud WHERE sud.duty_id = #{dutyId}
+        )
+        <if test="param.userName != null and param.userName != ''">
+            AND su.user_name like concat('%', #{param.userName}, '%')
+        </if>
+        <if test="param.phonenumber != null and param.phonenumber != ''">
+            AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
+        </if>
+    </select>
+
+    <select id="pageAssignDuty" resultType="com.yr.system.domain.entity.SysDuty">
+        SELECT sd.*, sud.id as userDutyId
+        FROM sys_duty sd
+                 JOIN sys_user_duty sud on sd.id = sud.duty_id and sud.user_id = #{userId}
+        WHERE sd.org_id = #{orgId}
+    </select>
+
+    <select id="selectUserDutyListByUserIdAndOrgId" resultType="com.yr.system.domain.entity.SysDuty">
+        SELECT sd.duty_name
+        FROM sys_duty sd
+                 JOIN sys_user_duty sud on sd.id = sud.duty_id and sud.user_id = #{userId}
+        WHERE sd.org_id = #{orgId}
+    </select>
+</mapper>

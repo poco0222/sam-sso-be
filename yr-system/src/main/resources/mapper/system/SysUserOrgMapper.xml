@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.yr.system.mapper.SysUserOrgMapper">
+    <!--
+      @file 用户组织关联 Mapper SQL
+      @author PopoY
+      @date 2026-03-24
+    -->
+
+    <resultMap id="baseMap" type="com.yr.system.domain.entity.SysUserOrg">
+        <result column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="org_id" property="orgId" jdbcType="BIGINT"/>
+        <result column="is_default" property="isDefault" jdbcType="INTEGER"/>
+        <result column="enabled" property="enabled" jdbcType="INTEGER"/>
+        <result column="create_by" property="createBy" jdbcType="BIGINT"/>
+        <result column="create_at" property="createAt" jdbcType="TIMESTAMP"/>
+        <result column="update_by" property="updateBy" jdbcType="BIGINT"/>
+        <result column="update_at" property="updateAt" jdbcType="TIMESTAMP"/>
+        <result column="object_version_number" property="objectVersionNumber" jdbcType="BIGINT"/>
+
+        <result column="lastUpdateName" property="lastUpdateName" jdbcType="VARCHAR"/>
+        <result column="org_code" property="orgCode" jdbcType="VARCHAR"/>
+        <result column="org_name" property="orgName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="pageSysUserOrg" resultMap="baseMap">
+        SELECT suo.`ID`,
+               suo.`user_id`,
+               suo.`org_id`,
+               suo.`is_default`,
+               suo.`enabled`,
+               suo.`create_at`,
+               suo.`create_by`,
+               suo.`update_at`,
+               suo.`update_by`,
+               suo.`object_version_number`,
+               update_user.nick_name as lastUpdateName,
+               so.org_code,
+               so.org_name
+        FROM sys_user_org suo
+                 JOIN sys_org so ON suo.org_id = so.org_id
+                 LEFT JOIN sys_user update_user ON suo.update_by = update_user.user_id
+        WHERE suo.user_id = #{param.userId}
+        ORDER BY suo.is_default DESC,
+                 suo.update_at DESC
+    </select>
+
+    <update id="clearDefaultUserOrg">
+        UPDATE sys_user_org
+        SET is_default = NULL
+        WHERE user_id = #{userId}
+          AND is_default = 1
+    </update>
+
+    <update id="setDefaultUserOrg">
+        UPDATE sys_user_org
+        SET is_default = 1
+        WHERE user_id = #{userId}
+          AND org_id = #{orgId}
+    </update>
+
+</mapper>
