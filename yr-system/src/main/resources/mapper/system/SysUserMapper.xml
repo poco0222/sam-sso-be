@@ -84,6 +84,32 @@
         so.org_name
     </sql>
 
+    <!-- PopoY: 登录与按组织查询必须优先使用 sys_user_org 的默认组织，避免 sys_user.org_id 空值污染登录态。 -->
+    <sql id="selectUserBaseColumnsWithResolvedOrgName">
+        su.user_id,
+        su.dept_id,
+        su.user_name,
+        su.nick_name,
+        su.email,
+        su.phonenumber,
+        su.sex,
+        su.avatar,
+        su.password,
+        su.status,
+        su.del_flag,
+        su.login_ip,
+        su.login_date,
+        su.create_by,
+        su.create_time,
+        su.update_by,
+        su.update_time,
+        su.remark,
+        su.first_login,
+        suo.org_id as org_id,
+        su.approve_login,
+        so.org_name
+    </sql>
+
     <select id="selectUserList" parameterType="SysUser" resultMap="SysUserResult">
         select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.password, u.sex,
         u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader,
@@ -161,7 +187,7 @@
     <select id="selectUserListV2" parameterType="com.yr.common.core.domain.entity.SysUser"
             resultType="com.yr.common.core.domain.entity.SysUser">
         SELECT
-        <include refid="selectUserBaseColumnsWithOrgName"/>,
+        <include refid="selectUserBaseColumnsWithResolvedOrgName"/>,
         sr.id as rank_id,
         sr.rank_name
         FROM sys_user su
@@ -255,7 +281,7 @@
 
     <select id="selectUserByUserName" parameterType="String" resultMap="SysUserResult">
         select
-        <include refid="selectUserBaseColumnsWithOrgName"/>
+        <include refid="selectUserBaseColumnsWithResolvedOrgName"/>
         from sys_user su
                  join sys_user_org suo on su.user_id = suo.user_id and suo.is_default = 1
                  join sys_org so on suo.org_id = so.org_id
@@ -264,7 +290,7 @@
 
     <select id="selectUserByUserId" resultType="com.yr.common.core.domain.entity.SysUser">
         select
-        <include refid="selectUserBaseColumnsWithOrgName"/>
+        <include refid="selectUserBaseColumnsWithResolvedOrgName"/>
         from sys_user su
                  join sys_user_org suo on su.user_id = suo.user_id and suo.is_default = 1
                  join sys_org so on suo.org_id = so.org_id

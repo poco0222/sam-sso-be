@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  @file 身份中心一期登录审计 Liquibase 变更集
+  @author PopoY
+  @date 2026-03-25
+-->
+<databaseChangeLog
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="sso-login-audit-001" author="PopoY" context="一期登录审计表">
+        <sql>
+            CREATE TABLE IF NOT EXISTS `sys_logininfor` (
+            `info_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '访问ID',
+            `user_name` varchar(64) DEFAULT '' COMMENT '用户账号',
+            `ipaddr` varchar(128) DEFAULT '' COMMENT '登录IP地址',
+            `login_location` varchar(255) DEFAULT '' COMMENT '登录地点',
+            `browser` varchar(64) DEFAULT '' COMMENT '浏览器类型',
+            `os` varchar(64) DEFAULT '' COMMENT '操作系统',
+            `status` char(1) DEFAULT '0' COMMENT '登录状态（0成功 1失败）',
+            `msg` varchar(255) DEFAULT '' COMMENT '提示消息',
+            `login_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '访问时间',
+            PRIMARY KEY (`info_id`),
+            KEY `sys_logininfor_n1` (`status`, `login_time`),
+            KEY `sys_logininfor_n2` (`user_name`, `login_time`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统访问记录表';
+        </sql>
+    </changeSet>
+</databaseChangeLog>

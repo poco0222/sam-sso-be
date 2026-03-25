@@ -29,6 +29,7 @@ class SsoLiquibaseBootstrapContractTest {
 
         assertThat(masterContent).contains("changelog/sso/changelog1.0-core-console.xml");
         assertThat(masterContent).contains("changelog/sso/changelog1.1-client-sync.xml");
+        assertThat(masterContent).contains("changelog/sso/changelog1.2-login-audit.xml");
         assertThat(masterContent).doesNotContain("includeAll");
         assertThat(masterContent).doesNotContain("changelog/system/changelog1.0.xml");
     }
@@ -81,6 +82,22 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("客户端管理")
                 .contains("同步任务控制台")
                 .doesNotContain("activiti");
+    }
+
+    /**
+     * 验证登录审计 changelog 会补齐 `sys_logininfor` 表，避免本地新库登录后异步日志持续报错。
+     *
+     * @throws Exception 读取资源失败时抛出
+     */
+    @Test
+    void shouldDeclareLoginAuditBootstrapArtifacts() throws Exception {
+        String loginAuditContent = readClasspathResource("db/liquibase/changelog/sso/changelog1.2-login-audit.xml");
+
+        assertThat(loginAuditContent)
+                .contains("CREATE TABLE IF NOT EXISTS `sys_logininfor`")
+                .contains("`info_id`")
+                .contains("`user_name`")
+                .contains("`login_time`");
     }
 
     /**

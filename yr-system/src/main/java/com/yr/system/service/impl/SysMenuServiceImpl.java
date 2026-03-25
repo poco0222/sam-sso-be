@@ -28,6 +28,11 @@ import java.util.stream.Collectors;
 @Service
 public class SysMenuServiceImpl implements ISysMenuService {
     public static final String PREMISSION_STRING = "perms[\"{0}\"]";
+    /** PopoY: 身份中心一期管理台只保留 system/client/sync-task 与首页相关模块。 */
+    private static final Set<String> IDENTITY_CONSOLE_MODULE_WHITELIST =
+            Set.of("system", "client", "sync-task", "dashboard", "index");
+    /** PopoY: dashboard/index 只允许作为顶级模块出现，避免子级同名路径误命中。 */
+    private static final Set<String> TOP_LEVEL_ONLY_MODULE_KEYS = Set.of("dashboard", "index");
 
     private final SysMenuMapper menuMapper;
 
@@ -106,7 +111,11 @@ public class SysMenuServiceImpl implements ISysMenuService {
         } else {
             menus = menuMapper.selectMenuTreeByUserId(userId, orgId, platform);
         }
-        return getChildPerms(menus, 0);
+        List<SysMenu> menuTree = getChildPerms(menus, 0);
+        if ("mgmt".equals(platform)) {
+            return filterIdentityConsoleMgmtMenus(menuTree);
+        }
+        return menuTree;
     }
 
     /**
@@ -502,5 +511,82 @@ public class SysMenuServiceImpl implements ISysMenuService {
      */
     private boolean hasChild(List<SysMenu> list, SysMenu t) {
         return getChildList(list, t).size() > 0 ? true : false;
+    }
+
+    /**
+     * PopoY: 后端统一收口身份中心管理台菜单边界，避免 legacy module（旧模块）击穿前端动态路由初始化。
+     *
+     * @param menuTree 已按父子关系组装好的菜单树
+     * @return 收口后的菜单树
+     */
+    private List<SysMenu> filterIdentityConsoleMgmtMenus(List<SysMenu> menuTree) {
+        return filterIdentityConsoleMgmtMenus(menuTree, false, 0);
+    }
+
+    /**
+     * 递归过滤身份中心一期管理台菜单树。
+     *
+     * @param menuTree 当前层级菜单树
+     * @param parentMatched 父级是否已命中允许模块
+     * @param depth 当前深度，根节点为 0
+     * @return 过滤后的菜单树
+     */
+    private List<SysMenu> filterIdentityConsoleMgmtMenus(List<SysMenu> menuTree, boolean parentMatched, int depth) {
+        List<SysMenu> filteredMenus = new ArrayList<>();
+
+        for (SysMenu menu : menuTree) {
+            String moduleKey = getRouteModuleKey(menu);
+            boolean ownMatched = shouldKeepIdentityConsoleMenu(menu, depth);
+            boolean currentMatched = parentMatched || ownMatched;
+            List<SysMenu> filteredChildren = Collections.emptyList();
+
+            if (menu.getChildren() != null && !menu.getChildren().isEmpty()) {
+                filteredChildren = filterIdentityConsoleMgmtMenus(menu.getChildren(), currentMatched, depth + 1);
+                menu.setChildren(filteredChildren);
+            }
+
+            // 壳路由自身即使未命中，只要子级有允许模块也必须保留，例如 identity -> client/sync-task。
+            if (!currentMatched && filteredChildren.isEmpty()) {
+                continue;
+            }
+
+            filteredMenus.add(menu);
+        }
+
+        return filteredMenus;
+    }
+
+    /**
+     * 判断当前菜单是否命中身份中心一期允许模块。
+     *
+     * @param menu 当前菜单
+     * @param depth 当前深度，根节点为 0
+     * @return true 表示允许保留
+     */
+    private boolean shouldKeepIdentityConsoleMenu(SysMenu menu, int depth) {
+        String moduleKey = getRouteModuleKey(menu);
+
+        if (StringUtils.isEmpty(moduleKey)) {
+            return true;
+        }
+
+        if (!IDENTITY_CONSOLE_MODULE_WHITELIST.contains(moduleKey)) {
+            return false;
+        }
+
+        return !TOP_LEVEL_ONLY_MODULE_KEYS.contains(moduleKey) || depth == 0;
+    }
+
+    /**
+     * 提取菜单路径所属的顶级模块标识。
+     *
+     * @param menu 当前菜单
+     * @return 顶级模块标识
+     */
+    private String getRouteModuleKey(SysMenu menu) {
+        String menuPath = menu == null ? StringUtils.EMPTY : StringUtils.nvl(menu.getPath(), StringUtils.EMPTY);
+        String normalizedPath = menuPath.replaceAll("^/+", "");
+        String[] pathSegments = normalizedPath.split("/");
+        return pathSegments.length == 0 ? normalizedPath : pathSegments[0];
     }
 }

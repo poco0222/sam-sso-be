@@ -133,6 +133,27 @@ class YrSystemSqlContractTest {
     }
 
     /**
+     * 验证登录相关查询会从默认组织关系解析 `orgId`，避免 `sys_user.org_id` 为空时污染登录态。
+     *
+     * @throws IOException 读取 mapper 失败
+     */
+    @Test
+    void shouldResolveDefaultOrgIdFromUserOrgInLoginQueries() throws IOException {
+        assertMapperContains("SysUserMapper.xml", "<sql id=\"selectUserBaseColumnsWithResolvedOrgName\">");
+        assertMapperContains("SysUserMapper.xml", "suo.org_id as org_id");
+        assertSelectStatementContainsIgnoringCase(
+                "SysUserMapper.xml",
+                "selectUserByUserName",
+                "refid=\"selectUserBaseColumnsWithResolvedOrgName\""
+        );
+        assertSelectStatementContainsIgnoringCase(
+                "SysUserMapper.xml",
+                "selectUserByUserId",
+                "refid=\"selectUserBaseColumnsWithResolvedOrgName\""
+        );
+    }
+
+    /**
      * 断言指定 mapper 包含预期的文本片段。
      *
      * @param mapperFileName mapper 文件名
@@ -216,6 +237,26 @@ class YrSystemSqlContractTest {
         assertThat(normalizedActual)
                 .as("%s#%s 不应包含 %s", mapperFileName, statementId, unexpectedText)
                 .doesNotContain(normalizedUnexpected);
+    }
+
+    /**
+     * 断言指定 select statement 包含大小写不敏感的文本片段。
+     *
+     * @param mapperFileName mapper 文件名
+     * @param statementId select 语句 ID
+     * @param expectedText 预期出现的 SQL 片段
+     * @throws IOException 读取资源失败
+     */
+    private void assertSelectStatementContainsIgnoringCase(String mapperFileName,
+                                                           String statementId,
+                                                           String expectedText) throws IOException {
+        String statementBody = loadSelectStatementBody(mapperFileName, statementId);
+        String normalizedActual = normalizeWhitespace(statementBody).toLowerCase(Locale.ROOT);
+        String normalizedExpected = normalizeWhitespace(expectedText).toLowerCase(Locale.ROOT);
+
+        assertThat(normalizedActual)
+                .as("%s#%s 应包含 %s", mapperFileName, statementId, expectedText)
+                .contains(normalizedExpected);
     }
 
     /**

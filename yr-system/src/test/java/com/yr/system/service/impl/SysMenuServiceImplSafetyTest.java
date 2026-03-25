@@ -5,11 +5,14 @@
  */
 package com.yr.system.service.impl;
 
+import com.yr.common.core.domain.entity.SysMenu;
 import com.yr.common.exception.CustomException;
 import com.yr.system.mapper.SysMenuMapper;
 import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysRoleMenuMapper;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -79,5 +82,54 @@ class SysMenuServiceImplSafetyTest {
                 .satisfies(ex -> assertThat(ex.getCause()).isNull());
 
         verify(menuMapper).selectMenuById(menuId);
+    }
+
+    /**
+     * 验证身份中心管理台菜单树会过滤掉 monitor 等超出一期边界的 legacy module（旧模块），
+     * 避免前端在登录后初始化动态路由时被缺失页面击穿。
+     */
+    @Test
+    void shouldFilterLegacyMgmtModulesOutOfIdentityConsoleTree() {
+        SysMenuMapper menuMapper = mock(SysMenuMapper.class);
+        SysRoleMapper roleMapper = mock(SysRoleMapper.class);
+        SysRoleMenuMapper roleMenuMapper = mock(SysRoleMenuMapper.class);
+        SysMenuServiceImpl service = new SysMenuServiceImpl(menuMapper, roleMapper, roleMenuMapper);
+
+        when(menuMapper.selectMenuTreeAll("mgmt")).thenReturn(List.of(
+                buildMenu(9000L, 0L, "identity"),
+                buildMenu(9001L, 9000L, "client"),
+                buildMenu(9002L, 9000L, "sync-task"),
+                buildMenu(100L, 0L, "system"),
+                buildMenu(101L, 100L, "user"),
+                buildMenu(200L, 0L, "monitor"),
+                buildMenu(201L, 200L, "operlog")
+        ));
+
+        List<SysMenu> menuTree = service.selectMenuTreeByUserId(1L, 1L, "mgmt");
+
+        assertThat(menuTree)
+                .extracting(SysMenu::getPath)
+                .containsExactly("identity", "system");
+        assertThat(menuTree)
+                .flatExtracting(SysMenu::getChildren)
+                .extracting(SysMenu::getPath)
+                .contains("client", "sync-task", "user")
+                .doesNotContain("operlog");
+    }
+
+    /**
+     * 构造最小菜单对象，供菜单边界测试使用。
+     *
+     * @param menuId 菜单 ID
+     * @param parentId 父菜单 ID
+     * @param path 路由路径
+     * @return 菜单对象
+     */
+    private SysMenu buildMenu(Long menuId, Long parentId, String path) {
+        SysMenu sysMenu = new SysMenu();
+        sysMenu.setMenuId(menuId);
+        sysMenu.setParentId(parentId);
+        sysMenu.setPath(path);
+        return sysMenu;
     }
 }
