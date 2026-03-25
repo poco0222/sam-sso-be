@@ -11,6 +11,8 @@ import com.yr.common.mybatisplus.custommapper.CustomMapper;
 import com.yr.system.domain.entity.SysUserOrg;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Date;
+
 /**
  * @author Youngron
  * @version V1.0
@@ -45,4 +47,29 @@ public interface SysUserOrgMapper extends CustomMapper<SysUserOrg> {
      * @return 受影响行数
      */
     int setDefaultUserOrg(@Param("userId") Long userId, @Param("orgId") Long orgId);
+
+    /**
+     * 供 INIT_IMPORT 使用的显式插入，绕开无登录上下文时的 auto-fill 依赖。
+     *
+     * @param relation 用户组织关系
+     * @return 受影响行数
+     */
+    int insertInitImport(@Param("userId") Long userId,
+                         @Param("orgId") Long orgId,
+                         @Param("isDefault") Integer isDefault,
+                         @Param("enabled") Integer enabled,
+                         @Param("operatorUserId") Long operatorUserId,
+                         @Param("operateAt") Date operateAt);
+
+    /**
+     * 供 INIT_IMPORT 使用的显式更新，绕开无登录上下文时的 auto-fill 依赖。
+     *
+     * @param relation 用户组织关系
+     * @return 受影响行数
+     */
+    int updateInitImport(@Param("id") Long id,
+                         @Param("isDefault") Integer isDefault,
+                         @Param("enabled") Integer enabled,
+                         @Param("operatorUserId") Long operatorUserId,
+                         @Param("operateAt") Date operateAt);
 }

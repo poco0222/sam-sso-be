@@ -8,18 +8,21 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.aop.support.AopUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Method;
 import java.util.Objects;
 
 /**
  * 多数据源处理
  *
  * @author Youngron
+ * @author PopoY
  */
 @Aspect
 @Order(1)
@@ -54,7 +57,23 @@ public class DataSourceAspect {
      */
     public DataSource getDataSource(ProceedingJoinPoint point) {
         MethodSignature signature = (MethodSignature) point.getSignature();
-        DataSource dataSource = AnnotationUtils.findAnnotation(signature.getMethod(), DataSource.class);
+        Method interfaceMethod = signature.getMethod();
+        Class<?> targetClass = point.getTarget() == null
+                ? signature.getDeclaringType()
+                : AopUtils.getTargetClass(point.getTarget());
+        Method specificMethod = AopUtils.getMostSpecificMethod(interfaceMethod, targetClass);
+        DataSource dataSource = AnnotationUtils.findAnnotation(specificMethod, DataSource.class);
+        if (Objects.nonNull(dataSource)) {
+            return dataSource;
+        }
+
+        // 优先看 target implementation，避免 JDK proxy 只暴露接口签名时丢失实现类上的 @DataSource。
+        dataSource = AnnotationUtils.findAnnotation(targetClass, DataSource.class);
+        if (Objects.nonNull(dataSource)) {
+            return dataSource;
+        }
+
+        dataSource = AnnotationUtils.findAnnotation(interfaceMethod, DataSource.class);
         if (Objects.nonNull(dataSource)) {
             return dataSource;
         }

@@ -157,4 +157,37 @@ class SsoSyncTaskControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.taskId").value(11));
     }
+
+    /**
+     * 验证任务详情接口返回 item 明细与统计字段，供 console 直接渲染。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldReturnTaskDetailWithItemList() throws Exception {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(11L);
+        task.setStatus("PARTIAL_SUCCESS");
+        task.setTotalItemCount(5L);
+        task.setSuccessItemCount(4L);
+        task.setFailedItemCount(1L);
+
+        com.yr.common.core.domain.entity.SsoSyncTaskItem item = new com.yr.common.core.domain.entity.SsoSyncTaskItem();
+        item.setItemId(101L);
+        item.setEntityType("user");
+        item.setStatus("FAILED");
+        item.setSourceId("2001");
+        task.setItemList(List.of(item));
+
+        when(ssoSyncTaskService.selectSsoSyncTaskById(eq(11L))).thenReturn(task);
+
+        mockMvc.perform(get("/sso/sync-task/11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.taskId").value(11))
+                .andExpect(jsonPath("$.data.totalItemCount").value(5))
+                .andExpect(jsonPath("$.data.failedItemCount").value(1))
+                .andExpect(jsonPath("$.data.itemList[0].itemId").value(101))
+                .andExpect(jsonPath("$.data.itemList[0].entityType").value("user"))
+                .andExpect(jsonPath("$.data.itemList[0].status").value("FAILED"));
+    }
 }

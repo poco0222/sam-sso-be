@@ -61,4 +61,38 @@
           AND org_id = #{orgId}
     </update>
 
+    <insert id="insertInitImport">
+        INSERT INTO sys_user_org (
+            user_id,
+            org_id,
+            is_default,
+            enabled,
+            create_by,
+            create_at,
+            update_by,
+            update_at,
+            object_version_number
+        ) VALUES (
+            #{userId},
+            #{orgId},
+            #{isDefault},
+            #{enabled},
+            #{operatorUserId},
+            #{operateAt},
+            #{operatorUserId},
+            #{operateAt},
+            1
+        )
+    </insert>
+
+    <update id="updateInitImport">
+        UPDATE sys_user_org
+        SET is_default = #{isDefault},
+            enabled = #{enabled},
+            update_by = #{operatorUserId},
+            update_at = #{operateAt},
+            object_version_number = object_version_number + 1
+        WHERE id = #{id}
+    </update>
+
 </mapper>

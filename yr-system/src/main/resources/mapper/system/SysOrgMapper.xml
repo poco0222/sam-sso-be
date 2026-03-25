@@ -110,6 +110,7 @@
     <insert id="insertSysOrg" parameterType="SysOrg" useGeneratedKeys="true" keyProperty="orgId">
         insert into sys_org
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orgId != null and orgId != 0">org_id,</if>
             <if test="parentId != null">parent_id,</if>
             <if test="ancestors != null and ancestors != ''">ancestors,</if>
             <if test="orgCode != null and orgCode != ''">org_code,</if>
@@ -124,6 +125,7 @@
             <if test="updateAt != null">update_at,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orgId != null and orgId != 0">#{orgId},</if>
             <if test="parentId != null">#{parentId},</if>
             <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
             <if test="orgCode != null and orgCode != ''">#{orgCode},</if>

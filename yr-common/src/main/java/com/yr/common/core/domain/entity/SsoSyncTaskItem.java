@@ -5,6 +5,9 @@
  */
 package com.yr.common.core.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.yr.common.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,9 +17,11 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
+@TableName("sso_sync_task_item")
 public class SsoSyncTaskItem extends BaseEntity {
 
     /** 明细主键。 */
+    @TableId(value = "item_id", type = IdType.AUTO)
     private Long itemId;
 
     /** 所属任务ID。 */

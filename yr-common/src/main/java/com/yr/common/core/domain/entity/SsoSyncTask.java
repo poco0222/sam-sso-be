@@ -5,18 +5,24 @@
  */
 package com.yr.common.core.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.yr.common.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * 身份中心同步任务实体，承载一期 INIT_IMPORT / DISTRIBUTION / COMPENSATION 任务骨架。
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
+@TableName("sso_sync_task")
 public class SsoSyncTask extends BaseEntity {
 
     /** 初始化导入任务。 */
@@ -50,6 +56,7 @@ public class SsoSyncTask extends BaseEntity {
     public static final String OWNERSHIP_TRANSFERRED = "TRANSFERRED";
 
     /** 任务主键。 */
+    @TableId(value = "task_id", type = IdType.AUTO)
     private Long taskId;
 
     /** 任务类型。 */
@@ -92,4 +99,20 @@ public class SsoSyncTask extends BaseEntity {
     /** 导入快照时间。 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date importSnapshotAt;
+
+    /** 任务明细列表，供 sync-task console 直接渲染详情。 */
+    @TableField(exist = false)
+    private List<SsoSyncTaskItem> itemList;
+
+    /** 明细总数。 */
+    @TableField(exist = false)
+    private Long totalItemCount;
+
+    /** 成功明细数。 */
+    @TableField(exist = false)
+    private Long successItemCount;
+
+    /** 失败明细数。 */
+    @TableField(exist = false)
+    private Long failedItemCount;
 }

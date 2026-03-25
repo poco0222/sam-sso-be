@@ -72,12 +72,12 @@ spring:
         host: ${SPRING_DATASOURCE_DRUID_MASTER_HOST:127.0.0.1}
         port: ${SPRING_DATASOURCE_DRUID_MASTER_PORT:3306}
         basename: ${SPRING_DATASOURCE_DRUID_MASTER_BASENAME:local_sam_empty}
-      # 扩展 MySQL 从库数据源（按需启用）
+      # 扩展 MySQL 从库数据源，local profile 下固定指向只读 source `local_sam`
       slave:
-        enabled: false
-        url: ${SPRING_DATASOURCE_DRUID_SLAVE_URL:jdbc:mysql://127.0.0.1:3306/yr_template_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
-        username: ${SPRING_DATASOURCE_DRUID_SLAVE_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:template_password}
+        enabled: true
+        url: ${SPRING_DATASOURCE_DRUID_SLAVE_URL:jdbc:mysql://127.0.0.1:3306/local_sam?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
+        username: ${SPRING_DATASOURCE_DRUID_SLAVE_USERNAME:root}
+        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:Popo0222}
       # 扩展 SQL Server 从库数据源（按需启用）
       slaveec:
         enabled: false
@@ -280,3 +280,8 @@ file:
 plc:
   task:
     enabled: false  # 开发环境关闭定时任务
+
+sso:
+  init-import:
+    # Phase 1 已明确当前 legacy source 默认来自 MySQL slave；若后续核实为 SQL Server，可显式改为 SLAVEEC / SLAVEXX。
+    legacy-source-datasource: ${SSO_INIT_IMPORT_LEGACY_SOURCE_DATASOURCE:SLAVE}

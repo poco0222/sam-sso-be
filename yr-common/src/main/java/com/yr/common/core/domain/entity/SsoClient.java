@@ -5,6 +5,9 @@
  */
 package com.yr.common.core.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.yr.common.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -14,9 +17,11 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
+@TableName("sso_client")
 public class SsoClient extends BaseEntity {
 
     /** 客户端主键。 */
+    @TableId(value = "client_id", type = IdType.AUTO)
     private Long clientId;
 
     /** 客户端编码，作为跨系统稳定标识。 */
