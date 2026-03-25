@@ -30,10 +30,15 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
      */
     @Override
     public List<SsoClient> selectSsoClientList(SsoClient query) {
+        // 先提取查询值，避免在 condition（条件）为 false 时仍因参数求值访问空对象。
+        String clientCode = query == null ? null : query.getClientCode();
+        String clientName = query == null ? null : query.getClientName();
+        String status = query == null ? null : query.getStatus();
+
         LambdaQueryWrapper<SsoClient> queryWrapper = new LambdaQueryWrapper<SsoClient>()
-                .like(query != null && query.getClientCode() != null && !query.getClientCode().isBlank(), SsoClient::getClientCode, query.getClientCode())
-                .like(query != null && query.getClientName() != null && !query.getClientName().isBlank(), SsoClient::getClientName, query.getClientName())
-                .eq(query != null && query.getStatus() != null && !query.getStatus().isBlank(), SsoClient::getStatus, query.getStatus())
+                .like(clientCode != null && !clientCode.isBlank(), SsoClient::getClientCode, clientCode)
+                .like(clientName != null && !clientName.isBlank(), SsoClient::getClientName, clientName)
+                .eq(status != null && !status.isBlank(), SsoClient::getStatus, status)
                 .orderByAsc(SsoClient::getClientId);
         return this.list(queryWrapper);
     }

@@ -92,4 +92,35 @@ class SsoIdentitySkeletonContractTest {
                 .contains("userId+deptId");
         verify(service).save(command);
     }
+
+    /**
+     * 验证 DISTRIBUTION 任务会写入 full-batch snapshot upsert 契约。
+     */
+    @Test
+    void shouldLockDistributionTaskContract() {
+        SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        doReturn(true).when(service).save(any(SsoSyncTask.class));
+        SsoSyncTask command = new SsoSyncTask();
+        command.setTargetClientCode("sam-mgmt");
+
+        SsoSyncTask createdTask = service.distributionTask(command);
+
+        assertThat(createdTask.getTaskType()).isEqualTo("DISTRIBUTION");
+        assertThat(createdTask.getStatus()).isEqualTo("PENDING");
+        assertThat(createdTask.getTriggerType()).isEqualTo("MANUAL");
+        assertThat(createdTask.getRetryCount()).isZero();
+        assertThat(createdTask.getBatchNo()).startsWith("DIST-");
+        assertThat(createdTask.getSourceBatchNo()).startsWith("LOCAL-");
+        assertThat(createdTask.getImportSnapshotAt()).isNotNull();
+        assertThat(createdTask.getPayloadJson())
+                .contains("\"deliveryMode\":\"FULL_BATCH_SNAPSHOT\"")
+                .contains("\"mqActionType\":\"UPSERT\"")
+                .contains("\"sourceSystem\":\"local_sam_empty\"")
+                .contains("org")
+                .contains("dept")
+                .contains("user")
+                .contains("user_org_relation")
+                .contains("user_dept_relation");
+        verify(service).save(command);
+    }
 }

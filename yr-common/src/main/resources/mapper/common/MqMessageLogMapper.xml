@@ -1,6 +1,41 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  @file MQ 消息履历 Mapper XML
+  @author PopoY
+  @date 2026-03-25
+-->
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.yr.common.mapper.MqMessageLogMapper">
+
+    <select id="selectLatestByMsgKeys" resultType="com.yr.common.core.domain.MqMessageLog">
+        select latest_log.id,
+               latest_log.msg_id,
+               latest_log.msg_key,
+               latest_log.topic,
+               latest_log.tag,
+               latest_log.action_type,
+               latest_log.body,
+               latest_log.send_status,
+               latest_log.consume_status,
+               latest_log.retry_count,
+               latest_log.max_retry,
+               latest_log.next_retry_time,
+               latest_log.error_msg,
+               latest_log.create_by,
+               latest_log.create_time,
+               latest_log.update_time
+        from mq_message_log latest_log
+                 inner join (
+            select msg_key,
+                   max(id) as latest_id
+            from mq_message_log
+            where msg_key in
+            <foreach collection="msgKeys" item="msgKey" open="(" separator="," close=")">
+                #{msgKey}
+            </foreach>
+            group by msg_key
+        ) latest_index on latest_index.latest_id = latest_log.id
+    </select>
 
     <select id="selectRetryList" resultType="com.yr.common.core.domain.MqMessageLog">
         SELECT id, msg_id, msg_key, topic, tag, action_type, body,

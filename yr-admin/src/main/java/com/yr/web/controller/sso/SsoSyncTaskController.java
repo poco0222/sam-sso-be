@@ -70,6 +70,26 @@ public class SsoSyncTaskController extends BaseController {
     }
 
     /**
+     * 创建手工全量分发任务。
+     *
+     * @param task 任务请求
+     * @return 包含任务 ID 的响应体
+     */
+    @PreAuthorize("@ss.hasPermi('sso:sync-task:add')")
+    @Log(title = "同步任务控制台", businessType = BusinessType.INSERT)
+    @PostMapping("/distribution")
+    public AjaxResult distribution(@RequestBody SsoSyncTask task) {
+        String operator = resolveOperator();
+        if (operator != null) {
+            task.setCreateBy(operator);
+        }
+        SsoSyncTask createdTask = ssoSyncTaskService.distributionTask(task);
+        AjaxResult ajaxResult = AjaxResult.success("分发任务创建成功");
+        ajaxResult.put("taskId", createdTask.getTaskId());
+        return ajaxResult;
+    }
+
+    /**
      * 重试失败任务。
      *
      * @param taskId 任务ID

@@ -5,6 +5,7 @@
  */
 package com.yr.system.service.impl;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.yr.common.core.domain.entity.SsoClient;
@@ -48,6 +49,23 @@ class SsoSyncTaskPersistenceContractTest {
                 "successItemCount",
                 "failedItemCount"
         );
+    }
+
+    /**
+     * 验证同步任务条目会持久化 msgKey，并预留 MQ 视图字段给 console 详情使用。
+     *
+     * @throws NoSuchFieldException 当字段不存在时抛出
+     */
+    @Test
+    void shouldPersistMsgKeyAndExposeMessageLogViewOnSyncTaskItem() throws NoSuchFieldException {
+        Field msgKeyField = SsoSyncTaskItem.class.getDeclaredField("msgKey");
+        Field messageLogField = SsoSyncTaskItem.class.getDeclaredField("messageLog");
+        TableField tableField = msgKeyField.getAnnotation(TableField.class);
+
+        assertThat(tableField == null || tableField.exist())
+                .withFailMessage("SsoSyncTaskItem.msgKey 不应再声明为非持久化字段")
+                .isTrue();
+        assertThat(messageLogField.getType().getSimpleName()).isEqualTo("SsoSyncTaskMessageLogView");
     }
 
     /**

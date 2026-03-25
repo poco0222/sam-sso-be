@@ -76,6 +76,8 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("CREATE TABLE IF NOT EXISTS `sso_client`")
                 .contains("CREATE TABLE IF NOT EXISTS `sso_sync_task`")
                 .contains("CREATE TABLE IF NOT EXISTS `sso_sync_task_item`")
+                .contains("CREATE TABLE IF NOT EXISTS `mq_message_log`")
+                .contains("`msg_key`")
                 .contains("客户端管理")
                 .contains("同步任务控制台")
                 .doesNotContain("activiti");

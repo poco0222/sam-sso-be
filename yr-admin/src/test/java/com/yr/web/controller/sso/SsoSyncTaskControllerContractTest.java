@@ -26,8 +26,11 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.filter.CorsFilter;
 
+import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -127,6 +130,28 @@ class SsoSyncTaskControllerContractTest {
     }
 
     /**
+     * 验证手工触发分发任务接口返回任务标识。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldCreateDistributionTask() throws Exception {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(21L);
+        when(ssoSyncTaskService.distributionTask(any(SsoSyncTask.class))).thenReturn(task);
+
+        mockMvc.perform(post("/sso/sync-task/distribution")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetClientCode":"sam-mgmt"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(21));
+    }
+
+    /**
      * 验证重试任务接口返回任务标识。
      *
      * @throws Exception MockMvc 调用失败时抛出
@@ -177,6 +202,8 @@ class SsoSyncTaskControllerContractTest {
         item.setEntityType("user");
         item.setStatus("FAILED");
         item.setSourceId("2001");
+        item.setMsgKey("DIST:11:user:2001");
+        attachMessageLog(item);
         task.setItemList(List.of(item));
 
         when(ssoSyncTaskService.selectSsoSyncTaskById(eq(11L))).thenReturn(task);
@@ -188,6 +215,30 @@ class SsoSyncTaskControllerContractTest {
                 .andExpect(jsonPath("$.data.failedItemCount").value(1))
                 .andExpect(jsonPath("$.data.itemList[0].itemId").value(101))
                 .andExpect(jsonPath("$.data.itemList[0].entityType").value("user"))
-                .andExpect(jsonPath("$.data.itemList[0].status").value("FAILED"));
+                .andExpect(jsonPath("$.data.itemList[0].status").value("FAILED"))
+                .andExpect(jsonPath("$.data.itemList[0].msgKey").value("DIST:11:user:2001"))
+                .andExpect(jsonPath("$.data.itemList[0].messageLog.sendStatus").value(1))
+                .andExpect(jsonPath("$.data.itemList[0].messageLog.topic").value("sso-identity-distribution"));
+    }
+
+    /**
+     * 通过反射挂接 messageLog 视图，保证控制器契约测试在字段缺失时先红灯。
+     *
+     * @param item 同步任务条目
+     */
+    private void attachMessageLog(com.yr.common.core.domain.entity.SsoSyncTaskItem item) {
+        Field messageLogField = ReflectionUtils.findField(item.getClass(), "messageLog");
+        if (messageLogField == null) {
+            throw new IllegalStateException("SsoSyncTaskItem.messageLog 字段尚未落地");
+        }
+        try {
+            messageLogField.setAccessible(true);
+            Object messageLog = messageLogField.getType().getDeclaredConstructor().newInstance();
+            ReflectionTestUtils.setField(messageLog, "sendStatus", 1);
+            ReflectionTestUtils.setField(messageLog, "topic", "sso-identity-distribution");
+            messageLogField.set(item, messageLog);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("构造 SsoSyncTaskItem.messageLog 测试视图失败", exception);
+        }
     }
 }

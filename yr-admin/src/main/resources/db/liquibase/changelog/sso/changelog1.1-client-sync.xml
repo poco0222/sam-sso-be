@@ -63,6 +63,7 @@
             `task_id` bigint(20) NOT NULL COMMENT '任务ID',
             `entity_type` varchar(64) NOT NULL COMMENT '实体类型',
             `source_id` varchar(64) DEFAULT NULL COMMENT '来源ID',
+            `msg_key` varchar(128) DEFAULT NULL COMMENT '对应MQ消息键',
             `target_id` varchar(64) DEFAULT NULL COMMENT '目标ID',
             `status` varchar(32) NOT NULL COMMENT '明细状态',
             `detail_json` text COMMENT '明细载荷',
@@ -70,8 +71,60 @@
             `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
             `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
             PRIMARY KEY (`item_id`),
-            KEY `sso_sync_task_item_n1` (`task_id`, `status`)
+            KEY `sso_sync_task_item_n1` (`task_id`, `status`),
+            KEY `sso_sync_task_item_n2` (`msg_key`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='身份中心同步任务明细表';
+        </sql>
+    </changeSet>
+
+    <changeSet id="sso-client-sync-001a" author="PopoY" context="一期客户端与同步任务补齐msgKey列">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sso_sync_task_item"/>
+            <not>
+                <columnExists tableName="sso_sync_task_item" columnName="msg_key"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="sso_sync_task_item">
+            <column name="msg_key" type="varchar(128)" remarks="对应MQ消息键"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="sso-client-sync-001b" author="PopoY" context="一期客户端与同步任务补齐msgKey索引">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sso_sync_task_item"/>
+            <columnExists tableName="sso_sync_task_item" columnName="msg_key"/>
+            <not>
+                <indexExists tableName="sso_sync_task_item" indexName="sso_sync_task_item_n2"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="sso_sync_task_item" indexName="sso_sync_task_item_n2">
+            <column name="msg_key"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="sso-client-sync-001c" author="PopoY" context="一期客户端与同步任务补齐MQ履历表">
+        <sql>
+            CREATE TABLE IF NOT EXISTS `mq_message_log` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'MQ履历ID',
+            `msg_id` varchar(128) DEFAULT NULL COMMENT 'RocketMQ消息ID',
+            `msg_key` varchar(128) NOT NULL COMMENT '业务唯一键',
+            `topic` varchar(128) NOT NULL COMMENT '消息主题',
+            `tag` varchar(128) DEFAULT NULL COMMENT '消息标签',
+            `action_type` char(1) NOT NULL COMMENT '操作类型（I/U/D）',
+            `body` longtext COMMENT '消息体JSON',
+            `send_status` int(11) NOT NULL DEFAULT '0' COMMENT '发送状态（0待发送 1成功 2失败）',
+            `consume_status` int(11) NOT NULL DEFAULT '0' COMMENT '消费状态（0未消费 1成功 2失败）',
+            `retry_count` int(11) NOT NULL DEFAULT '0' COMMENT '重试次数',
+            `max_retry` int(11) NOT NULL DEFAULT '3' COMMENT '最大重试次数',
+            `next_retry_time` datetime DEFAULT NULL COMMENT '下次重试时间',
+            `error_msg` varchar(500) DEFAULT NULL COMMENT '错误信息',
+            `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+            `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+            `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+            PRIMARY KEY (`id`),
+            KEY `mq_message_log_n1` (`msg_key`, `id`),
+            KEY `mq_message_log_n2` (`send_status`, `next_retry_time`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='MQ消息履历表';
         </sql>
     </changeSet>
 

@@ -11,7 +11,7 @@ public class MqSyncMessage implements Serializable {
     /** 业务唯一键 */
     private String msgKey;
 
-    /** 操作类型: I/U/D */
+    /** 操作类型: I/U/D/UPSERT */
     private String actionType;
 
     /** 业务数据JSON */

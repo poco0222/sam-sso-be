@@ -35,7 +35,7 @@
         <commons.fileupload.version>1.4</commons.fileupload.version>
         <poi.version>4.1.2</poi.version>
         <jwt.version>0.9.1</jwt.version>
-        <mybatis-plus.version>3.4.3.3</mybatis-plus.version>
+        <mybatis-plus.version>3.4.3.4</mybatis-plus.version>
         <liquibase.version>4.3.5</liquibase.version>
         <rocketmq-spring.version>2.2.3</rocketmq-spring.version>
     </properties>

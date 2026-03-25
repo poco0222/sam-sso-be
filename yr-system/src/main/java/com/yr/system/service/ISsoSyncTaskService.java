@@ -32,6 +32,14 @@ public interface ISsoSyncTaskService extends ICustomService<SsoSyncTask> {
     SsoSyncTask initImportTask(SsoSyncTask task);
 
     /**
+     * 创建手工全量分发任务。
+     *
+     * @param task 任务请求
+     * @return 创建后的任务
+     */
+    SsoSyncTask distributionTask(SsoSyncTask task);
+
+    /**
      * 重试已有同步任务。
      *
      * @param taskId 任务ID

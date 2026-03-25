@@ -5,13 +5,20 @@
  */
 package com.yr.system.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.yr.common.core.domain.MqMessageLog;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
+import com.yr.common.core.domain.model.SsoSyncTaskMessageLogView;
 import com.yr.common.exception.CustomException;
+import com.yr.common.mapper.MqMessageLogMapper;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
-import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
+import com.yr.system.domain.dto.SsoDistributionMessagePayload;
+import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.mapper.SsoSyncTaskMapper;
+import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskService;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -21,8 +28,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 身份中心同步任务服务实现。
@@ -40,9 +50,17 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
     @Autowired(required = false)
     private ISsoIdentityImportService ssoIdentityImportService;
 
+    /** DISTRIBUTION 服务；在未启用 RocketMQ 时允许为空。 */
+    @Autowired(required = false)
+    private ISsoIdentityDistributionService ssoIdentityDistributionService;
+
     /** 同步任务明细服务；在纯单元测试场景允许为空。 */
     @Autowired(required = false)
     private ISsoSyncTaskItemService ssoSyncTaskItemService;
+
+    /** MQ 履历查询 Mapper；在未启用 MQ 模块时允许为空。 */
+    @Autowired(required = false)
+    private MqMessageLogMapper mqMessageLogMapper;
 
     /**
      * 查询同步任务列表。
@@ -52,12 +70,14 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      */
     @Override
     public List<SsoSyncTask> selectSsoSyncTaskList(SsoSyncTask query) {
-        LambdaQueryWrapper<SsoSyncTask> queryWrapper = new LambdaQueryWrapper<SsoSyncTask>()
-                .eq(query != null && query.getTaskId() != null, SsoSyncTask::getTaskId, query.getTaskId())
-                .eq(query != null && query.getTaskType() != null && !query.getTaskType().isBlank(), SsoSyncTask::getTaskType, query.getTaskType())
-                .eq(query != null && query.getStatus() != null && !query.getStatus().isBlank(), SsoSyncTask::getStatus, query.getStatus())
-                .eq(query != null && query.getTargetClientCode() != null && !query.getTargetClientCode().isBlank(), SsoSyncTask::getTargetClientCode, query.getTargetClientCode())
-                .orderByDesc(SsoSyncTask::getTaskId);
+        // MyBatis-Plus 3.4.x 的 lambda wrapper 在 JDK 17 下会反射 SerializedLambda，
+        // 这里改用显式列名保持列表接口可在当前运行时稳定工作。
+        QueryWrapper<SsoSyncTask> queryWrapper = new QueryWrapper<SsoSyncTask>()
+                .eq(query != null && query.getTaskId() != null, "task_id", query == null ? null : query.getTaskId())
+                .eq(query != null && query.getTaskType() != null && !query.getTaskType().isBlank(), "task_type", query == null ? null : query.getTaskType())
+                .eq(query != null && query.getStatus() != null && !query.getStatus().isBlank(), "status", query == null ? null : query.getStatus())
+                .eq(query != null && query.getTargetClientCode() != null && !query.getTargetClientCode().isBlank(), "target_client_code", query == null ? null : query.getTargetClientCode())
+                .orderByDesc("task_id");
         return this.list(queryWrapper);
     }
 
@@ -87,7 +107,39 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         newTask.setImportSnapshotAt(new Date());
         newTask.setPayloadJson(buildInitImportPayload());
         this.save(newTask);
-        return executeTask(newTask, null, false);
+        return executeTask(newTask, null, newTask.getTaskType());
+    }
+
+    /**
+     * 创建手工全量分发任务。
+     *
+     * @param task 任务请求
+     * @return 创建后的任务
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SsoSyncTask distributionTask(SsoSyncTask task) {
+        SsoSyncTask newTask = task == null ? new SsoSyncTask() : task;
+        if (newTask.getTargetClientCode() == null || newTask.getTargetClientCode().isBlank()) {
+            throw new CustomException("DISTRIBUTION 目标客户端编码不能为空");
+        }
+        String batchSeed = UUID.randomUUID().toString().replace("-", "");
+        newTask.setTaskType(SsoSyncTask.TASK_TYPE_DISTRIBUTION);
+        if (newTask.getTriggerType() == null || newTask.getTriggerType().isBlank()) {
+            newTask.setTriggerType("MANUAL");
+        }
+        newTask.setStatus(SsoSyncTask.STATUS_RUNNING);
+        newTask.setRetryCount(0);
+        newTask.setBatchNo("DIST-" + batchSeed);
+        newTask.setIdStrategy(SsoSyncTask.ID_STRATEGY_INHERIT_SOURCE_ID);
+        newTask.setOwnershipTransferStatus(SsoSyncTask.OWNERSHIP_TRANSFERRED);
+        if (newTask.getSourceBatchNo() == null || newTask.getSourceBatchNo().isBlank()) {
+            newTask.setSourceBatchNo("LOCAL-" + batchSeed);
+        }
+        newTask.setImportSnapshotAt(new Date());
+        newTask.setPayloadJson(buildDistributionPayload());
+        this.save(newTask);
+        return executeTask(newTask, null, newTask.getTaskType());
     }
 
     /**
@@ -104,7 +156,10 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         task.setStatus(SsoSyncTask.STATUS_RUNNING);
         task.setExecuteAt(new Date());
         this.updateById(task);
-        return executeTask(task, null, false);
+        List<SsoSyncTaskItem> scopedItems = SsoSyncTask.TASK_TYPE_COMPENSATION.equals(task.getTaskType()) && ssoSyncTaskItemService != null
+                ? ssoSyncTaskItemService.selectByTaskId(taskId)
+                : null;
+        return executeTask(task, scopedItems, resolveExecutionTaskType(task));
     }
 
     /**
@@ -139,7 +194,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         compensationTask.setCreateBy(sourceTask.getCreateBy());
         compensationTask.setPayloadJson(buildCompensationPayload(sourceTask, failedItems));
         this.save(compensationTask);
-        return executeTask(compensationTask, failedItems, true);
+        return executeTask(compensationTask, failedItems, sourceTask.getTaskType());
     }
 
     /**
@@ -177,24 +232,24 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      *
      * @param task 当前任务
      * @param scopedItems 指定执行范围；为空时执行完整快照
-     * @param preserveTaskType 是否保留当前 taskType（补偿任务为 true）
+     * @param executionTaskType 本轮真正要调用的执行器类型
      * @return 执行后的任务
      */
-    private SsoSyncTask executeTask(SsoSyncTask task, List<SsoSyncTaskItem> scopedItems, boolean preserveTaskType) {
-        if (ssoIdentityImportService == null || ssoSyncTaskItemService == null) {
-            if (!preserveTaskType) {
-                task.setStatus(SsoSyncTask.STATUS_PENDING);
-            }
+    private SsoSyncTask executeTask(SsoSyncTask task, List<SsoSyncTaskItem> scopedItems, String executionTaskType) {
+        if (!hasExecutor(executionTaskType) || ssoSyncTaskItemService == null) {
+            task.setStatus(SsoSyncTask.STATUS_PENDING);
             attachTaskStatistics(task, new ArrayList<>());
             return task;
         }
         try {
-            SsoIdentityImportExecutionResult executionResult = ssoIdentityImportService.execute(task, scopedItems);
+            SsoSyncTaskExecutionResult executionResult = executeByTaskType(executionTaskType, task, scopedItems);
             task.setStatus(executionResult.getStatus());
             task.setResultSummary(executionResult.getResultSummary());
             task.setExecuteAt(new Date());
             this.updateById(task);
             ssoSyncTaskItemService.replaceTaskItems(task.getTaskId(), executionResult.getItemList());
+            hydrateTaskItems(executionResult.getItemList());
+            attachMessageLogs(executionResult.getItemList());
             task.setItemList(executionResult.getItemList());
             task.setTotalItemCount(executionResult.getTotalItemCount());
             task.setSuccessItemCount(executionResult.getSuccessItemCount());
@@ -218,6 +273,8 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         List<SsoSyncTaskItem> itemList = ssoSyncTaskItemService == null
                 ? new ArrayList<>()
                 : ssoSyncTaskItemService.selectByTaskId(task.getTaskId());
+        hydrateTaskItems(itemList);
+        attachMessageLogs(itemList);
         task.setItemList(itemList);
         attachTaskStatistics(task, itemList);
     }
@@ -254,6 +311,21 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
     }
 
     /**
+     * 构造 DISTRIBUTION 的最小结构化契约，显式记录 full-batch snapshot upsert 语义。
+     *
+     * @return DISTRIBUTION 任务载荷 JSON
+     */
+    private String buildDistributionPayload() {
+        return String.format(
+                "{\"entityScopes\":[\"org\",\"dept\",\"user\",\"user_org_relation\",\"user_dept_relation\"],"
+                        + "\"deliveryMode\":\"%s\",\"mqActionType\":\"%s\",\"sourceSystem\":\"%s\"}",
+                SsoDistributionMessagePayload.DELIVERY_MODE_FULL_BATCH_SNAPSHOT,
+                "UPSERT",
+                SsoDistributionMessagePayload.SOURCE_SYSTEM_LOCAL_SAM_EMPTY
+        );
+    }
+
+    /**
      * 构造补偿任务载荷，显式记录来源任务与失败明细范围。
      *
      * @param sourceTask 来源任务
@@ -266,10 +338,141 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
                 .reduce((left, right) -> left + "," + right)
                 .orElse("");
         return String.format(
-                "{\"sourceTaskId\":%d,\"sourceBatchNo\":\"%s\",\"failedItems\":[%s]}",
+                "{\"sourceTaskId\":%d,\"sourceTaskType\":\"%s\",\"sourceBatchNo\":\"%s\",\"failedItems\":[%s]}",
                 sourceTask.getTaskId(),
+                sourceTask.getTaskType(),
                 sourceTask.getSourceBatchNo(),
                 scopedItems
         );
+    }
+
+    /**
+     * 根据任务类型选择真正的执行器。
+     *
+     * @param executionTaskType 执行器类型
+     * @param task 当前任务
+     * @param scopedItems 指定执行范围
+     * @return 执行结果
+     */
+    private SsoSyncTaskExecutionResult executeByTaskType(String executionTaskType,
+                                                         SsoSyncTask task,
+                                                         List<SsoSyncTaskItem> scopedItems) {
+        return switch (executionTaskType) {
+            case SsoSyncTask.TASK_TYPE_DISTRIBUTION -> ssoIdentityDistributionService.execute(task, scopedItems);
+            case SsoSyncTask.TASK_TYPE_INIT_IMPORT -> ssoIdentityImportService.execute(task, scopedItems);
+            default -> throw new CustomException("不支持的同步任务执行类型: " + executionTaskType);
+        };
+    }
+
+    /**
+     * 判断当前任务类型是否已有可用执行器。
+     *
+     * @param executionTaskType 执行器类型
+     * @return 可执行时返回 true
+     */
+    private boolean hasExecutor(String executionTaskType) {
+        return switch (executionTaskType) {
+            case SsoSyncTask.TASK_TYPE_DISTRIBUTION -> ssoIdentityDistributionService != null;
+            case SsoSyncTask.TASK_TYPE_INIT_IMPORT -> ssoIdentityImportService != null;
+            default -> false;
+        };
+    }
+
+    /**
+     * 解析补偿任务真正要走的执行器类型。
+     *
+     * @param task 当前任务
+     * @return 执行器类型
+     */
+    private String resolveExecutionTaskType(SsoSyncTask task) {
+        if (!SsoSyncTask.TASK_TYPE_COMPENSATION.equals(task.getTaskType())) {
+            return task.getTaskType();
+        }
+        if (task.getPayloadJson() == null || task.getPayloadJson().isBlank()) {
+            return SsoSyncTask.TASK_TYPE_INIT_IMPORT;
+        }
+        JSONObject payload = JSON.parseObject(task.getPayloadJson());
+        String sourceTaskType = payload.getString("sourceTaskType");
+        return sourceTaskType == null || sourceTaskType.isBlank() ? SsoSyncTask.TASK_TYPE_INIT_IMPORT : sourceTaskType;
+    }
+
+    /**
+     * 从 detailJson 回填运行态字段，便于 sync-task console 直接展示 msgKey。
+     *
+     * @param itemList 明细列表
+     */
+    private void hydrateTaskItems(List<SsoSyncTaskItem> itemList) {
+        for (SsoSyncTaskItem item : itemList) {
+            if (item.getMsgKey() != null && !item.getMsgKey().isBlank()) {
+                continue;
+            }
+            if (item.getDetailJson() == null || item.getDetailJson().isBlank()) {
+                continue;
+            }
+            try {
+                JSONObject detailJson = JSON.parseObject(item.getDetailJson());
+                item.setMsgKey(detailJson.getString("msgKey"));
+            } catch (Exception exception) {
+                item.setMsgKey(null);
+            }
+        }
+    }
+
+    /**
+     * 按 msgKey 批量挂接最新 MQ 履历视图，避免详情查询逐条打库。
+     *
+     * @param itemList 明细列表
+     */
+    private void attachMessageLogs(List<SsoSyncTaskItem> itemList) {
+        if (mqMessageLogMapper == null || itemList == null || itemList.isEmpty()) {
+            return;
+        }
+        List<String> msgKeys = itemList.stream()
+                .map(SsoSyncTaskItem::getMsgKey)
+                .filter(msgKey -> msgKey != null && !msgKey.isBlank())
+                .distinct()
+                .toList();
+        if (msgKeys.isEmpty()) {
+            return;
+        }
+        List<MqMessageLog> latestLogs = mqMessageLogMapper.selectLatestByMsgKeys(msgKeys);
+        Map<String, SsoSyncTaskMessageLogView> messageLogViewMap = latestLogs.stream()
+                .collect(Collectors.toMap(
+                        MqMessageLog::getMsgKey,
+                        this::buildMessageLogView,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        for (SsoSyncTaskItem item : itemList) {
+            if (item.getMsgKey() == null || item.getMsgKey().isBlank()) {
+                continue;
+            }
+            item.setMessageLog(messageLogViewMap.get(item.getMsgKey()));
+        }
+    }
+
+    /**
+     * 将持久化履历实体裁剪成 console 可直接消费的视图对象。
+     *
+     * @param mqMessageLog MQ 履历实体
+     * @return MQ 履历视图
+     */
+    private SsoSyncTaskMessageLogView buildMessageLogView(MqMessageLog mqMessageLog) {
+        SsoSyncTaskMessageLogView messageLogView = new SsoSyncTaskMessageLogView();
+        messageLogView.setMsgId(mqMessageLog.getMsgId());
+        messageLogView.setMsgKey(mqMessageLog.getMsgKey());
+        messageLogView.setTopic(mqMessageLog.getTopic());
+        messageLogView.setTag(mqMessageLog.getTag());
+        messageLogView.setActionType(mqMessageLog.getActionType());
+        messageLogView.setSendStatus(mqMessageLog.getSendStatus());
+        messageLogView.setConsumeStatus(mqMessageLog.getConsumeStatus());
+        messageLogView.setRetryCount(mqMessageLog.getRetryCount());
+        messageLogView.setMaxRetry(mqMessageLog.getMaxRetry());
+        messageLogView.setNextRetryTime(mqMessageLog.getNextRetryTime());
+        messageLogView.setErrorMsg(mqMessageLog.getErrorMsg());
+        messageLogView.setBody(mqMessageLog.getBody());
+        messageLogView.setCreateTime(mqMessageLog.getCreateTime());
+        messageLogView.setUpdateTime(mqMessageLog.getUpdateTime());
+        return messageLogView;
     }
 }
