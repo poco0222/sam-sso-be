@@ -1,7 +1,7 @@
 /**
  * @file 身份中心 Liquibase 启动契约测试
  * @author PopoY
- * @date 2026-03-24
+ * @date 2026-03-26
  */
 package com.yr.config;
 
@@ -49,12 +49,12 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("CREATE TABLE IF NOT EXISTS `sys_dept`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_user_org`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_user_dept`")
-                .contains("CREATE TABLE IF NOT EXISTS `sys_role`")
-                .contains("CREATE TABLE IF NOT EXISTS `sys_menu`")
-                .contains("CREATE TABLE IF NOT EXISTS `sys_role_menu`")
-                .contains("CREATE TABLE IF NOT EXISTS `sys_user_role`")
-                .contains("CREATE TABLE IF NOT EXISTS `sys_config`")
                 .contains("身份管理")
+                .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_role`")
+                .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_menu`")
+                .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_role_menu`")
+                .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_user_role`")
+                .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_config`")
                 .doesNotContain("sys_duty")
                 .doesNotContain("sys_rank")
                 .doesNotContain("sys_attach_")

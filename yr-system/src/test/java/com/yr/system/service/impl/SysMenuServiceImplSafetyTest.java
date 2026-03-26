@@ -1,7 +1,7 @@
 /**
  * @file 验证 SysMenuServiceImpl 的安全性契约（safety contract，安全契约）
  * @author PopoY
- * @date 2026-03-24
+ * @date 2026-03-26
  */
 package com.yr.system.service.impl;
 
@@ -101,6 +101,11 @@ class SysMenuServiceImplSafetyTest {
                 buildMenu(9002L, 9000L, "sync-task"),
                 buildMenu(100L, 0L, "system"),
                 buildMenu(101L, 100L, "user"),
+                buildMenu(102L, 100L, "org"),
+                buildMenu(103L, 100L, "dept"),
+                buildMenu(104L, 100L, "role"),
+                buildMenu(105L, 100L, "menu"),
+                buildMenu(106L, 100L, "config"),
                 buildMenu(200L, 0L, "monitor"),
                 buildMenu(201L, 200L, "operlog")
         ));
@@ -113,8 +118,8 @@ class SysMenuServiceImplSafetyTest {
         assertThat(menuTree)
                 .flatExtracting(SysMenu::getChildren)
                 .extracting(SysMenu::getPath)
-                .contains("client", "sync-task", "user")
-                .doesNotContain("operlog");
+                .containsExactlyInAnyOrder("client", "sync-task", "user", "org", "dept")
+                .doesNotContain("role", "menu", "config", "operlog");
     }
 
     /**
