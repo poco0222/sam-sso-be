@@ -1,3 +1,8 @@
+/**
+ * @file 组织服务实现，一期阶段仅维护组织、根部门与默认组织关系
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.system.service.impl;
 
 import com.yr.common.constant.Constants;
@@ -9,16 +14,10 @@ import com.yr.common.exception.CustomException;
 import com.yr.common.utils.DateUtils;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
-import com.yr.system.domain.SysPost;
-import com.yr.system.domain.entity.SysDuty;
-import com.yr.system.domain.entity.SysRank;
 import com.yr.system.domain.entity.SysUserOrg;
 import com.yr.system.mapper.SysDeptMapper;
 import com.yr.system.mapper.SysOrgMapper;
-import com.yr.system.mapper.SysPostMapper;
-import com.yr.system.service.ISysDutyService;
 import com.yr.system.service.ISysOrgService;
-import com.yr.system.service.ISysRankService;
 import com.yr.system.service.ISysUserOrgService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,23 +34,14 @@ import java.util.List;
 public class SysOrgServiceImpl implements ISysOrgService {
     private final SysOrgMapper sysOrgMapper;
     private final SysDeptMapper deptMapper;
-    private final SysPostMapper sysPostMapper;
     private final ISysUserOrgService sysUserOrgService;
-    private final ISysDutyService sysDutyService;
-    private final ISysRankService sysRankService;
 
     public SysOrgServiceImpl(SysOrgMapper sysOrgMapper,
                              SysDeptMapper deptMapper,
-                             SysPostMapper sysPostMapper,
-                             ISysUserOrgService sysUserOrgService,
-                             ISysDutyService sysDutyService,
-                             ISysRankService sysRankService) {
+                             ISysUserOrgService sysUserOrgService) {
         this.sysOrgMapper = sysOrgMapper;
         this.deptMapper = deptMapper;
-        this.sysPostMapper = sysPostMapper;
         this.sysUserOrgService = sysUserOrgService;
-        this.sysDutyService = sysDutyService;
-        this.sysRankService = sysRankService;
     }
 
     /**
@@ -110,45 +100,11 @@ public class SysOrgServiceImpl implements ISysOrgService {
             sysDept.setCreateBy(SecurityUtils.getUsername());
             deptMapper.insertDept(sysDept);
 
-            // 新增根岗位
-            SysPost sysPost = new SysPost();
-            sysPost.setParentId(0L);
-            sysPost.setAncestors("0");
-            sysPost.setPostCode("-");
-            sysPost.setPostName(sysOrg.getOrgName());
-            sysPost.setPostSort("0");
-            sysPost.setStatus("0");
-            sysPost.setPostType(UserConstants.POST_TYPE_CATALOG);
-            sysPost.setOrgId(sysOrg.getOrgId());
-            sysPost.setCreateBy(SecurityUtils.getUsername());
-            sysPostMapper.insertPost(sysPost);
-
             // 新增关联超级管理员
             SysUserOrg sysUserOrg = new SysUserOrg();
             sysUserOrg.setUserId(1L);
             sysUserOrg.setOrgId(sysOrg.getOrgId());
             sysUserOrgService.addSysUserOrg(sysUserOrg);
-
-            // 新增根职务
-            SysDuty sysDuty = new SysDuty();
-            sysDuty.setParentId(0L);
-            sysDuty.setAncestors("0");
-            sysDuty.setDutyCode("-");
-            sysDuty.setDutyName(sysOrg.getOrgName());
-            sysDuty.setOrderNum(0);
-            sysDuty.setOrgId(sysOrg.getOrgId());
-            sysDutyService.save(sysDuty);
-
-            // 新增根职级
-            SysRank sysRank = new SysRank();
-            sysRank.setParentId(0L);
-            sysRank.setAncestors("0");
-            sysRank.setRankCode("-");
-            sysRank.setRankName(sysOrg.getOrgName());
-            sysRank.setRankType(UserConstants.RANK_TYPE_CATALOG);
-            sysRank.setOrderNum(0);
-            sysRank.setOrgId(sysOrg.getOrgId());
-            sysRankService.save(sysRank);
         }
         return count;
     }

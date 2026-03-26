@@ -8,22 +8,15 @@ package com.yr.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
-import com.yr.common.exception.CustomException;
-import com.yr.system.domain.entity.SysRank;
 import com.yr.system.domain.entity.SysUserOrg;
-import com.yr.system.domain.entity.SysUserRank;
-import com.yr.system.mapper.SysPostMapper;
 import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.mapper.SysUserPostMapper;
 import com.yr.system.mapper.SysUserRoleMapper;
 import com.yr.system.service.ISysConfigService;
 import com.yr.system.service.ISysOrgService;
-import com.yr.system.service.ISysRankService;
 import com.yr.system.service.ISysUserOrgService;
 import com.yr.system.service.ISysUserDeptService;
-import com.yr.system.service.ISysUserDutyService;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -69,27 +62,20 @@ class SysUserServiceImplTransactionTest {
     }
 
     /**
-     * 验证用户主表、组织关联和职级关联都在同一个事务中写入。
+     * 验证用户主表和组织关联都在同一个事务中写入。
      */
     @Test
     void shouldWriteUserOrgAndRankWithinSameTransaction() {
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         SysUserMapper userMapper = mock(SysUserMapper.class);
-        ISysRankService rankService = mock(ISysRankService.class);
         ISysUserOrgService userOrgService = mock(ISysUserOrgService.class);
-        ISysUserRankService userRankService = mock(ISysUserRankService.class);
         AtomicBoolean userInsertInTx = new AtomicBoolean(false);
         AtomicBoolean userOrgInsertInTx = new AtomicBoolean(false);
-        AtomicBoolean userRankInsertInTx = new AtomicBoolean(false);
-        SysUserWriteService target = new SysUserWriteService(userMapper, rankService, userOrgService, userRankService);
+        SysUserWriteService target = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService proxy = createWriteServiceProxy(target, transactionManager);
-        SysUser user = buildUser("phase1-insert", 1L);
-        SysRank sysRank = new SysRank();
-        sysRank.setId(1L);
-        sysRank.setRankType("LEAF");
+        SysUser user = buildUser("phase1-insert", null);
 
         setAuthenticatedOrg(88L);
-        when(rankService.getById(1L)).thenReturn(sysRank);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
             SysUser insertedUser = invocation.getArgument(0);
             userInsertInTx.set(TransactionSynchronizationManager.isActualTransactionActive());
@@ -104,55 +90,40 @@ class SysUserServiceImplTransactionTest {
             userOrgInsertInTx.set(userOrgInsertInTx.get() && TransactionSynchronizationManager.isActualTransactionActive());
             return null;
         }).when(userOrgService).addSysUserOrg(any(SysUserOrg.class));
-        when(userRankService.save(any(SysUserRank.class))).thenAnswer(invocation -> {
-            userRankInsertInTx.set(TransactionSynchronizationManager.isActualTransactionActive());
-            return true;
-        });
 
         proxy.insertUser(user);
 
         ArgumentCaptor<SysUserOrg> userOrgCaptor = ArgumentCaptor.forClass(SysUserOrg.class);
-        ArgumentCaptor<SysUserRank> userRankCaptor = ArgumentCaptor.forClass(SysUserRank.class);
         verify(userOrgService).addSysUserOrg(userOrgCaptor.capture());
-        verify(userRankService).save(userRankCaptor.capture());
         assertThat(userInsertInTx.get()).isTrue();
         assertThat(userOrgInsertInTx.get()).isTrue();
-        assertThat(userRankInsertInTx.get()).isTrue();
         assertThat(transactionManager.getBeginCount()).isEqualTo(1);
         assertThat(transactionManager.getCommitCount()).isEqualTo(1);
         assertThat(transactionManager.getRollbackCount()).isZero();
         assertThat(userOrgCaptor.getValue().getUserId()).isEqualTo(101L);
         assertThat(userOrgCaptor.getValue().getOrgId()).isEqualTo(88L);
         assertThat(userOrgCaptor.getValue().getIsDefault()).isEqualTo(1);
-        assertThat(userRankCaptor.getValue().getUserId()).isEqualTo(101L);
-        assertThat(userRankCaptor.getValue().getRankId()).isEqualTo(1L);
     }
 
     /**
-     * 验证批量导入采用逐条事务策略，一条失败不会回滚其他已成功的数据。
+     * 验证批量导入采用逐条事务策略，多个一期合法用户会各自在独立事务中提交。
      */
     @Test
-    void shouldCommitSuccessfulRowsWhenAnotherImportedUserFails() {
+    void shouldCommitEachImportedUserInOwnTransaction() {
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         SysUserMapper userMapper = mock(SysUserMapper.class);
-        ISysRankService rankService = mock(ISysRankService.class);
         ISysUserOrgService userOrgService = mock(ISysUserOrgService.class);
-        ISysUserRankService userRankService = mock(ISysUserRankService.class);
         ISysConfigService configService = mock(ISysConfigService.class);
-        SysUserWriteService writeTarget = new SysUserWriteService(userMapper, rankService, userOrgService, userRankService);
+        SysUserWriteService writeTarget = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
         SysUserImportService importService = new SysUserImportService(configService, userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
-        SysUser successUser = buildUser("phase1-success", 1L);
+        SysUser successUser = buildUser("phase1-success", null);
         SysUser failureUser = buildUser("phase1-failure", null);
-        SysRank sysRank = new SysRank();
-        sysRank.setId(1L);
-        sysRank.setRankType("LEAF");
 
         setAuthenticatedOrg(66L);
         when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        when(rankService.getById(1L)).thenReturn(sysRank);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
             SysUser insertedUser = invocation.getArgument(0);
             insertedUser.setUserId(202L);
@@ -160,19 +131,18 @@ class SysUserServiceImplTransactionTest {
         });
         when(userOrgService.count(any(Wrapper.class))).thenReturn(0L);
         doAnswer(invocation -> null).when(userOrgService).addSysUserOrg(any(SysUserOrg.class));
-        when(userRankService.save(any(SysUserRank.class))).thenReturn(true);
 
         String result = userService.importUser(Arrays.asList(successUser, failureUser), false, "phase1");
 
         assertThat(result)
-                .contains("导入完成！成功 1 条，失败 1 条")
+                .contains("数据已全部导入成功！共 2 条")
                 .contains("账号 phase1-success 导入成功")
-                .contains("账号 phase1-failure 导入失败：职级不能为空");
+                .contains("账号 phase1-failure 导入成功");
         assertThat(transactionManager.getBeginCount()).isEqualTo(2);
-        assertThat(transactionManager.getCommitCount()).isEqualTo(1);
-        assertThat(transactionManager.getRollbackCount()).isEqualTo(1);
+        assertThat(transactionManager.getCommitCount()).isEqualTo(2);
+        assertThat(transactionManager.getRollbackCount()).isZero();
         verify(userMapper).insertUser(argThat(user -> "phase1-success".equals(user.getUserName())));
-        verify(userMapper, never()).insertUser(argThat(user -> "phase1-failure".equals(user.getUserName())));
+        verify(userMapper).insertUser(argThat(user -> "phase1-failure".equals(user.getUserName())));
     }
 
     /**
@@ -182,25 +152,19 @@ class SysUserServiceImplTransactionTest {
     void shouldStopImportingRemainingUsersWhenUnexpectedSystemExceptionOccurs() {
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         SysUserMapper userMapper = mock(SysUserMapper.class);
-        ISysRankService rankService = mock(ISysRankService.class);
         ISysUserOrgService userOrgService = mock(ISysUserOrgService.class);
-        ISysUserRankService userRankService = mock(ISysUserRankService.class);
         ISysConfigService configService = mock(ISysConfigService.class);
-        SysUserWriteService writeTarget = new SysUserWriteService(userMapper, rankService, userOrgService, userRankService);
+        SysUserWriteService writeTarget = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
         SysUserImportService importService = new SysUserImportService(configService, userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
-        SysUser successUser = buildUser("phase4-success", 1L);
-        SysUser brokenUser = buildUser("phase4-broken", 1L);
-        SysUser untouchedUser = buildUser("phase4-untouched", 1L);
-        SysRank sysRank = new SysRank();
-        sysRank.setId(1L);
-        sysRank.setRankType("LEAF");
+        SysUser successUser = buildUser("phase4-success", null);
+        SysUser brokenUser = buildUser("phase4-broken", null);
+        SysUser untouchedUser = buildUser("phase4-untouched", null);
 
         setAuthenticatedOrg(66L);
         when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        when(rankService.getById(1L)).thenReturn(sysRank);
         when(userMapper.insertUser(argThat(user -> user != null && "phase4-success".equals(user.getUserName())))).thenAnswer(invocation -> {
             SysUser insertedUser = invocation.getArgument(0);
             insertedUser.setUserId(303L);
@@ -210,7 +174,6 @@ class SysUserServiceImplTransactionTest {
                 .thenThrow(new IllegalStateException("db boom"));
         when(userOrgService.count(any(Wrapper.class))).thenReturn(0L);
         doAnswer(invocation -> null).when(userOrgService).addSysUserOrg(any(SysUserOrg.class));
-        when(userRankService.save(any(SysUserRank.class))).thenReturn(true);
 
         assertThatThrownBy(() -> userService.importUser(List.of(successUser, brokenUser, untouchedUser), false, "phase4"))
                 .isInstanceOf(IllegalStateException.class)
@@ -258,13 +221,10 @@ class SysUserServiceImplTransactionTest {
         return new SysUserServiceImpl(
                 userMapper,
                 mock(SysRoleMapper.class),
-                mock(SysPostMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserPostMapper.class),
                 mock(ISysUserDeptService.class),
-                mock(ISysUserRankService.class),
                 mock(ISysOrgService.class),
-                mock(ISysUserDutyService.class),
                 writeProxy,
                 importService,
                 mock(SysUserQueryService.class)

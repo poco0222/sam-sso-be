@@ -8,14 +8,10 @@ package com.yr.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
-import com.yr.system.domain.entity.SysRank;
 import com.yr.system.domain.entity.SysUserOrg;
-import com.yr.system.domain.entity.SysUserRank;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.service.ISysConfigService;
-import com.yr.system.service.ISysRankService;
 import com.yr.system.service.ISysUserOrgService;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -67,13 +63,7 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     private ISysConfigService configService;
 
     @Autowired
-    private ISysRankService rankService;
-
-    @Autowired
     private ISysUserOrgService userOrgService;
-
-    @Autowired
-    private ISysUserRankService userRankService;
 
     /**
      * 每个用例结束后清理安全上下文和 mock 状态，避免测试相互污染。
@@ -82,7 +72,7 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
         transactionManager.reset();
-        Mockito.reset(userMapper, configService, rankService, userOrgService, userRankService);
+        Mockito.reset(userMapper, configService, userOrgService);
     }
 
     /**
@@ -92,16 +82,11 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     void shouldUseTransactionalSpringProxyWhenImportingUser() {
         AtomicBoolean userInsertInTransaction = new AtomicBoolean(false);
         AtomicBoolean userOrgWriteInTransaction = new AtomicBoolean(false);
-        AtomicBoolean userRankWriteInTransaction = new AtomicBoolean(false);
-        SysUser user = buildUser("spring-integration", 1L);
-        SysRank rank = new SysRank();
-        rank.setId(1L);
-        rank.setRankType("LEAF");
+        SysUser user = buildUser("spring-integration", null);
 
         setAuthenticatedUser(77L, 88L, "spring-tester");
         when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        when(rankService.getById(1L)).thenReturn(rank);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
             userInsertInTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
             SysUser insertedUser = invocation.getArgument(0);
@@ -116,10 +101,6 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
             userOrgWriteInTransaction.set(userOrgWriteInTransaction.get() && TransactionSynchronizationManager.isActualTransactionActive());
             return null;
         }).when(userOrgService).addSysUserOrg(any(SysUserOrg.class));
-        when(userRankService.save(any(SysUserRank.class))).thenAnswer(invocation -> {
-            userRankWriteInTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
-            return true;
-        });
 
         String result = sysUserImportService.importUser(List.of(user), false, "spring-tester");
 
@@ -130,10 +111,8 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
         assertThat(transactionManager.getRollbackCount()).isZero();
         assertThat(userInsertInTransaction.get()).isTrue();
         assertThat(userOrgWriteInTransaction.get()).isTrue();
-        assertThat(userRankWriteInTransaction.get()).isTrue();
         verify(userMapper).insertUser(any(SysUser.class));
         verify(userOrgService).addSysUserOrg(any(SysUserOrg.class));
-        verify(userRankService).save(any(SysUserRank.class));
     }
 
     /**
@@ -199,14 +178,6 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
         }
 
         /**
-         * @return 职级服务 mock
-         */
-        @Bean
-        ISysRankService rankService() {
-            return mock(ISysRankService.class);
-        }
-
-        /**
          * @return 用户组织服务 mock
          */
         @Bean
@@ -215,22 +186,12 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
         }
 
         /**
-         * @return 用户职级服务 mock
-         */
-        @Bean
-        ISysUserRankService userRankService() {
-            return mock(ISysUserRankService.class);
-        }
-
-        /**
          * @return Spring 管理的用户写入服务
          */
         @Bean
         SysUserWriteService sysUserWriteService(SysUserMapper userMapper,
-                                                ISysRankService rankService,
-                                                ISysUserOrgService userOrgService,
-                                                ISysUserRankService userRankService) {
-            return new SysUserWriteService(userMapper, rankService, userOrgService, userRankService);
+                                                ISysUserOrgService userOrgService) {
+            return new SysUserWriteService(userMapper, userOrgService);
         }
 
         /**

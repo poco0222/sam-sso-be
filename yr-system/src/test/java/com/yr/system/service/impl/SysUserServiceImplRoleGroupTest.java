@@ -6,15 +6,12 @@
 package com.yr.system.service.impl;
 
 import com.yr.common.core.domain.entity.SysRole;
-import com.yr.system.mapper.SysPostMapper;
 import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.mapper.SysUserPostMapper;
 import com.yr.system.mapper.SysUserRoleMapper;
 import com.yr.system.service.ISysOrgService;
 import com.yr.system.service.ISysUserDeptService;
-import com.yr.system.service.ISysUserDutyService;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -68,13 +65,10 @@ class SysUserServiceImplRoleGroupTest {
         return new SysUserServiceImpl(
                 mock(SysUserMapper.class),
                 roleMapper,
-                mock(SysPostMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserPostMapper.class),
                 mock(ISysUserDeptService.class),
-                mock(ISysUserRankService.class),
                 mock(ISysOrgService.class),
-                mock(ISysUserDutyService.class),
                 mock(SysUserWriteService.class),
                 mock(SysUserImportService.class),
                 mock(SysUserQueryService.class)

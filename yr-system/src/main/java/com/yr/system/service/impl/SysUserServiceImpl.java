@@ -1,12 +1,7 @@
 /**
- * @file 用户服务实现，负责查询、导入与委托写入事务
+ * @file 用户服务实现，负责一期用户查询、导入与写入委托
  * @author PopoY
- * @date 2026-03-16
- */
-/**
- * @file 用户服务实现，补齐角色分配查询的数据范围契约
- * @author PopoY
- * @date 2026-03-24
+ * @date 2026-03-26
  */
 package com.yr.system.service.impl;
 
@@ -49,19 +44,13 @@ public class SysUserServiceImpl implements ISysUserService {
 
     private final SysRoleMapper roleMapper;
 
-    private final SysPostMapper postMapper;
-
     private final SysUserRoleMapper userRoleMapper;
 
     private final SysUserPostMapper userPostMapper;
 
     private final ISysUserDeptService sysUserDeptService;
 
-    private final ISysUserRankService sysUserRankService;
-
     private final ISysOrgService sysOrgService;
-
-    private final ISysUserDutyService sysUserDutyService;
 
     private final SysUserWriteService sysUserWriteService;
 
@@ -74,38 +63,29 @@ public class SysUserServiceImpl implements ISysUserService {
      *
      * @param userMapper 用户 Mapper
      * @param roleMapper 角色 Mapper
-     * @param postMapper 岗位 Mapper
      * @param userRoleMapper 用户角色 Mapper
      * @param userPostMapper 用户岗位 Mapper
      * @param sysUserDeptService 用户部门服务
-     * @param sysUserRankService 用户职级服务
      * @param sysOrgService 组织服务
-     * @param sysUserDutyService 用户职务服务
      * @param sysUserWriteService 用户写入服务
      * @param sysUserImportService 用户导入服务
      * @param sysUserQueryService 用户查询服务
      */
     public SysUserServiceImpl(SysUserMapper userMapper,
                               SysRoleMapper roleMapper,
-                              SysPostMapper postMapper,
                               SysUserRoleMapper userRoleMapper,
                               SysUserPostMapper userPostMapper,
                               ISysUserDeptService sysUserDeptService,
-                              ISysUserRankService sysUserRankService,
                               ISysOrgService sysOrgService,
-                              ISysUserDutyService sysUserDutyService,
                               SysUserWriteService sysUserWriteService,
                               SysUserImportService sysUserImportService,
                               SysUserQueryService sysUserQueryService) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
-        this.postMapper = postMapper;
         this.userRoleMapper = userRoleMapper;
         this.userPostMapper = userPostMapper;
         this.sysUserDeptService = sysUserDeptService;
-        this.sysUserRankService = sysUserRankService;
         this.sysOrgService = sysOrgService;
-        this.sysUserDutyService = sysUserDutyService;
         this.sysUserWriteService = sysUserWriteService;
         this.sysUserImportService = sysUserImportService;
         this.sysUserQueryService = sysUserQueryService;
@@ -256,7 +236,7 @@ public class SysUserServiceImpl implements ISysUserService {
      */
     @Override
     public List<SysPost> selectUserPostGroup(Long userId, Long orgId) {
-        return postMapper.selectPostsByUserId(userId, orgId);
+        return Collections.emptyList();
     }
 
     @Override
@@ -266,12 +246,12 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Override
     public List<SysDuty> selectUserDutyListByUserIdAndOrgId(Long userId, Long orgId) {
-        return sysUserDutyService.selectUserDutyListByUserIdAndOrgId(userId, orgId);
+        return Collections.emptyList();
     }
 
     @Override
     public SysRank selectUserRankByUserIdAndOrgId(Long userId, Long orgId) {
-        return sysUserRankService.selectUserRankByUserIdAndOrgId(userId, orgId);
+        return null;
     }
 
 

@@ -9,15 +9,12 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.page.PageDomain;
-import com.yr.system.mapper.SysPostMapper;
 import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.mapper.SysUserPostMapper;
 import com.yr.system.mapper.SysUserRoleMapper;
 import com.yr.system.service.ISysOrgService;
 import com.yr.system.service.ISysUserDeptService;
-import com.yr.system.service.ISysUserDutyService;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -104,13 +101,10 @@ class SysUserServiceImplDelegationTest {
         return new SysUserServiceImpl(
                 mock(SysUserMapper.class),
                 mock(SysRoleMapper.class),
-                mock(SysPostMapper.class),
                 mock(SysUserRoleMapper.class),
                 mock(SysUserPostMapper.class),
                 mock(ISysUserDeptService.class),
-                mock(ISysUserRankService.class),
                 mock(ISysOrgService.class),
-                mock(ISysUserDutyService.class),
                 mock(SysUserWriteService.class),
                 importService,
                 queryService

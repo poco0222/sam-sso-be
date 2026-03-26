@@ -1,3 +1,8 @@
+/**
+ * @file 验证码控制器，一期阶段仅依赖应用配置控制开关
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.web.controller.common;
 
 import com.google.code.kaptcha.Producer;
@@ -6,7 +11,6 @@ import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.common.utils.sign.Base64;
 import com.yr.common.utils.uuid.IdUtils;
-import com.yr.system.service.ISysConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.FastByteArrayOutputStream;
@@ -40,8 +44,9 @@ public class CaptchaController {
     @Value("${yr.captchaType}")
     private String captchaType;
 
-    @Autowired
-    private ISysConfigService configService;
+    // 一期控制台通过应用配置固定控制验证码开关，避免继续依赖系统参数服务。
+    @Value("${yr.captcha.enabled:true}")
+    private boolean captchaEnabled;
 
     /**
      * 生成验证码
@@ -49,9 +54,8 @@ public class CaptchaController {
     @GetMapping("/captchaImage")
     public AjaxResult getCode(HttpServletResponse response) throws IOException {
         AjaxResult ajax = AjaxResult.success();
-        boolean captchaOnOff = configService.selectCaptchaOnOff();
-        ajax.put("captchaOnOff", captchaOnOff);
-        if (!captchaOnOff) {
+        ajax.put("captchaOnOff", captchaEnabled);
+        if (!captchaEnabled) {
             return ajax;
         }
 

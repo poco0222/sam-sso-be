@@ -1,19 +1,16 @@
 /**
  * @file 验证 SysUserServiceImpl 批量删除用户时会同步清理关联表
- * @author Codex
- * @date 2026-03-17
+ * @author PopoY
+ * @date 2026-03-26
  */
 package com.yr.system.service.impl;
 
-import com.yr.system.mapper.SysPostMapper;
 import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.mapper.SysUserPostMapper;
 import com.yr.system.mapper.SysUserRoleMapper;
 import com.yr.system.service.ISysOrgService;
 import com.yr.system.service.ISysUserDeptService;
-import com.yr.system.service.ISysUserDutyService;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,13 +58,10 @@ class SysUserServiceImplDeleteUserCleanupTest {
         return new SysUserServiceImpl(
                 userMapper,
                 mock(SysRoleMapper.class),
-                mock(SysPostMapper.class),
                 userRoleMapper,
                 userPostMapper,
                 mock(ISysUserDeptService.class),
-                mock(ISysUserRankService.class),
                 mock(ISysOrgService.class),
-                mock(ISysUserDutyService.class),
                 mock(SysUserWriteService.class),
                 mock(SysUserImportService.class),
                 mock(SysUserQueryService.class)

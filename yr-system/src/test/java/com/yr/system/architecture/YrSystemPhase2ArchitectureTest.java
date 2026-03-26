@@ -11,9 +11,6 @@ import com.yr.system.config.YrSystemWarmupRunner;
 import com.yr.system.domain.entity.SysMessageBody;
 import com.yr.system.domain.entity.SysMessageBodyReceiver;
 import com.yr.system.domain.entity.SysUserDept;
-import com.yr.system.service.ISysCodeRuleService;
-import com.yr.system.service.ISysConfigService;
-import com.yr.system.service.ISysDictTypeService;
 import com.yr.system.service.impl.SysCodeRuleServiceImpl;
 import com.yr.system.service.impl.SysConfigServiceImpl;
 import com.yr.system.service.impl.SysDictTypeServiceImpl;
@@ -65,7 +62,6 @@ class YrSystemPhase2ArchitectureTest {
         assertHasNoPostConstructMethod(SysDictTypeServiceImpl.class);
         assertThat(YrSystemWarmupRunner.class).isNotNull();
         assertThat(Arrays.stream(YrSystemWarmupRunner.class.getDeclaredFields()).map(Field::getType).toList())
-                .contains(ISysCodeRuleService.class, ISysConfigService.class, ISysDictTypeService.class)
                 .doesNotContain(SysCodeRuleServiceImpl.class, SysConfigServiceImpl.class, SysDictTypeServiceImpl.class);
     }
 

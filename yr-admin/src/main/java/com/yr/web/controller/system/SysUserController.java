@@ -10,7 +10,6 @@ import com.yr.common.constant.UserConstants;
 import com.yr.common.core.controller.BaseController;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysRole;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.core.page.PageDomain;
@@ -25,8 +24,6 @@ import com.yr.common.utils.poi.ExcelUtil;
 import com.yr.framework.web.service.TokenService;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.service.ISysDeptService;
-import com.yr.system.service.ISysPostService;
-import com.yr.system.service.ISysRoleService;
 import com.yr.system.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,7 +34,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 用户信息
@@ -51,13 +47,7 @@ public class SysUserController extends BaseController {
     private ISysUserService userService;
 
     @Autowired
-    private ISysRoleService roleService;
-
-    @Autowired
     private ISysDeptService deptService;
-
-    @Autowired
-    private ISysPostService postService;
 
     @Autowired
     private TokenService tokenService;
@@ -150,13 +140,8 @@ public class SysUserController extends BaseController {
     @GetMapping(value = {"/", "/{userId}"})
     public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId) {
         AjaxResult ajax = AjaxResult.success();
-        List<SysRole> roles = roleService.selectRoleAll();
-        ajax.put("roles", SysUser.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
-        ajax.put("posts", postService.selectPostAll());
         if (StringUtils.isNotNull(userId)) {
             ajax.put(AjaxResult.DATA_TAG, userService.selectUserById(userId, SecurityUtils.getOrgId()));
-            ajax.put("postIds", postService.selectPostListByUserId(userId));
-            ajax.put("roleIds", roleService.selectRoleListByUserId(userId));
         }
         return ajax;
     }
@@ -258,32 +243,6 @@ public class SysUserController extends BaseController {
         user.setUpdateBy(SecurityUtils.getUsername());
         return toAjax(userService.updateUserStatus(user));
     }
-
-    /**
-     * 根据用户编号获取授权角色
-     */
-    @PreAuthorize("@ss.hasPermi('system:user:query')")
-    @GetMapping("/authRole/{userId}")
-    public AjaxResult authRole(@PathVariable("userId") Long userId) {
-        AjaxResult ajax = AjaxResult.success();
-        SysUser user = userService.getUserById(userId);
-        List<SysRole> roles = roleService.selectRolesByUserId(userId);
-        ajax.put("user", user);
-        ajax.put("roles", roles);
-        return ajax;
-    }
-
-    /**
-     * 用户授权角色
-     */
-    @PreAuthorize("@ss.hasPermi('system:user:edit')")
-    @Log(title = "用户管理", businessType = BusinessType.GRANT)
-    @PutMapping("/authRole")
-    public AjaxResult insertAuthRole(Long userId, Long[] roleIds) {
-        userService.insertUserAuth(userId, roleIds);
-        return success();
-    }
-
 
     /**
      * 分页查询模式分组后的用户数据-没有选中的的用户
