@@ -78,7 +78,7 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     void shouldUseTransactionalSpringProxyWhenImportingUser() {
         AtomicBoolean userInsertInTransaction = new AtomicBoolean(false);
         AtomicBoolean userOrgWriteInTransaction = new AtomicBoolean(false);
-        SysUser user = buildUser("spring-integration", null);
+        SysUser user = buildUser("spring-integration");
 
         setAuthenticatedUser(77L, 88L, "spring-tester");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
@@ -114,14 +114,12 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
      * 构造导入用户命令。
      *
      * @param userName 用户账号
-     * @param rankId 职级 ID
      * @return 用户命令
      */
-    private SysUser buildUser(String userName, Long rankId) {
+    private SysUser buildUser(String userName) {
         SysUser user = new SysUser();
         user.setUserName(userName);
         user.setNickName("测试用户");
-        user.setRankId(rankId);
         return user;
     }
 

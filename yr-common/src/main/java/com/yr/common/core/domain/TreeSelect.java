@@ -7,7 +7,6 @@ package com.yr.common.core.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysMenu;
 
 import java.io.Serializable;
 import java.util.List;
@@ -37,9 +36,7 @@ public class TreeSelect implements Serializable {
     private String deptCode;
 
     private boolean showTips;
-    //部门角色树
     private Long deptId;
-    private Long roleId;
 
     /**
      * 额外的信息
@@ -61,12 +58,6 @@ public class TreeSelect implements Serializable {
         this.label = dept.getDeptName();
         this.deptCode = dept.getDeptCode();
         this.children = dept.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
-    }
-
-    public TreeSelect(SysMenu menu) {
-        this.id = menu.getMenuId();
-        this.label = menu.getMenuName();
-        this.children = menu.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
     }
 
 //    public TreeSelect(SamMouldInfo samMouldInfo) {
@@ -92,14 +83,6 @@ public class TreeSelect implements Serializable {
 
     public void setDeptId(Long deptId) {
         this.deptId = deptId;
-    }
-
-    public Long getRoleId() {
-        return roleId;
-    }
-
-    public void setRoleId(Long roleId) {
-        this.roleId = roleId;
     }
 
     public Long getId() {

@@ -248,18 +248,6 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     /**
-     * 用户授权角色
-     *
-     * @param userId  用户ID
-     * @param roleIds 角色组
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void insertUserAuth(Long userId, Long[] roleIds) {
-        // 一期不再支持用户分配角色，保留空实现以兼容仍存在的方法签名。
-    }
-
-    /**
      * 修改用户状态
      *
      * @param user 用户信息

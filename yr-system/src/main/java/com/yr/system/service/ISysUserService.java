@@ -113,14 +113,6 @@ public interface ISysUserService {
     public int updateUser(SysUser user);
 
     /**
-     * 用户授权角色
-     *
-     * @param userId  用户ID
-     * @param roleIds 角色组
-     */
-    public void insertUserAuth(Long userId, Long[] roleIds);
-
-    /**
      * 修改用户状态
      *
      * @param user 用户信息

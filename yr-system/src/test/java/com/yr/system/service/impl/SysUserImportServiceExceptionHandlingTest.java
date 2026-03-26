@@ -40,7 +40,7 @@ class SysUserImportServiceExceptionHandlingTest {
         SysUser trailingUser = buildUser("phase4-trailing");
 
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        doThrow(new CustomException("职级不能为空"))
+        doThrow(new CustomException("主数据校验失败"))
                 .when(writeService)
                 .insertUser(argThat(user -> user != null && "phase4-invalid".equals(user.getUserName())));
 
@@ -48,7 +48,7 @@ class SysUserImportServiceExceptionHandlingTest {
 
         assertThat(result)
                 .contains("导入完成！成功 1 条，失败 1 条")
-                .contains("账号 phase4-invalid 导入失败：职级不能为空")
+                .contains("账号 phase4-invalid 导入失败：主数据校验失败")
                 .contains("账号 phase4-trailing 导入成功");
         verify(writeService).insertUser(invalidUser);
         verify(writeService).insertUser(trailingUser);
@@ -85,7 +85,6 @@ class SysUserImportServiceExceptionHandlingTest {
     private SysUser buildUser(String userName) {
         SysUser user = new SysUser();
         user.setUserName(userName);
-        user.setRankId(1L);
         return user;
     }
 }

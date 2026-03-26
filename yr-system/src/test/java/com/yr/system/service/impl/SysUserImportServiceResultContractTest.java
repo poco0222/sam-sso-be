@@ -62,7 +62,7 @@ class SysUserImportServiceResultContractTest {
         SysUser successUser = buildUser("contract-mixed-success");
 
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        doThrow(new CustomException("职级不能为空"))
+        doThrow(new CustomException("主数据校验失败"))
                 .when(writeService)
                 .insertUser(argThat(user -> user != null && "contract-mixed-invalid".equals(user.getUserName())));
 
@@ -70,7 +70,7 @@ class SysUserImportServiceResultContractTest {
 
         assertThat(result)
                 .contains("导入完成！成功 1 条，失败 1 条")
-                .contains("账号 contract-mixed-invalid 导入失败：职级不能为空")
+                .contains("账号 contract-mixed-invalid 导入失败：主数据校验失败")
                 .contains("账号 contract-mixed-success 导入成功");
         verify(writeService).insertUser(invalidUser);
         verify(writeService).insertUser(successUser);
@@ -88,13 +88,13 @@ class SysUserImportServiceResultContractTest {
         SysUser secondUser = buildUser("contract-failure-2");
 
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
-        doThrow(new CustomException("职级不能为空")).when(writeService).insertUser(any(SysUser.class));
+        doThrow(new CustomException("主数据校验失败")).when(writeService).insertUser(any(SysUser.class));
 
         assertThatThrownBy(() -> importService.importUser(List.of(firstUser, secondUser), false, "phase4"))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining("很抱歉，导入失败！共 2 条数据格式不正确")
-                .hasMessageContaining("账号 contract-failure-1 导入失败：职级不能为空")
-                .hasMessageContaining("账号 contract-failure-2 导入失败：职级不能为空");
+                .hasMessageContaining("账号 contract-failure-1 导入失败：主数据校验失败")
+                .hasMessageContaining("账号 contract-failure-2 导入失败：主数据校验失败");
     }
 
     /**
@@ -106,7 +106,6 @@ class SysUserImportServiceResultContractTest {
     private SysUser buildUser(String userName) {
         SysUser user = new SysUser();
         user.setUserName(userName);
-        user.setRankId(1L);
         return user;
     }
 }

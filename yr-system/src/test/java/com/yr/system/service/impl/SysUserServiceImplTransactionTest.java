@@ -69,7 +69,7 @@ class SysUserServiceImplTransactionTest {
         AtomicBoolean userOrgInsertInTx = new AtomicBoolean(false);
         SysUserWriteService target = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService proxy = createWriteServiceProxy(target, transactionManager);
-        SysUser user = buildUser("phase1-insert", null);
+        SysUser user = buildUser("phase1-insert");
 
         setAuthenticatedOrg(88L);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
@@ -113,8 +113,8 @@ class SysUserServiceImplTransactionTest {
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
         SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
-        SysUser successUser = buildUser("phase1-success", null);
-        SysUser failureUser = buildUser("phase1-failure", null);
+        SysUser successUser = buildUser("phase1-success");
+        SysUser failureUser = buildUser("phase1-failure");
 
         setAuthenticatedOrg(66L);
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
@@ -151,9 +151,9 @@ class SysUserServiceImplTransactionTest {
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
         SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
-        SysUser successUser = buildUser("phase4-success", null);
-        SysUser brokenUser = buildUser("phase4-broken", null);
-        SysUser untouchedUser = buildUser("phase4-untouched", null);
+        SysUser successUser = buildUser("phase4-success");
+        SysUser brokenUser = buildUser("phase4-broken");
+        SysUser untouchedUser = buildUser("phase4-untouched");
 
         setAuthenticatedOrg(66L);
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
@@ -224,13 +224,11 @@ class SysUserServiceImplTransactionTest {
      * 构造导入测试用户。
      *
      * @param userName 用户名
-     * @param rankId 职级 ID
      * @return 用户对象
      */
-    private SysUser buildUser(String userName, Long rankId) {
+    private SysUser buildUser(String userName) {
         SysUser user = new SysUser();
         user.setUserName(userName);
-        user.setRankId(rankId);
         return user;
     }
 

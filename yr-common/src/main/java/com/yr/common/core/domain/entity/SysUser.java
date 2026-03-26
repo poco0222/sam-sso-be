@@ -1,3 +1,8 @@
+/**
+ * @file 一期用户领域模型
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.common.core.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -19,7 +24,6 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.Date;
-import java.util.List;
 
 /**
  * 用户对象 sys_user
@@ -131,26 +135,6 @@ public class SysUser extends BaseEntity {
     private SysDept dept;
 
     /**
-     * 角色对象
-     */
-    private List<SysRole> roles;
-
-    /**
-     * 角色组
-     */
-    private Long[] roleIds;
-
-    /**
-     * 岗位组
-     */
-    private Long[] postIds;
-
-    /**
-     * 角色ID
-     */
-    private Long roleId;
-
-    /**
      * 组织ID
      */
     private Long orgId;
@@ -174,16 +158,6 @@ public class SysUser extends BaseEntity {
      * 用户与职务关联表ID sys_user_duty.id
      */
     private Long userDutyId;
-
-    /**
-     * 职级ID sys_rank.id
-     */
-    private Long rankId;
-
-    /**
-     * 职级名称
-     */
-    private String rankName;
 
     @TableField(exist = false)
     private Long reGroupId;
@@ -220,22 +194,6 @@ public class SysUser extends BaseEntity {
 
     public static boolean isAdmin(Long userId) {
         return userId != null && 1L == userId;
-    }
-
-    public String getRankName() {
-        return rankName;
-    }
-
-    public void setRankName(String rankName) {
-        this.rankName = rankName;
-    }
-
-    public Long getRankId() {
-        return rankId;
-    }
-
-    public void setRankId(Long rankId) {
-        this.rankId = rankId;
     }
 
     public Long getUserDutyId() {
@@ -416,38 +374,6 @@ public class SysUser extends BaseEntity {
 
     public void setDept(SysDept dept) {
         this.dept = dept;
-    }
-
-    public List<SysRole> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(List<SysRole> roles) {
-        this.roles = roles;
-    }
-
-    public Long[] getRoleIds() {
-        return roleIds;
-    }
-
-    public void setRoleIds(Long[] roleIds) {
-        this.roleIds = roleIds;
-    }
-
-    public Long[] getPostIds() {
-        return postIds;
-    }
-
-    public void setPostIds(Long[] postIds) {
-        this.postIds = postIds;
-    }
-
-    public Long getRoleId() {
-        return roleId;
-    }
-
-    public void setRoleId(Long roleId) {
-        this.roleId = roleId;
     }
 
     public Long getReGroupId() {

@@ -1,6 +1,11 @@
+/**
+ * @file 一期权限表达式服务
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.framework.web.service;
 
-import com.yr.common.core.domain.entity.SysRole;
+import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.utils.ServletUtils;
 import com.yr.common.utils.StringUtils;
@@ -95,16 +100,12 @@ public class PermissionService {
             return false;
         }
         LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
+        if (StringUtils.isNull(loginUser)) {
             return false;
         }
-        for (SysRole sysRole : loginUser.getUser().getRoles()) {
-            String roleKey = sysRole.getRoleKey();
-            if (SUPER_ADMIN.equals(roleKey) || roleKey.equals(StringUtils.trim(role))) {
-                return true;
-            }
-        }
-        return false;
+        // 一期边界下角色树已裁剪，仅保留超级管理员兼容判断。
+        String normalizedRole = StringUtils.trim(role);
+        return SUPER_ADMIN.equals(normalizedRole) && SysUser.isAdmin(loginUser.getUserId());
     }
 
     /**
@@ -125,10 +126,6 @@ public class PermissionService {
      */
     public boolean hasAnyRoles(String roles) {
         if (StringUtils.isEmpty(roles)) {
-            return false;
-        }
-        LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
-        if (StringUtils.isNull(loginUser) || CollectionUtils.isEmpty(loginUser.getUser().getRoles())) {
             return false;
         }
         for (String role : roles.split(ROLE_DELIMETER)) {
