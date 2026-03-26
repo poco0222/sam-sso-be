@@ -1,3 +1,8 @@
+/**
+ * @file 个人信息控制器，收敛一期仍保留的用户基础资料入口
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.web.controller.system;
 
 import com.yr.common.annotation.Log;
@@ -42,11 +47,8 @@ public class SysProfileController extends BaseController {
         LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
         SysUser user = loginUser.getUser();
         AjaxResult ajax = AjaxResult.success(user);
-//        ajax.put("roleGroup", userService.selectUserRoleGroup(loginUser.getUsername()));
+        // 一期个人信息页仅保留用户基础信息与部门关系，彻底移除 role/post/duty/rank 扩展块。
         ajax.put("deptList", userService.selectUserDeptListByUserIdAndOrgId(loginUser.getUserId(), user.getOrgId()));
-        ajax.put("postList", userService.selectUserPostGroup(loginUser.getUserId(), user.getOrgId()));
-        ajax.put("dutyList", userService.selectUserDutyListByUserIdAndOrgId(loginUser.getUserId(), user.getOrgId()));
-        ajax.put("userRank", userService.selectUserRankByUserIdAndOrgId(loginUser.getUserId(), user.getOrgId()));
         return ajax;
     }
 

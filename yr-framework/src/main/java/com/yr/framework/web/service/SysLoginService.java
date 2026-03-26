@@ -27,11 +27,11 @@ import com.yr.common.utils.ip.IpUtils;
 import com.yr.common.utils.sign.RsaUtils;
 import com.yr.framework.manager.AsyncManager;
 import com.yr.framework.manager.factory.AsyncFactory;
-import com.yr.system.service.ISysConfigService;
 import com.yr.system.service.ISysUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -95,9 +95,9 @@ public class SysLoginService {
     @Autowired
     private ISysUserService userService;
 
-    /** 系统配置服务，用于读取验证码开关。 */
-    @Autowired
-    private ISysConfigService configService;
+    /** 一期验证码开关，改为直接读取 application 配置。 */
+    @Value("${yr.captcha.enabled:true}")
+    private boolean captchaEnabled;
 
     /** 权限服务，用于构造切组织后的 LoginUser。 */
     @Autowired
@@ -130,7 +130,7 @@ public class SysLoginService {
      * @return 登录成功后的 token
      */
     public String login(String username, String password, String code, String uuid, String platform) {
-        boolean captchaOnOff = configService.selectCaptchaOnOff();
+        boolean captchaOnOff = captchaEnabled;
         if (PlatformType.DESKTOP.getName().equals(platform)) {
             captchaOnOff = false;
         }

@@ -2,7 +2,6 @@ package com.yr.system.service;
 
 import com.yr.common.core.domain.TreeSelect;
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysDeptRoleVo;
 
 import java.util.List;
 
@@ -37,16 +36,6 @@ public interface ISysDeptService {
      * @return 下拉树结构列表
      */
     public List<TreeSelect> buildDeptTreeSelect(List<SysDept> depts);
-
-    public List<TreeSelect> buildDeptRoleTreeSelect(List<SysDeptRoleVo> sysDeptRoleVo);
-
-    /**
-     * 根据角色ID查询部门树信息
-     *
-     * @param roleId 角色ID
-     * @return 选中部门列表
-     */
-    public List<Integer> selectDeptListByRoleId(Long roleId);
 
     /**
      * 根据部门ID查询信息
@@ -127,8 +116,4 @@ public interface ISysDeptService {
     List<TreeSelect> selectDeptTreeList(SysDept dept);
 
     List<SysDept> selectSysDept();
-
-    List<SysDeptRoleVo> selectDeptRoleTreeList(SysDept sysDept);
-
-    List<SysDeptRoleVo> buildDeptRoleTree(List<SysDeptRoleVo> depts);
 }

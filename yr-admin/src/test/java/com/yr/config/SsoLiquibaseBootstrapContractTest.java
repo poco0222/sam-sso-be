@@ -35,7 +35,7 @@ class SsoLiquibaseBootstrapContractTest {
     }
 
     /**
-     * 验证 core-console changelog 只保留一期核心表族，并排除 legacy system 表。
+     * 验证 core-console changelog 只保留一期核心表族，并排除 legacy system 表与控制台菜单基线。
      *
      * @throws Exception 读取资源失败时抛出
      */
@@ -49,12 +49,13 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("CREATE TABLE IF NOT EXISTS `sys_dept`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_user_org`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_user_dept`")
-                .contains("身份管理")
                 .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_role`")
                 .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_menu`")
                 .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_role_menu`")
                 .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_user_role`")
                 .doesNotContain("CREATE TABLE IF NOT EXISTS `sys_config`")
+                .doesNotContain("INSERT IGNORE INTO `sys_menu`")
+                .doesNotContain("身份管理")
                 .doesNotContain("sys_duty")
                 .doesNotContain("sys_rank")
                 .doesNotContain("sys_attach_")
@@ -65,7 +66,7 @@ class SsoLiquibaseBootstrapContractTest {
     }
 
     /**
-     * 验证 client-sync changelog 声明了一期新增表与对应控制台菜单。
+     * 验证 client-sync changelog 声明了一期新增表，不再依赖 legacy 动态菜单 seed。
      *
      * @throws Exception 读取资源失败时抛出
      */
@@ -79,8 +80,9 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("CREATE TABLE IF NOT EXISTS `sso_sync_task_item`")
                 .contains("CREATE TABLE IF NOT EXISTS `mq_message_log`")
                 .contains("`msg_key`")
-                .contains("客户端管理")
-                .contains("同步任务控制台")
+                .doesNotContain("INSERT IGNORE INTO `sys_menu`")
+                .doesNotContain("客户端管理")
+                .doesNotContain("同步任务控制台")
                 .doesNotContain("activiti");
     }
 

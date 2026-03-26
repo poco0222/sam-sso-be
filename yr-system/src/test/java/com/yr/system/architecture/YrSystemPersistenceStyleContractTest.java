@@ -30,7 +30,7 @@ class YrSystemPersistenceStyleContractTest {
      */
     @Test
     void shouldAvoidSpringUtilsSelfProxyInRoleAndDeptServices() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysRoleServiceImpl.java", "SpringUtils.getAopProxy(this)");
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysRoleServiceImpl.java"));
         assertSourceDoesNotContain("service/impl/SysDeptServiceImpl.java", "SpringUtils.getAopProxy(this)");
     }
 
@@ -40,9 +40,9 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldMoveDescendantLookupOutOfServiceApplyClauses() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysRankServiceImpl.java", ".apply(\"find_in_set");
-        assertSourceDoesNotContain("service/impl/SysDutyServiceImpl.java", ".apply(\"find_in_set");
+    void shouldRemoveLegacyRankAndDutyServicesFromPhaseOneBoundary() {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysRankServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysDutyServiceImpl.java"));
     }
 
     /**
@@ -52,10 +52,10 @@ class YrSystemPersistenceStyleContractTest {
      */
     @Test
     void shouldAvoidStringlyTypedQueryWrappersInRefactoredServices() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysRankServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysDutyServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysFileServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysUserDutyServiceImpl.java", "new QueryWrapper<");
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysRankServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysDutyServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysFileServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysUserDutyServiceImpl.java"));
     }
 
     /**
@@ -64,9 +64,9 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldAvoidFullColumnUpdatesInTreeServices() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysRankServiceImpl.java", "updateAllColumnById");
-        assertSourceDoesNotContain("service/impl/SysDutyServiceImpl.java", "updateAllColumnById");
+    void shouldAvoidFullColumnUpdatesInTreeServices() {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysRankServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysDutyServiceImpl.java"));
     }
 
     /**
@@ -75,9 +75,8 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldAvoidFullColumnUpdatesAndStringHeaderQueriesInCodeRuleService() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysCodeRuleServiceImpl.java", "updateAllColumnById");
-        assertSourceDoesNotContain("service/impl/SysCodeRuleServiceImpl.java", "new QueryWrapper<");
+    void shouldRemoveLegacyCodeRuleServiceFromPhaseOneBoundary() {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysCodeRuleServiceImpl.java"));
     }
 
     /**
@@ -96,18 +95,16 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldAvoidStringlyTypedWrappersInCodeRuleLineAndDetailServices() throws IOException {
-        assertSourceDoesNotContain("service/impl/SysCodeRuleLineServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysCodeRuleLineServiceImpl.java", "new UpdateWrapper<");
-        assertSourceDoesNotContain("service/impl/SysCodeRuleDetailServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysCodeRuleValueServiceImpl.java", "new QueryWrapper<");
+    void shouldAvoidStringlyTypedWrappersInRemainingRefactoredServices() throws IOException {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysCodeRuleLineServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysCodeRuleDetailServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysCodeRuleValueServiceImpl.java"));
         assertSourceDoesNotContain("service/impl/SysUserOrgServiceImpl.java", "new QueryWrapper<");
         assertSourceDoesNotContain("service/impl/SysUserOrgServiceImpl.java", "new UpdateWrapper<");
-        assertSourceDoesNotContain("service/impl/SysRegionServiceImpl.java", "new QueryWrapper<");
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysRegionServiceImpl.java"));
         assertSourceDoesNotContain("service/impl/SysUserDeptServiceImpl.java", "new QueryWrapper<");
         assertSourceDoesNotContain("service/impl/SysUserDeptServiceImpl.java", "new UpdateWrapper<");
-        assertSourceDoesNotContain("service/impl/SysAttachCategoryServiceImpl.java", "new QueryWrapper<");
-        assertSourceDoesNotContain("service/impl/SysAttachCategoryServiceImpl.java", "new UpdateWrapper<");
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysAttachCategoryServiceImpl.java"));
     }
 
     /**
@@ -116,17 +113,16 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldAvoidObjectUtilsAndLegacyStringBufferInMessagingFlow() throws IOException {
-        assertSourceDoesNotContain("component/message/impl/WebMessageServiceImpl.java", "ObjectUtils");
-        assertSourceDoesNotContain("component/message/impl/WebMessageServiceImpl.java", "StringBuffer");
-        assertSourceDoesNotContain("component/message/impl/DefaultMessageListenerImpl.java", "ObjectUtils");
-        assertSourceDoesNotContain("service/impl/SysMessageBodyReceiverService.java", "ObjectUtils");
-        assertSourceDoesNotContain("component/message/impl/WebSocketServerImpl.java", "ObjectUtils");
-        assertSourceDoesNotContain("service/impl/SysMsgTemplateService.java", "StringBuffer");
+    void shouldRemoveLegacyMessagingFlowFromPhaseOneBoundary() throws IOException {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "impl", "WebMessageServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "impl", "DefaultMessageListenerImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysMessageBodyReceiverService.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "impl", "WebSocketServerImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysMsgTemplateService.java"));
         assertSourceDoesNotContain("service/impl/SysUserServiceImpl.java", "StringBuffer");
         assertSourceDoesNotContain("utils/MatcherUtils.java", "StringBuffer");
-        assertRepoSourceDoesNotContain(Path.of("..", "yr-framework", "src", "main", "java",
-                "com", "yr", "framework", "aspectj", "AutoMessageAspect.java"), "ObjectUtils");
+        assertPathDoesNotExist(Path.of("..", "yr-framework", "src", "main", "java",
+                "com", "yr", "framework", "aspectj", "AutoMessageAspect.java"));
         assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "utils", "ObjectUtils.java"));
     }
 
@@ -150,15 +146,10 @@ class YrSystemPersistenceStyleContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldAvoidFastjsonInYrSystemMessagingFlow() throws IOException {
-        assertSourceDoesNotContain("component/message/AbstractMessageListener.java", "com.alibaba.fastjson");
-        assertSourceDoesNotContain("component/message/AbstractMessageListener.java", "JSON.toJSONString");
-
-        assertSourceDoesNotContain("component/message/impl/WebMessageServiceImpl.java", "com.alibaba.fastjson");
-        assertSourceDoesNotContain("component/message/impl/WebMessageServiceImpl.java", "JSON.toJSONString");
-
-        assertSourceDoesNotContain("component/message/impl/WebSocketServerImpl.java", "com.alibaba.fastjson");
-        assertSourceDoesNotContain("component/message/impl/WebSocketServerImpl.java", "JSON.toJSONString");
+    void shouldRemoveLegacyMessagingFastjsonTouchpointsFromPhaseOneBoundary() {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "AbstractMessageListener.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "impl", "WebMessageServiceImpl.java"));
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "component", "message", "impl", "WebSocketServerImpl.java"));
     }
 
     /**

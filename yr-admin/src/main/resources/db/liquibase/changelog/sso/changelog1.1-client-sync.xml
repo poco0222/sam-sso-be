@@ -128,13 +128,4 @@
         </sql>
     </changeSet>
 
-    <changeSet id="sso-client-sync-002" author="PopoY" context="一期客户端与同步任务菜单种子">
-        <sql>
-            INSERT IGNORE INTO `sys_menu`
-            (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`, `component`, `is_frame`, `is_cache`, `menu_type`, `visible`, `status`, `perms`, `icon`, `platform`, `create_by`, `create_time`, `remark`)
-            VALUES
-            (9001, '客户端管理', 9000, 1, 'client', 'client/index', '1', '0', 'C', '0', '0', 'sso:client:list', 'link', 'mgmt', 'system', now(), '身份中心客户端管理菜单'),
-            (9002, '同步任务控制台', 9000, 2, 'sync-task', 'sync-task/index', '1', '0', 'C', '0', '0', 'sso:sync-task:list', 'job', 'mgmt', 'system', now(), '身份中心同步任务控制台菜单');
-        </sql>
-    </changeSet>
 </databaseChangeLog>

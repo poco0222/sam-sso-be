@@ -7,17 +7,15 @@ package com.yr.web.controller.system;
 
 import com.yr.common.constant.Constants;
 import com.yr.common.core.domain.AjaxResult;
-import com.yr.common.core.domain.entity.SysMenu;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginBody;
 import com.yr.common.core.domain.model.LoginUser;
-import com.yr.common.enums.PlatformType;
 import com.yr.common.utils.ServletUtils;
 import com.yr.framework.web.service.SysLoginService;
 import com.yr.framework.web.service.SysPermissionService;
 import com.yr.framework.web.service.TokenService;
 import com.yr.system.domain.vo.RouterVo;
-import com.yr.system.service.ISysMenuService;
+import com.yr.web.service.PhaseOneConsoleRouteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,9 +36,9 @@ public class SysLoginController {
     @Autowired
     private SysLoginService loginService;
 
-    /** 菜单服务，用于构建动态路由。 */
+    /** 一期固定路由服务，用于构建控制台路由树。 */
     @Autowired
-    private ISysMenuService menuService;
+    private PhaseOneConsoleRouteService routeService;
 
     /** 权限服务，用于提取角色与菜单权限集合。 */
     @Autowired
@@ -109,18 +107,7 @@ public class SysLoginController {
      */
     @GetMapping("getRouters/{platform}")
     public AjaxResult getRouters(@PathVariable("platform") String platform) {
-        LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
-        SysUser user = loginUser.getUser();
-        List<SysMenu> menus = menuService.selectMenuTreeByUserId(user.getUserId(), user.getOrgId(), platform);
-        List<RouterVo> routerVos = null;
-
-        // 管理后台与桌面端沿用既有路由拼装逻辑，避免一期收敛时引入菜单行为回归。
-        if (PlatformType.MGMT.getName().equals(platform)) {
-            routerVos = menuService.buildMenus(menus);
-        } else if (PlatformType.DESKTOP.getName().equals(platform)) {
-            routerVos = menuService.buildMenusForDesktop(menus);
-        }
-
+        List<RouterVo> routerVos = routeService.getRouters(platform);
         return AjaxResult.success(routerVos);
     }
 }

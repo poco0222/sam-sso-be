@@ -5,15 +5,8 @@
  */
 package com.yr.system.architecture;
 
-import com.yr.system.component.message.impl.DefaultMessageClientImpl;
-import com.yr.system.component.message.impl.DefaultMessageListenerImpl;
 import com.yr.system.config.YrSystemWarmupRunner;
-import com.yr.system.domain.entity.SysMessageBody;
-import com.yr.system.domain.entity.SysMessageBodyReceiver;
 import com.yr.system.domain.entity.SysUserDept;
-import com.yr.system.service.impl.SysCodeRuleServiceImpl;
-import com.yr.system.service.impl.SysConfigServiceImpl;
-import com.yr.system.service.impl.SysDictTypeServiceImpl;
 import com.yr.system.service.impl.SysUserImportService;
 import com.yr.system.service.impl.SysUserQueryService;
 import com.yr.system.service.impl.SysUserServiceImpl;
@@ -45,11 +38,6 @@ class YrSystemPhase2ArchitectureTest {
     @Test
     void shouldUseConstructorInjectionInPhase2Targets() {
         assertUsesConstructorInjection(SysUserServiceImpl.class);
-        assertUsesConstructorInjection(SysCodeRuleServiceImpl.class);
-        assertUsesConstructorInjection(SysConfigServiceImpl.class);
-        assertUsesConstructorInjection(SysDictTypeServiceImpl.class);
-        assertUsesConstructorInjection(DefaultMessageClientImpl.class);
-        assertUsesConstructorInjection(DefaultMessageListenerImpl.class);
     }
 
     /**
@@ -57,12 +45,10 @@ class YrSystemPhase2ArchitectureTest {
      */
     @Test
     void shouldMoveWarmupOutOfServicePostConstruct() {
-        assertHasNoPostConstructMethod(SysCodeRuleServiceImpl.class);
-        assertHasNoPostConstructMethod(SysConfigServiceImpl.class);
-        assertHasNoPostConstructMethod(SysDictTypeServiceImpl.class);
         assertThat(YrSystemWarmupRunner.class).isNotNull();
         assertThat(Arrays.stream(YrSystemWarmupRunner.class.getDeclaredFields()).map(Field::getType).toList())
-                .doesNotContain(SysCodeRuleServiceImpl.class, SysConfigServiceImpl.class, SysDictTypeServiceImpl.class);
+                .as("一期 warmup runner 不应再持有任何 legacy 预热依赖")
+                .isEmpty();
     }
 
     /**
@@ -82,8 +68,6 @@ class YrSystemPhase2ArchitectureTest {
     @Test
     void shouldDeclareExplicitEqualsAndHashCodeStrategyForInheritedEntities() throws IOException {
         assertSourceContains("domain/entity/SysUserDept.java", "@EqualsAndHashCode(callSuper = false)");
-        assertSourceContains("domain/entity/SysMessageBody.java", "@EqualsAndHashCode(callSuper = false)");
-        assertSourceContains("domain/entity/SysMessageBodyReceiver.java", "@EqualsAndHashCode(callSuper = false)");
     }
 
     /**

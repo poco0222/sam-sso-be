@@ -14,7 +14,7 @@ import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
 import com.yr.framework.web.service.SysLoginService;
 import com.yr.framework.web.service.SysPermissionService;
 import com.yr.framework.web.service.TokenService;
-import com.yr.system.service.ISysMenuService;
+import com.yr.web.service.PhaseOneConsoleRouteService;
 import com.yr.web.controller.system.SysLoginController;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -65,7 +65,7 @@ class SysLoginControllerContractTest {
     private SysLoginService loginService;
 
     @MockBean
-    private ISysMenuService menuService;
+    private PhaseOneConsoleRouteService routeService;
 
     @MockBean
     private SysPermissionService permissionService;

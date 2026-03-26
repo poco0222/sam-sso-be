@@ -5,14 +5,8 @@
  */
 package com.yr.system.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.core.domain.entity.SysUser;
-import com.yr.common.core.page.PageDomain;
-import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.mapper.SysUserPostMapper;
-import com.yr.system.mapper.SysUserRoleMapper;
 import com.yr.system.service.ISysOrgService;
 import com.yr.system.service.ISysUserDeptService;
 import org.junit.jupiter.api.Test;
@@ -67,29 +61,6 @@ class SysUserServiceImplDelegationTest {
     }
 
     /**
-     * 验证模式分组分页查询仍委托给专用查询服务，避免把 controller 过滤逻辑重新揉回主服务。
-     */
-    @Test
-    void shouldDelegateModeGroupPageQueryToDedicatedQueryService() {
-        SysUserImportService importService = mock(SysUserImportService.class);
-        SysUserQueryService queryService = mock(SysUserQueryService.class);
-        SysUserServiceImpl userService = buildUserService(importService, queryService);
-        PageDomain pageDomain = new PageDomain();
-        pageDomain.setPageNum(2);
-        pageDomain.setPageSize(5);
-        SysUser command = new SysUser();
-        command.setUserName("phase2");
-        IPage<SysUser> expectedPage = new Page<>(pageDomain.getPageNum(), pageDomain.getPageSize());
-
-        when(queryService.queryModeUserGroupInformationCollection(pageDomain, command)).thenReturn(expectedPage);
-
-        IPage<SysUser> result = userService.queryModeUserGroupInformationCollection(pageDomain, command);
-
-        assertThat(result).isSameAs(expectedPage);
-        verify(queryService).queryModeUserGroupInformationCollection(pageDomain, command);
-    }
-
-    /**
      * 构造最小依赖的用户服务实例，仅保留本测试关注的导入与查询协作对象。
      *
      * @param importService 导入服务
@@ -100,9 +71,6 @@ class SysUserServiceImplDelegationTest {
                                                 SysUserQueryService queryService) {
         return new SysUserServiceImpl(
                 mock(SysUserMapper.class),
-                mock(SysRoleMapper.class),
-                mock(SysUserRoleMapper.class),
-                mock(SysUserPostMapper.class),
                 mock(ISysUserDeptService.class),
                 mock(ISysOrgService.class),
                 mock(SysUserWriteService.class),

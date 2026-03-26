@@ -1,7 +1,10 @@
+/**
+ * @file 用户 DPR Mapper，一期仅保留部门维度的派生查询 SQL 声明
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.system.mapper;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.core.domain.entity.SysUser;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -17,16 +20,7 @@ import java.util.List;
 public interface SysUserDprMapper {
     List<SysUser> listUserByDeptId(@Param("deptId") Long deptId);
 
-    List<SysUser> listUserByPostId(@Param("postId") Long postId);
-
-    List<SysUser> listUserByRoleId(@Param("roleId") Long roleId);
-
-
     List<SysUser> listUserByDeptCode(@Param("deptCode") String deptCode);
-
-    List<SysUser> listUserByPostCode(@Param("postCode") String postCode);
-
-    List<SysUser> listUserByRoleKey(@Param("roleKey") String roleKey);
 
     List<SysUser> listUserByDeptIdWithAncestors(@Param("deptId") Long deptId);
 

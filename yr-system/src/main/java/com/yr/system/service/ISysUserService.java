@@ -5,14 +5,8 @@
  */
 package com.yr.system.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.yr.common.core.domain.entity.SysDept;
 import com.yr.common.core.domain.entity.SysUser;
-import com.yr.common.core.page.PageDomain;
-import com.yr.system.domain.SysPost;
-import com.yr.system.domain.entity.SysDuty;
-import com.yr.system.domain.entity.SysRank;
-import org.apache.ibatis.annotations.Param;
 import org.springframework.lang.Nullable;
 
 import java.util.List;
@@ -43,22 +37,6 @@ public interface ISysUserService {
     List<SysUser> selectUserListV2(SysUser user);
 
     /**
-     * 根据条件分页查询已分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    public List<SysUser> selectAllocatedList(SysUser user);
-
-    /**
-     * 根据条件分页查询未分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    public List<SysUser> selectUnallocatedList(SysUser user);
-
-    /**
      * 通过用户名查询用户
      *
      * @param userName 用户名
@@ -79,23 +57,6 @@ public interface ISysUserService {
     public SysUser selectUserById(Long userId, Long orgId);
 
     /**
-     * 根据用户ID查询用户所属角色组
-     *
-     * @param userName 用户名
-     * @return 结果
-     */
-    public String selectUserRoleGroup(String userName);
-
-    /**
-     * 根据用户ID查询用户所属岗位
-     *
-     * @param userId 用户ID
-     * @param orgId  租户ID
-     * @return 结果
-     */
-    public List<SysPost> selectUserPostGroup(Long userId, Long orgId);
-
-    /**
      * 查询用户所属部门
      *
      * @param userId
@@ -103,24 +64,6 @@ public interface ISysUserService {
      * @return
      */
     List<SysDept> selectUserDeptListByUserIdAndOrgId(Long userId, Long orgId);
-
-    /**
-     * 查询用户所属职务
-     *
-     * @param userId
-     * @param orgId
-     * @return
-     */
-    List<SysDuty> selectUserDutyListByUserIdAndOrgId(Long userId, Long orgId);
-
-    /**
-     * 查询用户所属职级
-     *
-     * @param userId
-     * @param orgId
-     * @return
-     */
-    SysRank selectUserRankByUserIdAndOrgId(Long userId, Long orgId);
 
     /**
      * 校验用户名称是否唯一
@@ -238,43 +181,12 @@ public interface ISysUserService {
     public String importUser(List<SysUser> userList, Boolean isUpdateSupport, String operName);
 
     /**
-     * 查询岗位已分配的用户列表
-     *
-     * @param postId
-     * @param sysUser
-     * @return
-     */
-    List<SysUser> listPostAssignUserByPostId(Long postId, SysUser sysUser);
-
-    /**
-     * 查询岗位未分配的用户列表
-     *
-     * @param postId
-     * @param sysUser
-     * @return
-     */
-    List<SysUser> listUnAssignUserByPostId(Long postId, SysUser sysUser);
-
-    /**
      * 根据用户ID获取用户信息
      *
      * @param userId
      * @return
      */
     SysUser getUserById(Long userId);
-
-    /**
-     * 查询岗位未分配的用户列表
-     *
-     * @param sysUser
-     * @return
-     */
-    IPage<SysUser> queryModeUserGroupInformationCollection(PageDomain pageDomain, @Param("param") SysUser sysUser);
-
-//    List<String> selectUserNameByPostCodeAndDeptId(String postCode,Long deptId);
-
-
-    //List<String> selectUserNameByPostCodeAndDeptId(String postCode,Long deptId);
 
     List<SysUser> selectSysUserById(String deptCode);
 
@@ -289,6 +201,4 @@ public interface ISysUserService {
      * 通过部门(含子部门)获取用户_批量版
      */
     Map<Long, List<SysUser>> batchSelectUserByDeptId(Long[] deptIds);
-
-    List<SysUser> selectUserListByDeptRole(SysUser sysUser);
 }

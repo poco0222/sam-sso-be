@@ -12,9 +12,7 @@ import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.domain.entity.SysDept;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
-import com.yr.common.core.page.PageDomain;
 import com.yr.common.core.page.TableDataInfo;
-import com.yr.common.core.page.TableSupport;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.common.enums.BusinessType;
 import com.yr.common.utils.SecurityUtils;
@@ -83,16 +81,6 @@ public class SysUserController extends BaseController {
         }
         startPage();
         List<SysUser> list = userService.selectUserListV2(user);
-        return getDataTable(list);
-    }
-
-    @GetMapping("/list/selectUserListByDeptRole")
-    public TableDataInfo selectUserListByDeptRole(SysUser sysUser) {
-        if (sysUser.getOrgId() == null) {
-            sysUser.setOrgId(SecurityUtils.getOrgId());
-        }
-        startPage();
-        List<SysUser> list = userService.selectUserListByDeptRole(sysUser);
         return getDataTable(list);
     }
 
@@ -242,19 +230,6 @@ public class SysUserController extends BaseController {
         userService.checkUserAllowed(user);
         user.setUpdateBy(SecurityUtils.getUsername());
         return toAjax(userService.updateUserStatus(user));
-    }
-
-    /**
-     * 分页查询模式分组后的用户数据-没有选中的的用户
-     *
-     * @param sysUser
-     * @return
-     */
-    @PreAuthorize("@ss.hasPermi('system:user:list')")
-    @GetMapping("/mode-group-objecct/page")
-    public AjaxResult pageQueryModeGroupingObjects(SysUser sysUser) {
-        PageDomain pageDomain = TableSupport.buildPageRequest();
-        return AjaxResult.success(userService.queryModeUserGroupInformationCollection(pageDomain, sysUser));
     }
 
     /**

@@ -56,22 +56,18 @@ class YrSystemBuildContractTest {
     }
 
     /**
-     * 确认职务/职级服务不再保留已废弃的 orderByAsc(R, R...) 变体调用。
-     *
-     * @throws IOException 读取源码失败
+     * 确认一期已经彻底移除 duty/rank 历史树服务，避免以“先留着以后再删”的方式重新回流。
      */
     @Test
-    void shouldAvoidDeprecatedOrderByAscVarargsInTreeServices() throws IOException {
+    void shouldRemoveLegacyDutyAndRankServicesFromPhaseOneBoundary() {
         Path repositoryRoot = resolveRepositoryRoot();
 
-        assertSourceDoesNotContain(
-                repositoryRoot.resolve("yr-system/src/main/java/com/yr/system/service/impl/SysDutyServiceImpl.java"),
-                "orderByAsc(SysDuty::getParentId, SysDuty::getOrderNum)"
-        );
-        assertSourceDoesNotContain(
-                repositoryRoot.resolve("yr-system/src/main/java/com/yr/system/service/impl/SysRankServiceImpl.java"),
-                "orderByAsc(SysRank::getParentId, SysRank::getOrderNum)"
-        );
+        assertThat(repositoryRoot.resolve("yr-system/src/main/java/com/yr/system/service/impl/SysDutyServiceImpl.java"))
+                .as("一期不应继续保留 SysDutyServiceImpl.java")
+                .doesNotExist();
+        assertThat(repositoryRoot.resolve("yr-system/src/main/java/com/yr/system/service/impl/SysRankServiceImpl.java"))
+                .as("一期不应继续保留 SysRankServiceImpl.java")
+                .doesNotExist();
     }
 
     /**

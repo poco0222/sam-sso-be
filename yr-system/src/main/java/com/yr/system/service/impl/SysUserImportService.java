@@ -10,9 +10,9 @@ import com.yr.common.exception.CustomException;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,21 +25,21 @@ public class SysUserImportService {
 
     private static final Logger log = LoggerFactory.getLogger(SysUserImportService.class);
 
-    private final ISysConfigService configService;
+    private final String initPassword;
     private final SysUserMapper userMapper;
     private final SysUserWriteService sysUserWriteService;
 
     /**
      * 构造导入服务。
      *
-     * @param configService 参数配置服务
+     * @param initPassword 一期默认初始化密码
      * @param userMapper 用户 Mapper
      * @param sysUserWriteService 用户写入服务
      */
-    public SysUserImportService(ISysConfigService configService,
+    public SysUserImportService(@Value("${yr.user.initPassword:Init@123}") String initPassword,
                                 SysUserMapper userMapper,
                                 SysUserWriteService sysUserWriteService) {
-        this.configService = configService;
+        this.initPassword = initPassword;
         this.userMapper = userMapper;
         this.sysUserWriteService = sysUserWriteService;
     }
@@ -60,14 +60,13 @@ public class SysUserImportService {
         int failureNum = 0;
         StringBuilder successMsg = new StringBuilder();
         StringBuilder failureMsg = new StringBuilder();
-        String password = configService.selectConfigByKey("sys.user.initPassword");
 
         // 导入策略固定为“逐条事务处理”，单条失败不会回滚此前已经成功的数据。
         for (SysUser user : userList) {
             try {
                 SysUser existedUser = userMapper.selectUserByUserName(user.getUserName());
                 if (StringUtils.isNull(existedUser)) {
-                    user.setPassword(SecurityUtils.encryptPassword(password));
+                    user.setPassword(SecurityUtils.encryptPassword(initPassword));
                     user.setCreateBy(operName);
                     sysUserWriteService.insertUser(user);
                     successNum++;

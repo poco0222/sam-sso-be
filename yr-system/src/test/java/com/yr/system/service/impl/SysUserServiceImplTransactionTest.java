@@ -9,11 +9,7 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.system.domain.entity.SysUserOrg;
-import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.mapper.SysUserPostMapper;
-import com.yr.system.mapper.SysUserRoleMapper;
-import com.yr.system.service.ISysConfigService;
 import com.yr.system.service.ISysOrgService;
 import com.yr.system.service.ISysUserOrgService;
 import com.yr.system.service.ISysUserDeptService;
@@ -113,16 +109,14 @@ class SysUserServiceImplTransactionTest {
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         SysUserMapper userMapper = mock(SysUserMapper.class);
         ISysUserOrgService userOrgService = mock(ISysUserOrgService.class);
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserWriteService writeTarget = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeProxy);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
         SysUser successUser = buildUser("phase1-success", null);
         SysUser failureUser = buildUser("phase1-failure", null);
 
         setAuthenticatedOrg(66L);
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
             SysUser insertedUser = invocation.getArgument(0);
@@ -153,17 +147,15 @@ class SysUserServiceImplTransactionTest {
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         SysUserMapper userMapper = mock(SysUserMapper.class);
         ISysUserOrgService userOrgService = mock(ISysUserOrgService.class);
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserWriteService writeTarget = new SysUserWriteService(userMapper, userOrgService);
         SysUserWriteService writeProxy = createWriteServiceProxy(writeTarget, transactionManager);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeProxy);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeProxy);
         SysUserServiceImpl userService = buildUserService(userMapper, writeProxy, importService);
         SysUser successUser = buildUser("phase4-success", null);
         SysUser brokenUser = buildUser("phase4-broken", null);
         SysUser untouchedUser = buildUser("phase4-untouched", null);
 
         setAuthenticatedOrg(66L);
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         when(userMapper.insertUser(argThat(user -> user != null && "phase4-success".equals(user.getUserName())))).thenAnswer(invocation -> {
             SysUser insertedUser = invocation.getArgument(0);
@@ -220,9 +212,6 @@ class SysUserServiceImplTransactionTest {
                                                 SysUserImportService importService) {
         return new SysUserServiceImpl(
                 userMapper,
-                mock(SysRoleMapper.class),
-                mock(SysUserRoleMapper.class),
-                mock(SysUserPostMapper.class),
                 mock(ISysUserDeptService.class),
                 mock(ISysOrgService.class),
                 writeProxy,

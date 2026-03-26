@@ -5,15 +5,10 @@
  */
 package com.yr.system.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.core.domain.entity.SysUser;
-import com.yr.common.core.page.PageDomain;
 import com.yr.system.domain.entity.SysUserDept;
-import com.yr.system.domain.entity.SysUserRank;
 import com.yr.system.mapper.SysUserDeptMapper;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysUserRankService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -35,21 +30,17 @@ public class SysUserQueryService {
 
     private final SysUserMapper userMapper;
     private final SysUserDeptMapper sysUserDeptMapper;
-    private final ISysUserRankService sysUserRankService;
 
     /**
      * 构造用户查询服务。
      *
      * @param userMapper 用户 Mapper
      * @param sysUserDeptMapper 用户部门 Mapper
-     * @param sysUserRankService 用户职级服务
      */
     public SysUserQueryService(SysUserMapper userMapper,
-                               SysUserDeptMapper sysUserDeptMapper,
-                               ISysUserRankService sysUserRankService) {
+                               SysUserDeptMapper sysUserDeptMapper) {
         this.userMapper = userMapper;
         this.sysUserDeptMapper = sysUserDeptMapper;
-        this.sysUserRankService = sysUserRankService;
     }
 
     /**
@@ -60,27 +51,8 @@ public class SysUserQueryService {
      */
     @Nullable
     public SysUser getUserById(Long userId) {
-        SysUser sysUser = userMapper.selectUserByUserId(userId);
-        if (sysUser == null) {
-            return null;
-        }
-        List<SysUserRank> userRankList = sysUserRankService.getUserRankByUserId(userId, true);
-        if (CollectionUtils.isNotEmpty(userRankList)) {
-            sysUser.setRankId(userRankList.get(0).getRankId());
-        }
-        return sysUser;
-    }
-
-    /**
-     * 查询未分配到指定接收组的用户集合。
-     *
-     * @param pageDomain 分页参数
-     * @param sysUser 查询参数
-     * @return 分页结果
-     */
-    public IPage<SysUser> queryModeUserGroupInformationCollection(PageDomain pageDomain, SysUser sysUser) {
-        Page<SysUser> pageObject = new Page<>(pageDomain.getPageNum(), pageDomain.getPageSize());
-        return userMapper.queryModeUserGroupInformationCollection(pageObject, sysUser);
+        // 一期详情页不再拼接职级扩展信息，直接返回用户基础数据。
+        return userMapper.selectUserByUserId(userId);
     }
 
     /**
@@ -182,16 +154,6 @@ public class SysUserQueryService {
                         (left, right) -> left,
                         LinkedHashMap::new
                 ));
-    }
-
-    /**
-     * 查询部门角色对应的用户列表。
-     *
-     * @param sysUser 查询参数
-     * @return 用户列表
-     */
-    public List<SysUser> selectUserListByDeptRole(SysUser sysUser) {
-        return userMapper.selectUserListByDeptRole(sysUser);
     }
 
     /**

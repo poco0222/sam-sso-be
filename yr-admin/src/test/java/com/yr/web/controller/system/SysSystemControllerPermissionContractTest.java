@@ -6,7 +6,6 @@
 package com.yr.web.controller.system;
 
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysRole;
 import com.yr.common.core.domain.entity.SysUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,7 +30,6 @@ class SysSystemControllerPermissionContractTest {
      */
     @Test
     void shouldProtectHighRiskSysUserControllerEndpoints() throws NoSuchMethodException {
-        assertProtectedOrAllowlisted(SysUserController.class, "pageQueryModeGroupingObjects", SysUser.class);
         assertProtectedOrAllowlisted(SysUserController.class, "selectSysUserById", String.class);
         assertProtectedOrAllowlisted(SysUserController.class, "batchSelectUserByDeptId", String.class);
         assertProtectedOrAllowlisted(SysUserController.class, "listV2ForAF", SysUser.class);
@@ -46,21 +44,8 @@ class SysSystemControllerPermissionContractTest {
     void shouldProtectHighRiskSysDeptControllerEndpoints() throws NoSuchMethodException {
         assertProtectedOrAllowlisted(SysDeptController.class, "list", SysDept.class);
         assertProtectedOrAllowlisted(SysDeptController.class, "treeselect", SysDept.class);
-        assertProtectedOrAllowlisted(SysDeptController.class, "deptRoletreeselect", SysDept.class);
         assertProtectedOrAllowlisted(SysDeptController.class, "getAllSysDeptForOptions");
         assertProtectedOrAllowlisted(SysDeptController.class, "getChildrenDept", String.class);
-    }
-
-    /**
-     * 验证角色管理额外的角色列表与已分配/未分配用户接口必须声明权限。
-     *
-     * @throws NoSuchMethodException 当方法签名变化时抛出
-     */
-    @Test
-    void shouldProtectRoleAssignmentEndpoints() throws NoSuchMethodException {
-        assertProtectedOrAllowlisted(SysRoleController.class, "listAll", SysRole.class);
-        assertProtectedOrAllowlisted(SysRoleController.class, "allocatedList", SysUser.class);
-        assertProtectedOrAllowlisted(SysRoleController.class, "unallocatedList", SysUser.class);
     }
 
     /**

@@ -9,15 +9,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yr.common.constant.UserConstants;
 import com.yr.common.core.domain.TreeSelect;
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysDeptRoleVo;
-import com.yr.common.core.domain.entity.SysRole;
 import com.yr.common.core.text.Convert;
 import com.yr.common.exception.CustomException;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
 import com.yr.system.domain.entity.SysUserDept;
 import com.yr.system.mapper.SysDeptMapper;
-import com.yr.system.mapper.SysRoleMapper;
 import com.yr.system.mapper.SysUserDeptMapper;
 import com.yr.system.service.ISysDeptService;
 import org.springframework.context.annotation.Lazy;
@@ -38,19 +35,15 @@ import java.util.stream.Collectors;
 public class SysDeptServiceImpl implements ISysDeptService {
     private final SysDeptMapper deptMapper;
 
-    private final SysRoleMapper roleMapper;
-
     private final SysUserDeptMapper sysUserDeptMapper;
 
     /** 通过接口代理保留可能存在的数据权限切面。 */
     private final ISysDeptService selfProxy;
 
     public SysDeptServiceImpl(SysDeptMapper deptMapper,
-                              SysRoleMapper roleMapper,
                               SysUserDeptMapper sysUserDeptMapper,
                               @Lazy ISysDeptService selfProxy) {
         this.deptMapper = deptMapper;
-        this.roleMapper = roleMapper;
         this.sysUserDeptMapper = sysUserDeptMapper;
         this.selfProxy = selfProxy;
     }
@@ -62,7 +55,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
      * @return 部门信息集合
      */
     @Override
-    // @DataScope(deptAlias = "d")
     public List<SysDept> selectDeptList(SysDept dept) {
         if (dept.getOrgId() == null) {
             dept.setOrgId(SecurityUtils.getOrgId());
@@ -125,27 +117,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
         return returnList;
     }
 
-    @Override
-    public List<SysDeptRoleVo> buildDeptRoleTree(List<SysDeptRoleVo> depts) {
-        List<SysDeptRoleVo> returnList = new ArrayList<SysDeptRoleVo>();
-        List<String> tempList = new ArrayList<String>();
-        for (SysDeptRoleVo dept : depts) {
-            tempList.add(dept.getId());
-        }
-        for (Iterator<SysDeptRoleVo> iterator = depts.iterator(); iterator.hasNext(); ) {
-            SysDeptRoleVo dept = (SysDeptRoleVo) iterator.next();
-            // 如果是顶级节点, 遍历该父节点的所有子节点
-            if (!tempList.contains(dept.getParentId())) {
-                recursionFnRole(depts, dept);
-                returnList.add(dept);
-            }
-        }
-        if (returnList.isEmpty()) {
-            returnList = depts;
-        }
-        return returnList;
-    }
-
     /**
      * 构建前端所需要下拉树结构
      *
@@ -156,28 +127,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
     public List<TreeSelect> buildDeptTreeSelect(List<SysDept> depts) {
         List<SysDept> deptTrees = buildDeptTree(depts);
         return deptTrees.stream().map(TreeSelect::new).collect(Collectors.toList());
-    }
-
-    @Override
-    public List<TreeSelect> buildDeptRoleTreeSelect(List<SysDeptRoleVo> sysDeptRoleVos) {
-        List<SysDeptRoleVo> deptTrees = buildDeptRoleTree(sysDeptRoleVos);
-        return deptTrees.stream().map(TreeSelect::new).collect(Collectors.toList());
-    }
-
-    /**
-     * 根据角色ID查询部门树信息
-     *
-     * @param roleId 角色ID
-     * @return 选中部门列表
-     */
-    @Override
-    public List<Integer> selectDeptListByRoleId(Long roleId) {
-        SysRole role = roleMapper.selectRoleById(roleId);
-        // fail-fast（快速失败）：角色缺失直接抛 CustomException，避免 NPE（NullPointerException，空指针异常）泄漏到 controller。
-        if (role == null) {
-            throw new CustomException("角色不存在或已删除: roleId=" + roleId);
-        }
-        return deptMapper.selectDeptListByRoleId(roleId, role.isDeptCheckStrictly());
     }
 
     /**
@@ -356,17 +305,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
         }
     }
 
-    private void recursionFnRole(List<SysDeptRoleVo> list, SysDeptRoleVo t) {
-        // 得到子节点列表
-        List<SysDeptRoleVo> childList = getChildListRole(list, t);
-        t.setChildren(childList);
-        for (SysDeptRoleVo tChild : childList) {
-            if (hasChildRole(list, tChild)) {
-                recursionFnRole(list, tChild);
-            }
-        }
-    }
-
     /**
      * 得到子节点列表
      */
@@ -382,18 +320,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
         return tlist;
     }
 
-    private List<SysDeptRoleVo> getChildListRole(List<SysDeptRoleVo> list, SysDeptRoleVo t) {
-        List<SysDeptRoleVo> tlist = new ArrayList<SysDeptRoleVo>();
-        Iterator<SysDeptRoleVo> it = list.iterator();
-        while (it.hasNext()) {
-            SysDeptRoleVo n = (SysDeptRoleVo) it.next();
-            if (StringUtils.isNotNull(n.getParentId()) && n.getParentId().equals(t.getId())) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
     /**
      * 判断是否有子节点
      */
@@ -401,15 +327,4 @@ public class SysDeptServiceImpl implements ISysDeptService {
         return getChildList(list, t).size() > 0 ? true : false;
     }
 
-    private boolean hasChildRole(List<SysDeptRoleVo> list, SysDeptRoleVo t) {
-        return getChildListRole(list, t).size() > 0 ? true : false;
-    }
-
-    @Override
-    public List<SysDeptRoleVo> selectDeptRoleTreeList(SysDept sysDept) {
-        if (sysDept.getOrgId() == null) {
-            sysDept.setOrgId(SecurityUtils.getOrgId());
-        }
-        return deptMapper.selectDeptRoleTreeList(sysDept);
-    }
 }

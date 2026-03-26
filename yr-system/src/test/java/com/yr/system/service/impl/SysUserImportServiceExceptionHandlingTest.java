@@ -8,7 +8,6 @@ package com.yr.system.service.impl;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.exception.CustomException;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysConfigService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -34,14 +33,12 @@ class SysUserImportServiceExceptionHandlingTest {
      */
     @Test
     void shouldCollectBusinessFailureAndContinueProcessingLaterUsers() {
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserWriteService writeService = mock(SysUserWriteService.class);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeService);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeService);
         SysUser invalidUser = buildUser("phase4-invalid");
         SysUser trailingUser = buildUser("phase4-trailing");
 
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         doThrow(new CustomException("职级不能为空"))
                 .when(writeService)
@@ -62,14 +59,12 @@ class SysUserImportServiceExceptionHandlingTest {
      */
     @Test
     void shouldFailFastWhenUnexpectedRuntimeExceptionOccurs() {
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserWriteService writeService = mock(SysUserWriteService.class);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeService);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeService);
         SysUser brokenUser = buildUser("phase4-broken");
         SysUser untouchedUser = buildUser("phase4-untouched");
 
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         doThrow(new IllegalStateException("db boom")).when(writeService).insertUser(brokenUser);
 

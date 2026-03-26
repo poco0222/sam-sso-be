@@ -38,8 +38,7 @@ class YrSystemSqlContractTest {
      */
     @Test
     void shouldWriteExplicitParenthesesAroundMgmtPlatformBranch() throws IOException {
-        assertMapperContains("SysMenuMapper.xml", "(m.platform='mgmt' or m.platform is null)");
-        assertMapperContains("SysMenuMapper.xml", "(platform='mgmt' or platform is null)");
+        assertMapperPathDoesNotExist("SysMenuMapper.xml");
     }
 
     /**
@@ -51,13 +50,8 @@ class YrSystemSqlContractTest {
     void shouldAvoidSelectStarInHighRiskSystemMappers() throws IOException {
         assertMapperDoesNotProjectWildcardColumns("SysUserMapper.xml");
         assertMapperDoesNotProjectWildcardColumns("SysDeptMapper.xml");
-        assertMapperDoesNotProjectWildcardColumns("SysRoleMapper.xml");
-        assertMapperDoesNotProjectWildcardColumns("SysDutyMapper.xml");
-        assertMapperDoesNotProjectWildcardColumns("SysRankMapper.xml");
         assertMapperDoesNotProjectWildcardColumns("SysOrgMapper.xml");
-        assertMapperDoesNotProjectWildcardColumns("SysPostMapper.xml");
         assertMapperDoesNotProjectWildcardColumns("SysUserDeptMapper.xml");
-        assertMapperDoesNotProjectWildcardColumns("SysUserPostMapper.xml");
     }
 
     /**
@@ -68,21 +62,26 @@ class YrSystemSqlContractTest {
     @Test
     void shouldAvoidDateFormatOnReachableTimeFilters() throws IOException {
         assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "date_format(");
-        assertMapperDoesNotContainIgnoringCase("SysRoleMapper.xml", "date_format(");
-        assertMapperDoesNotContainIgnoringCase("SysConfigMapper.xml", "date_format(");
-        assertMapperDoesNotContainIgnoringCase("SysDictTypeMapper.xml", "date_format(");
+        assertMapperPathDoesNotExist("SysDictTypeMapper.xml");
         assertMapperDoesNotContainIgnoringCase("SysLogininforMapper.xml", "date_format(");
         assertMapperDoesNotContainIgnoringCase("SysOperLogMapper.xml", "date_format(");
     }
 
     /**
-     * 验证部门角色树查询不再依赖非确定性 GROUP BY，避免严格 SQL mode 下失败或宽松模式结果漂移。
+     * 验证一期边界不再继续保留角色部门树与用户角色关系 SQL。
      *
      * @throws IOException 读取资源失败
      */
     @Test
-    void shouldAvoidNonDeterministicGroupByInDeptRoleTreeQuery() throws IOException {
-        assertSelectStatementDoesNotContainIgnoringCase("SysDeptMapper.xml", "selectDeptRoleTreeList", "group by");
+    void shouldRemoveLegacyRoleDrivenSqlFromPhaseOneBoundary() throws IOException {
+        assertMapperPathDoesNotExist("SysUserRoleMapper.xml");
+        assertMapperDoesNotContainIgnoringCase("SysDeptMapper.xml", "selectDeptRoleTreeList");
+        assertMapperDoesNotContainIgnoringCase("SysDeptMapper.xml", "sys_role_dept");
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "selectUserListByDeptRole");
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "selectAllocatedList");
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "selectUnallocatedList");
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "selectUserRoleListByRoleKeysBatch");
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "sys_user_role");
     }
 
     /**
@@ -111,13 +110,9 @@ class YrSystemSqlContractTest {
      * @throws IOException 读取源码失败
      */
     @Test
-    void shouldKeepMessageSenderContractAlignedOnUsername() throws IOException {
-        assertSourceContains(
-                "src/main/java/com/yr/system/service/impl/SysMessageBodyService.java",
-                "sysMessageBody.setMsgFrom(SecurityUtils.getUsername())"
-        );
-        assertMapperContains("SysMessageBodyReceiverMapper.xml", "on smb.msg_from = su.user_name");
-        assertMapperDoesNotContainIgnoringCase("SysMessageBodyReceiverMapper.xml", "on smb.msg_from = su.user_id");
+    void shouldRemoveLegacyMessageSenderPersistenceChainFromPhaseOneBoundary() {
+        assertPathDoesNotExist(Path.of("src", "main", "java", "com", "yr", "system", "service", "impl", "SysMessageBodyService.java"));
+        assertMapperPathDoesNotExist("SysMessageBodyReceiverMapper.xml");
     }
 
     /**
@@ -217,6 +212,32 @@ class YrSystemSqlContractTest {
         assertThat(actualStatementIds)
                 .as("%s 不应继续使用 wildcard projection，实际出现在 %s", mapperFileName, actualStatementIds)
                 .isEmpty();
+    }
+
+    /**
+     * 断言一期已删除的 mapper 文件不再出现在 yr-system 源码目录中。
+     *
+     * @param mapperFileName mapper 文件名
+     */
+    private void assertMapperPathDoesNotExist(String mapperFileName) {
+        Path mapperPath = MODULE_ROOT.resolve(Path.of("src", "main", "resources", "mapper", "system", mapperFileName));
+
+        assertThat(Files.exists(mapperPath))
+                .as("%s 应当已经从一期边界移除", mapperPath)
+                .isFalse();
+    }
+
+    /**
+     * 断言指定源码路径在一期边界内已经被删除。
+     *
+     * @param relativePath 相对 yr-system 模块根目录的路径
+     */
+    private void assertPathDoesNotExist(Path relativePath) {
+        Path sourcePath = MODULE_ROOT.resolve(relativePath);
+
+        assertThat(Files.exists(sourcePath))
+                .as("%s 应当已经从一期边界移除", sourcePath)
+                .isFalse();
     }
 
     /**

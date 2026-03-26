@@ -5,22 +5,18 @@
  */
 package com.yr.system.service.impl;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.yr.common.annotation.DataScope;
 import com.yr.common.constant.UserConstants;
 import com.yr.common.core.domain.entity.SysDept;
 import com.yr.common.core.domain.entity.SysOrg;
-import com.yr.common.core.domain.entity.SysRole;
 import com.yr.common.core.domain.entity.SysUser;
-import com.yr.common.core.page.PageDomain;
 import com.yr.common.exception.CustomException;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
-import com.yr.system.domain.SysPost;
-import com.yr.system.domain.SysUserRole;
-import com.yr.system.domain.entity.*;
-import com.yr.system.mapper.*;
-import com.yr.system.service.*;
+import com.yr.system.domain.entity.SysUserDept;
+import com.yr.system.mapper.SysUserMapper;
+import com.yr.system.service.ISysOrgService;
+import com.yr.system.service.ISysUserDeptService;
+import com.yr.system.service.ISysUserService;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +24,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 用户 业务层处理
@@ -41,12 +37,6 @@ public class SysUserServiceImpl implements ISysUserService {
     private static final Logger log = LoggerFactory.getLogger(SysUserServiceImpl.class);
 
     private final SysUserMapper userMapper;
-
-    private final SysRoleMapper roleMapper;
-
-    private final SysUserRoleMapper userRoleMapper;
-
-    private final SysUserPostMapper userPostMapper;
 
     private final ISysUserDeptService sysUserDeptService;
 
@@ -62,9 +52,6 @@ public class SysUserServiceImpl implements ISysUserService {
      * 使用单一构造器显式声明依赖，避免字段注入带来的隐藏耦合。
      *
      * @param userMapper 用户 Mapper
-     * @param roleMapper 角色 Mapper
-     * @param userRoleMapper 用户角色 Mapper
-     * @param userPostMapper 用户岗位 Mapper
      * @param sysUserDeptService 用户部门服务
      * @param sysOrgService 组织服务
      * @param sysUserWriteService 用户写入服务
@@ -72,18 +59,12 @@ public class SysUserServiceImpl implements ISysUserService {
      * @param sysUserQueryService 用户查询服务
      */
     public SysUserServiceImpl(SysUserMapper userMapper,
-                              SysRoleMapper roleMapper,
-                              SysUserRoleMapper userRoleMapper,
-                              SysUserPostMapper userPostMapper,
                               ISysUserDeptService sysUserDeptService,
                               ISysOrgService sysOrgService,
                               SysUserWriteService sysUserWriteService,
                               SysUserImportService sysUserImportService,
                               SysUserQueryService sysUserQueryService) {
         this.userMapper = userMapper;
-        this.roleMapper = roleMapper;
-        this.userRoleMapper = userRoleMapper;
-        this.userPostMapper = userPostMapper;
         this.sysUserDeptService = sysUserDeptService;
         this.sysOrgService = sysOrgService;
         this.sysUserWriteService = sysUserWriteService;
@@ -99,7 +80,6 @@ public class SysUserServiceImpl implements ISysUserService {
      * @return 用户信息集合信息
      */
     @Override
-    @DataScope(deptAlias = "d", userAlias = "u")
     public List<SysUser> selectUserList(SysUser user) {
         return userMapper.selectUserList(user);
     }
@@ -112,33 +92,6 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     public List<SysUser> selectUserListV2(SysUser user) {
         return userMapper.selectUserListV2(user);
-    }
-
-    /**
-     * 根据条件分页查询已分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    @Override
-    @DataScope(deptAlias = "d", userAlias = "u")
-    public List<SysUser> selectAllocatedList(SysUser user) {
-        return userMapper.selectAllocatedList(user);
-    }
-
-    /**
-     * 根据条件分页查询未分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    @Override
-    @DataScope(deptAlias = "d", userAlias = "u")
-    public List<SysUser> selectUnallocatedList(SysUser user) {
-        if (user.getOrgId() == null) {
-            user.setOrgId(SecurityUtils.getOrgId());
-        }
-        return userMapper.selectUnallocatedList(user);
     }
 
     /**
@@ -204,54 +157,12 @@ public class SysUserServiceImpl implements ISysUserService {
             sysUser.setUserDeptId(sysDept.getUserDeptId());
             sysUser.setIsUserDefaultDept(1);
         }
-        // 查询角色信息
-        List<SysRole> roleList = roleMapper.selectRoleByUserId(sysUser.getUserId(), sysUser.getOrgId());
-        if (CollectionUtils.isNotEmpty(roleList)) {
-            sysUser.setRoles(roleList);
-        }
         return sysUser;
-    }
-
-    /**
-     * 查询用户所属角色组
-     *
-     * @param userName 用户名
-     * @return 结果
-     */
-    @Override
-    public String selectUserRoleGroup(String userName) {
-        List<SysRole> list = roleMapper.selectRolesByUserName(userName);
-        StringJoiner roleNameJoiner = new StringJoiner(",");
-        for (SysRole role : list) {
-            roleNameJoiner.add(role.getRoleName() == null ? "" : role.getRoleName());
-        }
-        return roleNameJoiner.toString();
-    }
-
-    /**
-     * 查询用户所属岗位组
-     *
-     * @param userId 用户名
-     * @return 结果
-     */
-    @Override
-    public List<SysPost> selectUserPostGroup(Long userId, Long orgId) {
-        return Collections.emptyList();
     }
 
     @Override
     public List<SysDept> selectUserDeptListByUserIdAndOrgId(Long userId, Long orgId) {
         return sysUserDeptService.selectDeptByUserIdAndOrgId(userId, orgId, false);
-    }
-
-    @Override
-    public List<SysDuty> selectUserDutyListByUserIdAndOrgId(Long userId, Long orgId) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public SysRank selectUserRankByUserIdAndOrgId(Long userId, Long orgId) {
-        return null;
     }
 
 
@@ -345,11 +256,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void insertUserAuth(Long userId, Long[] roleIds) {
-        List<SysRole> roleList = roleMapper.selectRoleByUserId(userId, SecurityUtils.getOrgId());
-        if (CollectionUtils.isNotEmpty(roleList)) {
-            userRoleMapper.deleteUserRoleByUserId(userId, roleList.stream().map(SysRole::getRoleId).toArray(Long[]::new));
-        }
-        insertUserRole(userId, roleIds);
+        // 一期不再支持用户分配角色，保留空实现以兼容仍存在的方法签名。
     }
 
     /**
@@ -410,28 +317,6 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     /**
-     * 新增用户角色信息
-     *
-     * @param userId  用户ID
-     * @param roleIds 角色组
-     */
-    public void insertUserRole(Long userId, Long[] roleIds) {
-        if (StringUtils.isNotNull(roleIds)) {
-            // 新增用户与角色管理
-            List<SysUserRole> list = new ArrayList<SysUserRole>();
-            for (Long roleId : roleIds) {
-                SysUserRole ur = new SysUserRole();
-                ur.setUserId(userId);
-                ur.setRoleId(roleId);
-                list.add(ur);
-            }
-            if (list.size() > 0) {
-                userRoleMapper.batchUserRole(list);
-            }
-        }
-    }
-
-    /**
      * 批量删除用户信息
      *
      * @param userIds 需要删除的用户ID
@@ -443,10 +328,6 @@ public class SysUserServiceImpl implements ISysUserService {
         for (Long userId : userIds) {
             checkUserAllowed(new SysUser(userId));
         }
-        // 删除用户与角色关联
-        userRoleMapper.deleteUserRole(userIds);
-        // 删除用户与岗位关联
-        userPostMapper.deleteUserPost(userIds);
         return userMapper.deleteUserByIds(userIds);
     }
 
@@ -464,25 +345,9 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
-    public List<SysUser> listPostAssignUserByPostId(Long postId, SysUser sysUser) {
-        return userMapper.listPostAssignUserByPostId(postId, sysUser);
-    }
-
-    @Override
-    public List<SysUser> listUnAssignUserByPostId(Long postId, SysUser sysUser) {
-        return userMapper.listUnAssignUserByPostId(postId, sysUser);
-    }
-
-    @Override
     public SysUser getUserById(Long userId) {
         return sysUserQueryService.getUserById(userId);
     }
-
-    @Override
-    public IPage<SysUser> queryModeUserGroupInformationCollection(PageDomain pageDomain, SysUser sysUser) {
-        return sysUserQueryService.queryModeUserGroupInformationCollection(pageDomain, sysUser);
-    }
-
 
     /**
      * 通过部门查询用户
@@ -514,11 +379,6 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     public Map<Long, List<SysUser>> batchSelectUserByDeptId(Long[] deptIds) {
         return sysUserQueryService.batchSelectUserByDeptId(deptIds);
-    }
-
-    @Override
-    public List<SysUser> selectUserListByDeptRole(SysUser sysUser){
-        return sysUserQueryService.selectUserListByDeptRole(sysUser);
     }
 
 }

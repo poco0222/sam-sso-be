@@ -10,7 +10,6 @@ import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.system.domain.entity.SysUserOrg;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysConfigService;
 import com.yr.system.service.ISysUserOrgService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -60,9 +59,6 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     private SysUserMapper userMapper;
 
     @Autowired
-    private ISysConfigService configService;
-
-    @Autowired
     private ISysUserOrgService userOrgService;
 
     /**
@@ -72,7 +68,7 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
     void tearDown() {
         SecurityContextHolder.clearContext();
         transactionManager.reset();
-        Mockito.reset(userMapper, configService, userOrgService);
+        Mockito.reset(userMapper, userOrgService);
     }
 
     /**
@@ -85,7 +81,6 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
         SysUser user = buildUser("spring-integration", null);
 
         setAuthenticatedUser(77L, 88L, "spring-tester");
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         when(userMapper.insertUser(any(SysUser.class))).thenAnswer(invocation -> {
             userInsertInTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
@@ -170,14 +165,6 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
         }
 
         /**
-         * @return 配置服务 mock
-         */
-        @Bean
-        ISysConfigService configService() {
-            return mock(ISysConfigService.class);
-        }
-
-        /**
          * @return 用户组织服务 mock
          */
         @Bean
@@ -198,10 +185,9 @@ class SysUserWriteServiceSpringWiringIntegrationTest {
          * @return Spring 管理的用户导入服务
          */
         @Bean
-        SysUserImportService sysUserImportService(ISysConfigService configService,
-                                                  SysUserMapper userMapper,
+        SysUserImportService sysUserImportService(SysUserMapper userMapper,
                                                   SysUserWriteService sysUserWriteService) {
-            return new SysUserImportService(configService, userMapper, sysUserWriteService);
+            return new SysUserImportService("Init@123", userMapper, sysUserWriteService);
         }
     }
 

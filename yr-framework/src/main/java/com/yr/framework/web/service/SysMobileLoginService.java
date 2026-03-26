@@ -1,3 +1,8 @@
+/**
+ * @file 移动登录服务，保留现有认证入口并移除一期外的角色依赖
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.framework.web.service;
 
 import com.yr.common.constant.Constants;
@@ -13,7 +18,6 @@ import com.yr.common.utils.StringUtils;
 import com.yr.framework.manager.AsyncManager;
 import com.yr.framework.manager.factory.AsyncFactory;
 import com.yr.system.domain.LoginParams;
-import com.yr.system.service.ISysRoleService;
 import com.yr.system.service.ISysUserService;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,9 +48,6 @@ public class SysMobileLoginService {
 
     @Autowired(required = false)
     private SysLoginService sysLoginService;
-
-    @Autowired(required = false)
-    private ISysRoleService sysRoleService;
 
     @Autowired(required = false)
     private AuthenticationManager authenticationManager;

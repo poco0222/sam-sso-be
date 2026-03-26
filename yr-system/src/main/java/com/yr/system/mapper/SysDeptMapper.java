@@ -6,7 +6,6 @@
 package com.yr.system.mapper;
 
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysDeptRoleVo;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -25,15 +24,6 @@ public interface SysDeptMapper {
      * @return 部门信息集合
      */
     public List<SysDept> selectDeptList(SysDept dept);
-
-    /**
-     * 根据角色ID查询部门树信息
-     *
-     * @param roleId            角色ID
-     * @param deptCheckStrictly 部门树选择项是否关联显示
-     * @return 选中部门列表
-     */
-    public List<Integer> selectDeptListByRoleId(@Param("roleId") Long roleId, @Param("deptCheckStrictly") boolean deptCheckStrictly);
 
     /**
      * 根据部门ID查询信息
@@ -154,8 +144,6 @@ public interface SysDeptMapper {
      * @Return java.util.List<com.yr.common.core.domain.entity.SysDept>
      */
     List<SysDept> selectSysDeptByDeptCodeBatch(String[] deptCodes);
-
-    List<SysDeptRoleVo> selectDeptRoleTreeList(SysDept sysDept);
 
     /**
      * @CodingBy PopoY

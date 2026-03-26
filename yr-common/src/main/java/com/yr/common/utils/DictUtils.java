@@ -1,23 +1,39 @@
+/**
+ * @file 一期边界下的字典缓存兼容工具
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.common.utils;
 
 import com.yr.common.constant.Constants;
-import com.yr.common.core.domain.entity.SysDictData;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.common.utils.spring.SpringUtils;
+import org.springframework.beans.BeanWrapper;
+import org.springframework.beans.BeanWrapperImpl;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 字典工具类
+ * 字典工具类。
  *
- * @author Youngron
+ * 身份中心一期已经移除了 dict（字典）模块，这里只保留对历史缓存结构的兼容读取，
+ * 避免 `yr-common` 再直接依赖已删除的 `SysDictData` 类型。
  */
 public class DictUtils {
     /**
      * 分隔符
      */
     public static final String SEPARATOR = ",";
+    /**
+     * 历史字典对象中的标签属性名。
+     */
+    private static final String DICT_LABEL_FIELD = "dictLabel";
+    /**
+     * 历史字典对象中的值属性名。
+     */
+    private static final String DICT_VALUE_FIELD = "dictValue";
 
     /**
      * 设置字典缓存
@@ -25,7 +41,7 @@ public class DictUtils {
      * @param key       参数键
      * @param dictDatas 字典数据列表
      */
-    public static void setDictCache(String key, List<SysDictData> dictDatas) {
+    public static void setDictCache(String key, List<?> dictDatas) {
         SpringUtils.getBean(RedisCache.class).setCacheObject(getCacheKey(key), dictDatas);
     }
 
@@ -35,10 +51,10 @@ public class DictUtils {
      * @param key 参数键
      * @return dictDatas 字典数据列表
      */
-    public static List<SysDictData> getDictCache(String key) {
+    public static List<?> getDictCache(String key) {
         Object cacheObj = SpringUtils.getBean(RedisCache.class).getCacheObject(getCacheKey(key));
         if (StringUtils.isNotNull(cacheObj)) {
-            List<SysDictData> dictDatas = StringUtils.cast(cacheObj);
+            List<?> dictDatas = StringUtils.cast(cacheObj);
             return dictDatas;
         }
         return null;
@@ -76,21 +92,25 @@ public class DictUtils {
      */
     public static String getDictLabel(String dictType, String dictValue, String separator) {
         StringBuilder propertyString = new StringBuilder();
-        List<SysDictData> datas = getDictCache(dictType);
+        List<?> datas = getDictCache(dictType);
+
+        if (StringUtils.isEmpty(dictValue) || StringUtils.isEmpty(datas)) {
+            return StringUtils.EMPTY;
+        }
 
         if (StringUtils.containsAny(separator, dictValue) && StringUtils.isNotEmpty(datas)) {
-            for (SysDictData dict : datas) {
+            for (Object dict : datas) {
                 for (String value : dictValue.split(separator)) {
-                    if (value.equals(dict.getDictValue())) {
-                        propertyString.append(dict.getDictLabel() + separator);
+                    if (value.equals(readDictValue(dict))) {
+                        propertyString.append(readDictLabel(dict)).append(separator);
                         break;
                     }
                 }
             }
         } else {
-            for (SysDictData dict : datas) {
-                if (dictValue.equals(dict.getDictValue())) {
-                    return dict.getDictLabel();
+            for (Object dict : datas) {
+                if (dictValue.equals(readDictValue(dict))) {
+                    return readDictLabel(dict);
                 }
             }
         }
@@ -107,21 +127,25 @@ public class DictUtils {
      */
     public static String getDictValue(String dictType, String dictLabel, String separator) {
         StringBuilder propertyString = new StringBuilder();
-        List<SysDictData> datas = getDictCache(dictType);
+        List<?> datas = getDictCache(dictType);
+
+        if (StringUtils.isEmpty(dictLabel) || StringUtils.isEmpty(datas)) {
+            return StringUtils.EMPTY;
+        }
 
         if (StringUtils.containsAny(separator, dictLabel) && StringUtils.isNotEmpty(datas)) {
-            for (SysDictData dict : datas) {
+            for (Object dict : datas) {
                 for (String label : dictLabel.split(separator)) {
-                    if (label.equals(dict.getDictLabel())) {
-                        propertyString.append(dict.getDictValue() + separator);
+                    if (label.equals(readDictLabel(dict))) {
+                        propertyString.append(readDictValue(dict)).append(separator);
                         break;
                     }
                 }
             }
         } else {
-            for (SysDictData dict : datas) {
-                if (dictLabel.equals(dict.getDictLabel())) {
-                    return dict.getDictValue();
+            for (Object dict : datas) {
+                if (dictLabel.equals(readDictLabel(dict))) {
+                    return readDictValue(dict);
                 }
             }
         }
@@ -153,5 +177,46 @@ public class DictUtils {
      */
     public static String getCacheKey(String configKey) {
         return Constants.SYS_DICT_KEY + configKey;
+    }
+
+    /**
+     * 兼容读取缓存对象中的字典标签字段。
+     *
+     * @param dict 缓存中的单条字典对象
+     * @return 字典标签
+     */
+    private static String readDictLabel(Object dict) {
+        return readDictField(dict, DICT_LABEL_FIELD);
+    }
+
+    /**
+     * 兼容读取缓存对象中的字典值字段。
+     *
+     * @param dict 缓存中的单条字典对象
+     * @return 字典值
+     */
+    private static String readDictValue(Object dict) {
+        return readDictField(dict, DICT_VALUE_FIELD);
+    }
+
+    /**
+     * 以 Map（映射）或 JavaBean（Java Bean）方式读取历史字典缓存字段。
+     *
+     * @param dict 缓存中的单条字典对象
+     * @param fieldName 目标字段名
+     * @return 字段值字符串；不存在时返回空串
+     */
+    private static String readDictField(Object dict, String fieldName) {
+        if (dict instanceof Map<?, ?> dictMap) {
+            Object fieldValue = dictMap.get(fieldName);
+            return fieldValue == null ? StringUtils.EMPTY : String.valueOf(fieldValue);
+        }
+        try {
+            BeanWrapper beanWrapper = new BeanWrapperImpl(dict);
+            Object fieldValue = beanWrapper.getPropertyValue(fieldName);
+            return fieldValue == null ? StringUtils.EMPTY : String.valueOf(fieldValue);
+        } catch (Exception ex) {
+            return StringUtils.EMPTY;
+        }
     }
 }

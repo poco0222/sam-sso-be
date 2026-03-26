@@ -5,30 +5,13 @@
  */
 package com.yr.system.architecture;
 
-import com.yr.system.component.message.impl.WebMessageServiceImpl;
-import com.yr.system.service.impl.SysCodeRuleDetailServiceImpl;
-import com.yr.system.service.impl.SysCodeRuleValueServiceImpl;
 import com.yr.system.service.impl.SysDeptServiceImpl;
-import com.yr.system.service.impl.SysDictDataServiceImpl;
-import com.yr.system.service.impl.SysDutyServiceImpl;
-import com.yr.system.service.impl.SysFileServiceImpl;
 import com.yr.system.service.impl.SysLogininforServiceImpl;
-import com.yr.system.service.impl.SysLovFieldServiceImpl;
-import com.yr.system.service.impl.SysLovTypeServiceImpl;
-import com.yr.system.service.impl.SysMenuServiceImpl;
-import com.yr.system.service.impl.SysNoticeServiceImpl;
 import com.yr.system.service.impl.SysOperLogServiceImpl;
 import com.yr.system.service.impl.SysOrgServiceImpl;
-import com.yr.system.service.impl.SysPostServiceImpl;
-import com.yr.system.service.impl.SysRankServiceImpl;
-import com.yr.system.service.impl.SysReceiveGroupService;
-import com.yr.system.service.impl.SysRoleServiceImpl;
 import com.yr.system.service.impl.SysUserDeptServiceImpl;
 import com.yr.system.service.impl.SysUserDprServiceImpl;
-import com.yr.system.service.impl.SysUserDutyServiceImpl;
 import com.yr.system.service.impl.SysUserOrgServiceImpl;
-import com.yr.system.service.impl.SysUserRankServiceImpl;
-import com.yr.system.utils.CodeRuleUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -51,7 +34,7 @@ class YrSystemConstructorInjectionAuditTest {
     void shouldTrackAllPendingConstructorInjectionTargets() {
         assertThat(pendingConstructorInjectionTargets())
                 .as("Phase 3 字段注入迁移清单应保持稳定")
-                .hasSize(24);
+                .hasSize(7);
     }
 
     /**
@@ -77,30 +60,13 @@ class YrSystemConstructorInjectionAuditTest {
      */
     private List<Class<?>> pendingConstructorInjectionTargets() {
         return List.of(
-                CodeRuleUtils.class,
-                WebMessageServiceImpl.class,
-                SysCodeRuleDetailServiceImpl.class,
-                SysCodeRuleValueServiceImpl.class,
                 SysDeptServiceImpl.class,
-                SysDictDataServiceImpl.class,
-                SysDutyServiceImpl.class,
-                SysFileServiceImpl.class,
                 SysLogininforServiceImpl.class,
-                SysLovFieldServiceImpl.class,
-                SysLovTypeServiceImpl.class,
-                SysMenuServiceImpl.class,
-                SysNoticeServiceImpl.class,
                 SysOperLogServiceImpl.class,
                 SysOrgServiceImpl.class,
-                SysPostServiceImpl.class,
-                SysRankServiceImpl.class,
-                SysReceiveGroupService.class,
-                SysRoleServiceImpl.class,
                 SysUserDeptServiceImpl.class,
                 SysUserDprServiceImpl.class,
-                SysUserDutyServiceImpl.class,
-                SysUserOrgServiceImpl.class,
-                SysUserRankServiceImpl.class
+                SysUserOrgServiceImpl.class
         );
     }
 

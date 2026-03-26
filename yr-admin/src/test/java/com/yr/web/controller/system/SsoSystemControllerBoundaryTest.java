@@ -150,6 +150,26 @@ class SsoSystemControllerBoundaryTest {
     }
 
     /**
+     * 验证一期保留 controller 不再继续暴露基于角色的旧筛选入口。
+     *
+     * @throws IOException 读取源码失败时抛出
+     */
+    @Test
+    void shouldNotExposeLegacyRoleDrivenEndpointsInsideRetainedControllers() throws IOException {
+        String deptControllerSource = Files.readString(SYSTEM_CONTROLLER_DIR.resolve("SysDeptController.java"));
+        String userControllerSource = Files.readString(SYSTEM_CONTROLLER_DIR.resolve("SysUserController.java"));
+
+        assertThat(deptControllerSource)
+                .as("SysDeptController 不应继续暴露角色部门树旧入口")
+                .doesNotContain("deptRoletreeselect")
+                .doesNotContain("roleDeptTreeselect");
+
+        assertThat(userControllerSource)
+                .as("SysUserController 不应继续暴露基于角色的用户筛选旧入口")
+                .doesNotContain("selectUserListByDeptRole");
+    }
+
+    /**
      * 列出 system controller 目录下的所有 Java 文件名。
      *
      * @return controller 文件名集合

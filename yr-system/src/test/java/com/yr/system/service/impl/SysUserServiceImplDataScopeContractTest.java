@@ -1,18 +1,19 @@
 /**
- * @file 验证 SysUserServiceImpl 用户列表与角色分配查询必须声明数据范围过滤契约
+ * @file 验证 SysUserServiceImpl 一期边界内不再保留角色筛选与 DataScope 旧契约
  * @author PopoY
  * @date 2026-03-24
  */
 package com.yr.system.service.impl;
 
-import com.yr.common.annotation.DataScope;
 import com.yr.common.core.domain.entity.SysUser;
+import com.yr.system.service.ISysUserService;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -21,99 +22,51 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * SysUserServiceImpl 数据范围契约测试。
+ * SysUserServiceImpl 一期边界契约测试。
  */
 class SysUserServiceImplDataScopeContractTest {
 
     /**
-     * 验证用户列表查询方法保留部门与用户两个维度的数据范围注解。
+     * 验证一期用户列表查询不再依赖角色数据权限切面。
      *
      * @throws NoSuchMethodException 当目标方法签名变化时抛出
      */
     @Test
-    void shouldDeclareDataScopeOnSelectUserList() throws NoSuchMethodException {
+    void shouldNotDeclareDataScopeOnSelectUserList() throws NoSuchMethodException {
         Method method = SysUserServiceImpl.class.getMethod("selectUserList", SysUser.class);
-        DataScope dataScope = method.getAnnotation(DataScope.class);
-
-        assertThat(dataScope).isNotNull();
-        assertThat(dataScope.deptAlias()).isEqualTo("d");
-        assertThat(dataScope.userAlias()).isEqualTo("u");
+        assertThat(method.getAnnotationsByType(com.yr.common.annotation.DataScope.class))
+                .as("selectUserList 不应继续依赖 DataScope 注解")
+                .isEmpty();
     }
 
     /**
-     * 验证角色用户已分配/未分配查询同样保留 DataScope 注解，避免直接绕过权限切面。
-     *
-     * @throws NoSuchMethodException 当目标方法签名变化时抛出
+     * 验证一期用户服务契约不再继续暴露基于角色的用户筛选接口。
      */
     @Test
-    void shouldDeclareDataScopeOnRoleAllocationQueries() throws NoSuchMethodException {
-        assertDataScopeAliases(SysUserServiceImpl.class.getMethod("selectAllocatedList", SysUser.class));
-        assertDataScopeAliases(SysUserServiceImpl.class.getMethod("selectUnallocatedList", SysUser.class));
+    void shouldNotKeepLegacyRoleDrivenUserQueryContracts() {
+        assertThat(Arrays.stream(ISysUserService.class.getMethods()).map(Method::getName).toList())
+                .as("ISysUserService 不应继续暴露基于角色的用户筛选方法")
+                .doesNotContain("selectUserListByDeptRole");
     }
 
     /**
-     * 验证角色用户已分配/未分配 SQL 都显式接入 `${params.dataScope}`，防止注解存在但 SQL 未消费。
+     * 验证一期用户查询 SQL 不再继续依赖角色分配与用户角色关系表。
      *
      * @throws IOException 读取 mapper 失败
      */
     @Test
-    void shouldConsumeDataScopePlaceholderInRoleAllocationMappers() throws IOException {
-        assertSelectStatementContainsIgnoringCase("SysUserMapper.xml", "selectAllocatedList", "${params.dataScope}");
-        assertSelectStatementContainsIgnoringCase("SysUserMapper.xml", "selectUnallocatedList", "${params.dataScope}");
-    }
+    void shouldNotKeepLegacyRoleDrivenUserQueryMappers() throws IOException {
+        String mapperContent = normalizeWhitespace(loadMapperFromClasspath("SysUserMapper.xml")).toLowerCase(Locale.ROOT);
 
-    /**
-     * 断言给定方法上的 DataScope 别名保持一致。
-     *
-     * @param method 待断言的方法
-     */
-    private void assertDataScopeAliases(Method method) {
-        DataScope dataScope = method.getAnnotation(DataScope.class);
-
-        assertThat(dataScope)
-                .as("%s 应声明 DataScope 注解", method.getName())
-                .isNotNull();
-        assertThat(dataScope.deptAlias()).isEqualTo("d");
-        assertThat(dataScope.userAlias()).isEqualTo("u");
-    }
-
-    /**
-     * 断言指定 select statement 包含大小写不敏感的目标文本。
-     *
-     * @param mapperFileName mapper 文件名
-     * @param statementId select ID
-     * @param expectedText 期待文本
-     * @throws IOException 读取 mapper 失败
-     */
-    private void assertSelectStatementContainsIgnoringCase(String mapperFileName,
-                                                           String statementId,
-                                                           String expectedText) throws IOException {
-        String statementBody = normalizeWhitespace(loadSelectStatementBody(mapperFileName, statementId)).toLowerCase(Locale.ROOT);
-        String normalizedExpected = normalizeWhitespace(expectedText).toLowerCase(Locale.ROOT);
-
-        assertThat(statementBody)
-                .as("%s#%s 应包含 %s", mapperFileName, statementId, expectedText)
-                .contains(normalizedExpected);
-    }
-
-    /**
-     * 读取指定 mapper 中某个 select statement 的原始 XML。
-     *
-     * @param mapperFileName mapper 文件名
-     * @param statementId select 语句 ID
-     * @return 原始 XML 片段
-     * @throws IOException 读取 mapper 失败
-     */
-    private String loadSelectStatementBody(String mapperFileName, String statementId) throws IOException {
-        String mapperContent = loadMapperFromClasspath(mapperFileName);
-        Matcher matcher = Pattern.compile(
-                "<select\\s+id=\"" + Pattern.quote(statementId) + "\"[^>]*>(.*?)</select>",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-        ).matcher(mapperContent);
-        if (!matcher.find()) {
-            throw new IllegalStateException(mapperFileName + " 中不存在 select#" + statementId);
-        }
-        return matcher.group(1);
+        assertThat(mapperContent)
+                .as("SysUserMapper.xml 不应继续保留角色分配、角色筛选与职级联表 SQL")
+                .doesNotContain("select id=\"selectallocatedlist\"")
+                .doesNotContain("select id=\"selectunallocatedlist\"")
+                .doesNotContain("select id=\"selectuserlistbydeptrole\"")
+                .doesNotContain("select id=\"selectuserrolelistbyrolekeysbatch\"")
+                .doesNotContain("sys_user_rank")
+                .doesNotContain("sys_rank")
+                .doesNotContain("sys_user_role");
     }
 
     /**

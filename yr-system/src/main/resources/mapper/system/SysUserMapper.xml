@@ -28,11 +28,8 @@
         <result property="orgName" column="org_name"/>
         <result property="userDeptId" column="user_dept_id"/>
         <result property="isUserDefaultDept" column="is_user_default_dept"/>
-        <result property="userDutyId" column="user_duty_id"/>
-        <result property="rankId" column="rank_id"/>
         <result property="approveLogin" column="approve_login"/>
         <association property="dept" column="dept_id" javaType="SysDept" resultMap="deptResult"/>
-        <collection property="roles" javaType="java.util.List" resultMap="RoleResult"/>
     </resultMap>
 
     <resultMap id="deptResult" type="SysDept">
@@ -42,15 +39,6 @@
         <result property="orderNum" column="order_num"/>
         <result property="leader" column="leader"/>
         <result property="status" column="dept_status"/>
-    </resultMap>
-
-    <resultMap id="RoleResult" type="SysRole">
-        <id property="roleId" column="role_id"/>
-        <result property="roleName" column="role_name"/>
-        <result property="roleKey" column="role_key"/>
-        <result property="roleSort" column="role_sort"/>
-        <result property="dataScope" column="data_scope"/>
-        <result property="status" column="role_status"/>
     </resultMap>
 
     <!-- PopoY: 抽取 sys_user 基础列，逐步替换高风险星号查询。 -->
@@ -187,14 +175,10 @@
     <select id="selectUserListV2" parameterType="com.yr.common.core.domain.entity.SysUser"
             resultType="com.yr.common.core.domain.entity.SysUser">
         SELECT
-        <include refid="selectUserBaseColumnsWithResolvedOrgName"/>,
-        sr.id as rank_id,
-        sr.rank_name
+        <include refid="selectUserBaseColumnsWithResolvedOrgName"/>
         FROM sys_user su
         JOIN sys_user_org suo on su.user_id = suo.user_id AND suo.org_id = #{orgId}
         JOIN sys_org so on suo.org_id = so.org_id
-        LEFT JOIN sys_user_rank sur on su.user_id = sur.user_id
-        LEFT JOIN sys_rank sr on sur.rank_id = sr.id AND sr.org_id = #{orgId}
         WHERE
         su.del_flag = '0'
         <if test="nickName != null and nickName != ''">
@@ -226,57 +210,6 @@
             t.ancestors, ',') LIKE CONCAT('%,', #{deptId}, ',%') ) )
             )
         </if>
-    </select>
-
-    <select id="selectUserListByDeptRole" parameterType="com.yr.common.core.domain.entity.SysUser"
-            resultType="com.yr.common.core.domain.entity.SysUser">
-        SELECT so.org_name,
-               sr.id as rank_id,
-               sr.rank_name,
-               <include refid="selectUserBaseColumns"/>
-        FROM sys_user_dept sud
-                 LEFT JOIN sys_user_role sur on sud.user_id = sur.user_id
-                 LEFT JOIN sys_user as su on su.user_id = sur.user_id
-                 JOIN sys_user_org suo on su.user_id = suo.user_id AND suo.org_id = #{orgId}
-                 JOIN sys_org so on suo.org_id = so.org_id
-                 LEFT JOIN sys_user_rank sura on su.user_id = sura.user_id
-                 LEFT JOIN sys_rank sr on sura.rank_id = sr.id AND sr.org_id = #{orgId}
-        WHERE sud.dept_id = #{deptId}
-          and sur.role_id = #{roleId}
-          and su.user_id is not null
-          and su.del_flag = 0
-    </select>
-
-    <!-- PopoY: 角色分配查询显式消费 DataScope，避免 service 注解存在但 SQL 未生效。 -->
-    <select id="selectAllocatedList" parameterType="SysUser" resultType="com.yr.common.core.domain.entity.SysUser">
-        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
-        from sys_user u
-        left join sys_dept d on u.dept_id = d.dept_id
-        join sys_user_role ur on u.user_id = ur.user_id and ur.role_id = #{roleId}
-        where u.del_flag = '0'
-        <if test="userName != null and userName != ''">
-            AND u.user_name like concat('%', #{userName}, '%')
-        </if>
-        <if test="phonenumber != null and phonenumber != ''">
-            AND u.phonenumber like concat('%', #{phonenumber}, '%')
-        </if>
-        ${params.dataScope}
-    </select>
-
-    <select id="selectUnallocatedList" parameterType="SysUser" resultType="com.yr.common.core.domain.entity.SysUser">
-        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
-        from sys_user u
-        left join sys_dept d on u.dept_id = d.dept_id
-        join sys_user_org suo on u.user_id = suo.user_id and suo.org_id = #{orgId}
-        where u.del_flag = '0'
-        and u.user_id not in (select sur.user_id from sys_user_role sur where sur.role_id = #{roleId})
-        <if test="nickName != null and nickName != ''">
-            AND u.nick_name like concat('%', #{nickName}, '%')
-        </if>
-        <if test="phonenumber != null and phonenumber != ''">
-            AND u.phonenumber like concat('%', #{phonenumber}, '%')
-        </if>
-        ${params.dataScope}
     </select>
 
     <select id="selectUserByUserName" parameterType="String" resultMap="SysUserResult">
@@ -409,72 +342,6 @@
         </foreach>
     </delete>
 
-    <select id="listPostAssignUserByPostId" resultMap="SysUserResult">
-        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time
-        FROM sys_user su
-        JOIN sys_user_post sup on su.user_id = sup.user_id
-        WHERE sup.post_id = #{postId}
-        <if test="param.userName != null and param.userName != ''">
-            AND su.user_name like concat('%', #{param.userName}, '%')
-        </if>
-        <if test="param.phonenumber != null and param.phonenumber != ''">
-            AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
-        </if>
-    </select>
-
-    <select id="listUnAssignUserByPostId" resultMap="SysUserResult">
-        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time
-        FROM sys_user su
-        JOIN sys_user_org suo on su.user_id = suo.user_id and suo.enabled = 1
-        WHERE
-        suo.org_id = (
-        select org_id from sys_post where post_id = #{postId}
-        )
-        AND su.user_id not in (
-        select sup.user_id
-        from sys_user_post sup
-        where sup.post_id = #{postId}
-        )
-        <if test="param.userName != null and param.userName != ''">
-            AND su.user_name like concat('%', #{param.userName}, '%')
-        </if>
-        <if test="param.phonenumber != null and param.phonenumber != ''">
-            AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
-        </if>
-    </select>
-
-
-    <!-- PopoY: 使用 <where> 收口可选条件与固定 not in 条件，避免前置 AND 造成非法 SQL。 -->
-    <select id="queryModeUserGroupInformationCollection"
-            resultMap="SysUserResult">
-        SELECT su.user_id, su.user_name, su.nick_name, su.email, su.phonenumber, su.status, su.create_time
-        FROM sys_user su
-        <where>
-            <if test="param.userName != null and param.userName != ''">
-                AND su.user_name like concat('%', #{param.userName}, '%')
-            </if>
-            <if test="param.phonenumber != null and param.phonenumber != ''">
-                AND su.phonenumber like concat('%', #{param.phonenumber}, '%')
-            </if>
-            AND su.user_id not in (
-                SELECT srgo.re_object_id as id
-                from sys_receive_group_object srgo
-                left join sys_receive_group srg on srg.id = srgo.re_group_id and srg.re_mode = 'USER_GROUP'
-                where srgo.re_group_id = #{param.reGroupId}
-            )
-        </where>
-    </select>
-
-
-    <select id="selectUserNameByPostCodeAndDeptId" resultType="String">
-        SELECT user_name
-        FROM sys_post p
-                 left join sys_user_post up on p.post_id = up.post_id
-                 left join sys_user u on up.user_id = u.user_id
-        where post_code = #{param1}
-          and dept_id = #{param2}
-    </select>
-
     <select id="selectSysUserById" parameterType="String" resultType="com.yr.common.core.domain.entity.SysUser">
         select
         <include refid="selectUserBaseColumns"/>
@@ -559,38 +426,6 @@
           and su.user_name = #{userName}
     </select>
 
-    <select id="selectUserByDeptAndPost" resultMap="SysUserResult" parameterType="String">
-        SELECT su.user_id, su.user_name, su.nick_name
-        FROM sys_user su
-        JOIN sys_user_post sup on su.user_id = sup.user_id
-        where su.status = 0
-        and su.del_flag = 0
-        <if test="postId != '' and postId != null">
-            and sup.post_id = #{postId}
-        </if>
-        <if test="deptId != '' and deptId != null">
-            and su.user_id IN
-            (select user_id from sys_user_dept
-            where dept_id IN (select dept_id from sys_dept
-            where dept_id = #{deptId}
-            or parent_id = #{deptId})
-            and is_default = '1')
-        </if>
-    </select>
-
-    <select id="selectUserRoleListByRoleKeysBatch" parameterType="String" resultType="sysUser">
-        select
-        <include refid="selectUserBaseColumns"/>
-        from sys_user su
-        where su.user_id in (select user_id
-        from sys_user_role
-        where role_id in (select role_id from sys_role where role_key in
-        <foreach collection="array" item="roleKey" open="(" separator="," close=")">
-            #{roleKey}
-        </foreach>
-        ))
-    </select>
-
     <select id="getChildDeptUser" parameterType="java.lang.String" resultType="com.yr.common.core.domain.entity.SysUser">
         WITH target_dept AS (SELECT dept_id
                              FROM sys_dept
@@ -607,26 +442,4 @@
           AND su.del_flag = 0
         order by su.user_name
     </select>
-    <!-- 查询技术中心下所有在职用户 -->
-    <select id="selectTechCenterActiveUsers" resultType="com.yr.common.core.domain.entity.SysUser">
-        SELECT u.user_id,
-               user_name,
-               nick_name,
-               ud.dept_id,
-               d.dept_name
-        FROM sys_user u
-                 INNER JOIN sys_user_dept ud
-                            ON u.user_id = ud.user_id
-                                AND ud.is_default = 1
-                 INNER JOIN sys_dept d
-                            ON ud.dept_id = d.dept_id
-                 INNER JOIN sys_user_post up
-                            ON u.user_id = up.user_id
-                                AND up.post_id = 29
-        WHERE d.dept_id IN (13, 38, 39, 40, 71, 70)
-          AND u.status = '0'
-          AND u.del_flag = '0'
-        order by ud.dept_id
-    </select>
-
 </mapper>

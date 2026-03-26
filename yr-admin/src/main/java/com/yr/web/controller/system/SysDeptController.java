@@ -10,7 +10,6 @@ import com.yr.common.constant.UserConstants;
 import com.yr.common.core.controller.BaseController;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.domain.entity.SysDept;
-import com.yr.common.core.domain.entity.SysDeptRoleVo;
 import com.yr.common.enums.BusinessType;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
@@ -102,38 +101,6 @@ public class SysDeptController extends BaseController {
             }
         }
         return AjaxResult.success(deptService.buildDeptTreeSelect(depts));
-    }
-
-    @PreAuthorize("@ss.hasPermi('system:dept:list')")
-    @GetMapping("/deptRoletreeselect")
-    public AjaxResult deptRoletreeselect(SysDept dept) {
-        List<SysDeptRoleVo> depts = deptService.selectDeptRoleTreeList(dept);
-        /*
-         * 1、查询物料大类别；
-         * 2、找出部门表最大id；
-         * 3、根据ID、parID找出depts的最末端节点；
-         * 4、循环在最末端节点下增加大类别；形成新的depts，
-         * （1）准备ID
-         * （）
-         * */
-        for (SysDeptRoleVo ll : depts) {
-            if (ll.getAccounteUnit() != null && ll.getAccounteUnit() != "" && ll.getAccounteUnit().equals("0")) {
-                ll.setTreeName(ll.getTreeName() + "(核算单位)");
-            }
-        }
-        return AjaxResult.success(deptService.buildDeptRoleTreeSelect(depts));
-    }
-
-    /**
-     * 加载对应角色部门列表树
-     */
-    @GetMapping(value = "/roleDeptTreeselect/{roleId}")
-    public AjaxResult roleDeptTreeselect(@PathVariable("roleId") Long roleId) {
-        List<SysDept> depts = deptService.selectDeptList(new SysDept());
-        AjaxResult ajax = AjaxResult.success();
-        ajax.put("checkedKeys", deptService.selectDeptListByRoleId(roleId));
-        ajax.put("depts", deptService.buildDeptTreeSelect(depts));
-        return ajax;
     }
 
     /**

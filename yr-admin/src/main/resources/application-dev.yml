@@ -15,6 +15,8 @@ yr:
   # 一期阶段通过应用配置固定控制验证码开关，避免依赖系统参数模块
   captcha:
     enabled: ${CAPTCHA_ENABLED:true}
+  user:
+    initPassword: ${YR_USER_INIT_PASSWORD:Init@123}
   # 验证码类型 math 数组计算 char 字符验证
   captchaType: ${CAPTCHA_TYPE:math}
 

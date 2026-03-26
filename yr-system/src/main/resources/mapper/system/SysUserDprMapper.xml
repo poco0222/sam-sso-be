@@ -12,45 +12,12 @@
         WHERE sd.dept_id = #{deptId}
     </select>
 
-    <select id="listUserByPostId" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
-        SELECT su.*, sp.*
-        FROM sys_user su
-                 JOIN sys_user_post sup on su.user_id = sup.user_id
-                 JOIN sys_post sp on sup.post_id = sp.post_id
-        WHERE sp.post_id = #{postId}
-    </select>
-
-    <select id="listUserByRoleId" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
-        SELECT su.*, sr.*
-        FROM sys_user su
-                 JOIN sys_user_role sur on su.user_id = sur.user_id
-                 JOIN sys_role sr on sur.role_id = sr.role_id
-        WHERE sr.role_id = #{roleId}
-    </select>
-
-
     <select id="listUserByDeptCode" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
         SELECT su.*, sd.*
         FROM sys_user su
                  JOIN sys_user_dept sud on su.user_id = sud.user_id
                  JOIN sys_dept sd on sud.dept_id = sd.dept_id
         WHERE sd.dept_code = #{deptCode}
-    </select>
-
-    <select id="listUserByPostCode" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
-        SELECT su.*, sp.*
-        FROM sys_user su
-                 JOIN sys_user_post sup on su.user_id = sup.user_id
-                 JOIN sys_post sp on sup.post_id = sp.post_id
-        WHERE sp.post_code = #{postCode}
-    </select>
-
-    <select id="listUserByRoleKey" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">
-        SELECT su.*, sr.*
-        FROM sys_user su
-                 JOIN sys_user_role sur on su.user_id = sur.user_id
-                 JOIN sys_role sr on sur.role_id = sr.role_id
-        WHERE sr.role_key = #{roleKey}
     </select>
 
     <select id="listUserByDeptIdWithAncestors" resultMap="com.yr.system.mapper.SysUserMapper.SysUserResult">

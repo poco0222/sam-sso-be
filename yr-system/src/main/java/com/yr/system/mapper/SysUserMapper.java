@@ -1,7 +1,5 @@
 package com.yr.system.mapper;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.core.domain.entity.SysUser;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -38,22 +36,6 @@ public interface SysUserMapper {
      * @return
      */
     List<SysUser> selectUserListV2(SysUser sysUser);
-
-    /**
-     * 根据条件分页查询未已配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    public List<SysUser> selectAllocatedList(SysUser user);
-
-    /**
-     * 根据条件分页查询未分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
-     */
-    public List<SysUser> selectUnallocatedList(SysUser user);
 
     /**
      * 通过用户名查询用户
@@ -145,39 +127,6 @@ public interface SysUserMapper {
      */
     public SysUser checkEmailUnique(String email);
 
-    /**
-     * 查询岗位已分配的用户列表
-     *
-     * @param postId
-     * @param sysUser
-     * @return
-     */
-    List<SysUser> listPostAssignUserByPostId(@Param("postId") Long postId,
-                                             @Param("param") SysUser sysUser);
-
-    /**
-     * 查询岗位未分配的用户列表
-     *
-     * @param postId
-     * @param sysUser
-     * @return
-     */
-    List<SysUser> listUnAssignUserByPostId(@Param("postId") Long postId,
-                                           @Param("param") SysUser sysUser);
-
-    /**
-     * 查询岗位未分配的用户列表
-     *
-     * @param page
-     * @param sysUser
-     * @return
-     */
-    IPage<SysUser> queryModeUserGroupInformationCollection(Page page,
-                                                           @Param("param") SysUser sysUser);
-
-
-    public List<String> selectUserNameByPostCodeAndDeptId(String postCode, Long deptId);
-
     public SysUser selectSysUserById(String userName);
 
     List<SysUser> selectUserListByUserName(String[] userName);
@@ -203,34 +152,8 @@ public interface SysUserMapper {
     @Select(" select user_name as dict_value, nick_name as dict_label from sys_user")
     List<SysUser> getAllUserForOptions();
 
-    List<SysUser> selectUserListByDeptRole(SysUser sysUser);
-
-    /**
-     * @CodingBy PopoY
-     * @DateTime 2024/12/27 16:09
-     * @Description 通过部门和岗位查询用户_手动查询流程角色
-     * @Param deptId 部门id
-     * @Param postId 岗位id
-     * @Return java.util.List<com.yr.common.core.domain.entity.SysUser>
-     */
-    List<SysUser> selectUserByDeptAndPost(@Param("deptId") Long deptId, @Param("postId") Long postId);
-
     @Select(" select * from sys_user ")
     List<SysUser> selectUserListForExcel();
 
-    /**
-     * @CodingBy PopoY
-     * @DateTime 2025/2/23 19:08
-     * @Description 通过角色编号批量查询用户
-     * @Param roleKeys 角色编号数组
-     * @Return java.util.List<com.yr.common.core.domain.entity.SysUser>
-     */
-    List<SysUser> selectUserRoleListByRoleKeysBatch(String[] roleKeys);
-
     List<SysUser> getChildDeptUser(String deptId);
-
-    /**
-     * 查询技术中心下所有在职用户
-     */
-    List<SysUser> selectTechCenterActiveUsers();
 }

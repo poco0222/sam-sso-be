@@ -8,7 +8,6 @@ package com.yr.system.service.impl;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.system.mapper.SysUserDeptMapper;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysUserRankService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -20,7 +19,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -29,24 +27,21 @@ import static org.mockito.Mockito.when;
 class SysUserQueryServiceTest {
 
     /**
-     * 验证用户不存在时会直接返回 null，并避免继续查询职级信息。
+     * 验证用户不存在时会直接返回 null，并避免额外加载一期已删除的扩展维度。
      */
     @Test
     void shouldReturnNullWhenUserMissing() {
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserDeptMapper userDeptMapper = mock(SysUserDeptMapper.class);
-        ISysUserRankService userRankService = mock(ISysUserRankService.class);
         SysUserQueryService queryService = new SysUserQueryService(
                 userMapper,
-                userDeptMapper,
-                userRankService
+                userDeptMapper
         );
 
         when(userMapper.selectUserByUserId(404L)).thenReturn(null);
 
         assertThat(queryService.getUserById(404L)).isNull();
         verify(userMapper).selectUserByUserId(404L);
-        verifyNoInteractions(userRankService);
     }
 
     /**
@@ -57,8 +52,7 @@ class SysUserQueryServiceTest {
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserQueryService queryService = new SysUserQueryService(
                 userMapper,
-                mock(SysUserDeptMapper.class),
-                mock(ISysUserRankService.class)
+                mock(SysUserDeptMapper.class)
         );
         SysUser user = new SysUser();
         user.setUserName("phase2-batch");
@@ -80,8 +74,7 @@ class SysUserQueryServiceTest {
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserQueryService queryService = new SysUserQueryService(
                 userMapper,
-                mock(SysUserDeptMapper.class),
-                mock(ISysUserRankService.class)
+                mock(SysUserDeptMapper.class)
         );
         SysUser userOne = new SysUser();
         userOne.setUserId(1L);

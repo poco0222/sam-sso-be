@@ -1,17 +1,18 @@
-/** @file Swagger/OpenAPI 示例控制器 */
+/**
+ * @file Swagger/OpenAPI 示例控制器
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.web.controller.tool;
 
 import com.yr.common.core.controller.BaseController;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.utils.StringUtils;
-import com.yr.system.domain.entity.SysDuty;
-import com.yr.system.service.ISysDutyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -32,8 +33,6 @@ public class TestController extends BaseController {
     private final static Logger LOGGER = LoggerFactory.getLogger(TestController.class);
 
     private final static Map<Integer, UserEntity> USER_S = new LinkedHashMap<Integer, UserEntity>();
-    @Autowired
-    private ISysDutyService sysDutyService;
 
     {
         USER_S.put(1, new UserEntity(1, "admin", "admin123", "15888888888"));
@@ -46,10 +45,6 @@ public class TestController extends BaseController {
         LOGGER.info("我是 info, {}", 1);
         LOGGER.warn("我是 warn, {}", 1);
         LOGGER.error("我是 error, {}", 1);
-
-        LOGGER.debug("query begin");
-        List<SysDuty> list = sysDutyService.list();
-        LOGGER.debug("query end");
         return AjaxResult.success();
     }
 

@@ -72,39 +72,6 @@
         update_by,
         update_time
     </sql>
-    <select id="selectDeptRoleTreeList" parameterType="SysDept" resultType="com.yr.common.core.domain.entity.SysDeptRoleVo">
-        SELECT e.id, e.dept_id, e.parent_id, e.role_id, e.tree_name, e.node_type, e.accounte_unit
-        FROM (
-            SELECT CONCAT('D', dept_id) AS id,
-                   dept_id,
-                   CONCAT('D', parent_id) AS parent_id,
-                   null AS role_id,
-                   dept_name AS tree_name,
-                   'D' AS node_type,
-                   accounte_unit
-            FROM sys_dept
-            WHERE del_flag = '0'
-              AND org_id = #{orgId}
-            UNION ALL
-            SELECT CONCAT('R', d.role_id) AS id,
-                   c.dept_id,
-                   CONCAT('D', c.dept_id) AS parent_id,
-                   d.role_id,
-                   d.role_name AS tree_name,
-                   'R' AS node_type,
-                   null AS accounte_unit
-            FROM (
-                SELECT DISTINCT aa.dept_id, b.role_id
-                FROM sys_user_dept aa
-                         JOIN sys_dept bb on aa.dept_id = bb.dept_id
-                         JOIN sys_user_role b on aa.user_id = b.user_id
-                WHERE bb.org_id = #{orgId}
-                  AND b.role_id is not null
-            ) c
-                     LEFT JOIN sys_role d on c.role_id = d.role_id
-        ) e
-        ORDER BY e.dept_id, e.parent_id
-    </select>
     <select id="selectDeptList" parameterType="SysDept" resultMap="SysDeptResult">
         <include refid="selectDeptVo"/>
         where d.del_flag = '0' and d.org_id = #{orgId}
@@ -125,18 +92,6 @@
         </if>
         <!-- 数据范围过滤 -->
         ${params.dataScope}
-        order by d.parent_id, d.order_num
-    </select>
-
-    <select id="selectDeptListByRoleId" resultType="Integer">
-        select d.dept_id
-        from sys_dept d
-        left join sys_role_dept rd on d.dept_id = rd.dept_id
-        where rd.role_id = #{roleId}
-        <if test="deptCheckStrictly">
-            and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id =
-            rd.dept_id and rd.role_id = #{roleId})
-        </if>
         order by d.parent_id, d.order_num
     </select>
 

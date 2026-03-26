@@ -8,7 +8,6 @@ package com.yr.system.service.impl;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.exception.CustomException;
 import com.yr.system.mapper.SysUserMapper;
-import com.yr.system.service.ISysConfigService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,14 +32,12 @@ class SysUserImportServiceResultContractTest {
      */
     @Test
     void shouldReturnSuccessSummaryWhenAllUsersImportSuccessfully() {
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserWriteService writeService = mock(SysUserWriteService.class);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeService);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeService);
         SysUser firstUser = buildUser("contract-success-1");
         SysUser secondUser = buildUser("contract-success-2");
 
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
 
         String result = importService.importUser(List.of(firstUser, secondUser), false, "phase4");
@@ -58,14 +55,12 @@ class SysUserImportServiceResultContractTest {
      */
     @Test
     void shouldReturnMixedSummaryWhenSomeUsersSucceedAndSomeFail() {
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserWriteService writeService = mock(SysUserWriteService.class);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeService);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeService);
         SysUser invalidUser = buildUser("contract-mixed-invalid");
         SysUser successUser = buildUser("contract-mixed-success");
 
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         doThrow(new CustomException("职级不能为空"))
                 .when(writeService)
@@ -86,14 +81,12 @@ class SysUserImportServiceResultContractTest {
      */
     @Test
     void shouldThrowBusinessExceptionWhenAllUsersFailValidation() {
-        ISysConfigService configService = mock(ISysConfigService.class);
         SysUserMapper userMapper = mock(SysUserMapper.class);
         SysUserWriteService writeService = mock(SysUserWriteService.class);
-        SysUserImportService importService = new SysUserImportService(configService, userMapper, writeService);
+        SysUserImportService importService = new SysUserImportService("Init@123", userMapper, writeService);
         SysUser firstUser = buildUser("contract-failure-1");
         SysUser secondUser = buildUser("contract-failure-2");
 
-        when(configService.selectConfigByKey("sys.user.initPassword")).thenReturn("Init@123");
         when(userMapper.selectUserByUserName(anyString())).thenReturn(null);
         doThrow(new CustomException("职级不能为空")).when(writeService).insertUser(any(SysUser.class));
 

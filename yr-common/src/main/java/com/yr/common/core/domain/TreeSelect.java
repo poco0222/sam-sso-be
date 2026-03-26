@@ -1,19 +1,21 @@
+/**
+ * @file 一期边界下的树形选择节点
+ * @author PopoY
+ * @date 2026-03-26
+ */
 package com.yr.common.core.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.yr.common.core.domain.entity.*;
-import com.yr.common.utils.StringUtils;
+import com.yr.common.core.domain.entity.SysDept;
+import com.yr.common.core.domain.entity.SysMenu;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * Treeselect树结构实体类
- *
- * @author Youngron
  */
 public class TreeSelect implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -54,35 +56,11 @@ public class TreeSelect implements Serializable {
 
     }
 
-    public TreeSelect(SysAttachCategory attachCategory) {
-        this.id = attachCategory.getId();
-        this.label = attachCategory.getCategoryName();
-        this.extra = new HashMap<String, Object>(5) {
-            {
-                put("categoryName", attachCategory.getCategoryName());
-                put("allowedFileType", attachCategory.getAllowedFileType());
-                put("leafCode", attachCategory.getLeafCode());
-                put("leafFlag", attachCategory.getLeafFlag());
-                put("leafDictCode", attachCategory.getLeafDictCode());
-            }
-        };
-        this.children = attachCategory.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
-    }
-
     public TreeSelect(SysDept dept) {
         this.id = dept.getDeptId();
         this.label = dept.getDeptName();
         this.deptCode = dept.getDeptCode();
         this.children = dept.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
-    }
-
-    public TreeSelect(SysDeptRoleVo sysDeptRoleVo) {
-        this.strId = sysDeptRoleVo.getId();
-        this.label = sysDeptRoleVo.getTreeName();
-        this.nodeType = sysDeptRoleVo.getNodeType();
-        this.roleId = sysDeptRoleVo.getRoleId();
-        this.deptId = sysDeptRoleVo.getDeptId();
-        this.children = sysDeptRoleVo.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
     }
 
     public TreeSelect(SysMenu menu) {

@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -38,25 +40,19 @@ class YrSystemSqlSyntaxContractTest {
      * @throws IOException 读取 mapper 失败
      */
     @Test
-    void shouldAvoidInvalidLikePlaceholderConcatenation() throws IOException {
-        assertMapperDoesNotContainIgnoringCase("SysReceiveGroupMapper.xml", "like '%' #{");
-        assertMapperDoesNotContainIgnoringCase("SysMsgTemplateMapper.xml", "like '%' #{");
+    void shouldRemoveLegacyReceiveGroupAndTemplateMappersFromPhaseOneBoundary() {
+        assertMapperPathDoesNotExist("SysReceiveGroupMapper.xml");
+        assertMapperPathDoesNotExist("SysMsgTemplateMapper.xml");
     }
 
     /**
-     * 验证用户分组信息查询不再生成 `WHERE AND` 这种非法语法。
+     * 验证一期边界不再保留接收组分组查询 mapper，避免消息域 SQL 回流。
      *
      * @throws IOException 读取 mapper 失败
      */
     @Test
-    void shouldAvoidWhereAndPatternInModeUserGroupQuery() throws IOException {
-        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "where and");
-        assertSelectStatementContains("SysUserMapper.xml", "queryModeUserGroupInformationCollection", "<where>");
-        assertSelectStatementDoesNotContainIgnoringCase(
-                "SysUserMapper.xml",
-                "queryModeUserGroupInformationCollection",
-                "from sys_user su where"
-        );
+    void shouldRemoveLegacyModeGroupQueryFromPhaseOneBoundary() throws IOException {
+        assertMapperDoesNotContainIgnoringCase("SysUserMapper.xml", "queryModeUserGroupInformationCollection");
     }
 
     /**
@@ -74,6 +70,19 @@ class YrSystemSqlSyntaxContractTest {
         assertThat(normalizedActual)
                 .as("%s 不应包含 %s", mapperFileName, unexpectedText)
                 .doesNotContain(normalizedUnexpected);
+    }
+
+    /**
+     * 断言一期已删除的 mapper 文件不再出现在 yr-system 源码目录中。
+     *
+     * @param mapperFileName mapper 文件名
+     */
+    private void assertMapperPathDoesNotExist(String mapperFileName) {
+        Path mapperPath = Path.of("src", "main", "resources", "mapper", "system", mapperFileName);
+
+        assertThat(Files.exists(mapperPath))
+                .as("%s 应当已经从一期边界移除", mapperPath)
+                .isFalse();
     }
 
     /**
