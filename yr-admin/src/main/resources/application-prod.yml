@@ -16,7 +16,7 @@ yr:
   captcha:
     enabled: ${CAPTCHA_ENABLED:true}
   user:
-    initPassword: ${YR_USER_INIT_PASSWORD:Init@123}
+    initPassword: ${YR_USER_INIT_PASSWORD:}
   # 验证码类型 math 数组计算 char 字符验证
   captchaType: ${CAPTCHA_TYPE:math}
   security:

@@ -62,12 +62,15 @@ class SsoSecuritySurfaceContractTest {
         assertThat(localYaml).doesNotContain("login-password: 123456");
         assertThat(localYaml).doesNotContain("password: Popo0222");
         assertThat(localYaml).doesNotContain("FILE_FTP_PASSWORD:1qazxsw2");
+        assertThat(localYaml).doesNotContain("Init@123");
         assertThat(devYaml).doesNotContain("login-password: 123456");
         assertThat(devYaml).doesNotContain("TOKEN_SECRET:abcdefghijklmnopqrstuvwxyz");
         assertThat(devYaml).doesNotContain("FILE_FTP_PASSWORD:1qazxsw2");
+        assertThat(devYaml).doesNotContain("Init@123");
         assertThat(prodYaml).doesNotContain("login-password: 123456");
         assertThat(prodYaml).doesNotContain("TOKEN_SECRET:abcdefghijklmnopqrstuvwxyz");
         assertThat(prodYaml).doesNotContain("FILE_FTP_PASSWORD:1qazxsw2");
+        assertThat(prodYaml).doesNotContain("Init@123");
     }
 
     /**
