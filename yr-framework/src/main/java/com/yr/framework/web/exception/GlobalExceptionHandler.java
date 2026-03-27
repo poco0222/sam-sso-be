@@ -1,3 +1,8 @@
+/**
+ * @file 全局异常处理器，统一输出受控错误语义
+ * @author PopoY
+ * @date 2026-03-27
+ */
 package com.yr.framework.web.exception;
 
 import com.yr.common.constant.HttpStatus;
@@ -19,11 +24,18 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 /**
  * 全局异常处理器
- *
- * @author Youngron
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    /** 通用未知异常提示语，避免把内部细节直接暴露给前端。 */
+    private static final String GENERIC_ERROR_MESSAGE = "系统繁忙，请稍后再试";
+
+    /** 用户名或密码错误时的统一登录提示。 */
+    private static final String INVALID_LOGIN_MESSAGE = "账号或密码错误，请重新登录";
+
+    /** 登录态过期时的统一提示。 */
+    private static final String LOGIN_EXPIRED_MESSAGE = "登录状态已过期，请重新登录";
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
@@ -60,19 +72,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccountExpiredException.class)
     public AjaxResult handleAccountExpiredException(AccountExpiredException e) {
         log.error(e.getMessage(), e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(LOGIN_EXPIRED_MESSAGE);
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public AjaxResult handleUsernameNotFoundException(UsernameNotFoundException e) {
         log.error(e.getMessage(), e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(INVALID_LOGIN_MESSAGE);
     }
 
     @ExceptionHandler(Exception.class)
     public AjaxResult handleException(Exception e) {
         log.error(e.getMessage(), e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error(GENERIC_ERROR_MESSAGE);
     }
 
     /**

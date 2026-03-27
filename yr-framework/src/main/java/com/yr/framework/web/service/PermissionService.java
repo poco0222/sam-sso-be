@@ -9,7 +9,6 @@ import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.utils.ServletUtils;
 import com.yr.common.utils.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -36,8 +35,15 @@ public class PermissionService {
 
     private static final String PERMISSION_DELIMETER = ",";
 
-    @Autowired
-    private TokenService tokenService;
+    /** Token 服务，用于从当前请求读取登录态。 */
+    private final TokenService tokenService;
+
+    /**
+     * @param tokenService Token 服务
+     */
+    public PermissionService(TokenService tokenService) {
+        this.tokenService = tokenService;
+    }
 
     /**
      * 验证用户是否具备某权限

@@ -13,7 +13,6 @@ import com.yr.common.core.page.TableDataInfo;
 import com.yr.common.enums.BusinessType;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.system.service.ISsoClientService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,8 +32,14 @@ import java.util.List;
 public class SsoClientController extends BaseController {
 
     /** 客户端服务。 */
-    @Autowired
-    private ISsoClientService ssoClientService;
+    private final ISsoClientService ssoClientService;
+
+    /**
+     * @param ssoClientService 客户端服务
+     */
+    public SsoClientController(ISsoClientService ssoClientService) {
+        this.ssoClientService = ssoClientService;
+    }
 
     /**
      * 查询客户端列表。
@@ -60,10 +65,7 @@ public class SsoClientController extends BaseController {
     @Log(title = "客户端管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody SsoClient ssoClient) {
-        String operator = resolveOperator();
-        if (operator != null) {
-            ssoClient.setCreateBy(operator);
-        }
+        ssoClient.setCreateBy(resolveOperator());
         return toAjax(ssoClientService.insertSsoClient(ssoClient));
     }
 
@@ -77,10 +79,7 @@ public class SsoClientController extends BaseController {
     @Log(title = "客户端管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody SsoClient ssoClient) {
-        String operator = resolveOperator();
-        if (operator != null) {
-            ssoClient.setUpdateBy(operator);
-        }
+        ssoClient.setUpdateBy(resolveOperator());
         return toAjax(ssoClientService.updateSsoClient(ssoClient));
     }
 
@@ -114,15 +113,11 @@ public class SsoClientController extends BaseController {
     }
 
     /**
-     * 尝试解析当前操作人；在无安全上下文的契约测试里允许返回 null。
+     * 解析当前操作人；缺少安全上下文时应直接失败，避免把审计字段静默写成 null。
      *
-     * @return 当前操作人账号；无上下文时返回 null
+     * @return 当前操作人账号
      */
     private String resolveOperator() {
-        try {
-            return SecurityUtils.getUsername();
-        } catch (Exception exception) {
-            return null;
-        }
+        return SecurityUtils.getUsername();
     }
 }

@@ -76,6 +76,12 @@ public class SysLoginService {
     /** 生成企业微信网页授权地址的官方入口。 */
     private static final String WXWORK_AUTHORIZE_ENDPOINT = "https://open.weixin.qq.com/connect/oauth2/authorize";
 
+    /** 登录凭据非法时的受控提示。 */
+    private static final String INVALID_LOGIN_CREDENTIAL_MESSAGE = "登录凭据无效，请重新登录";
+
+    /** 登录认证服务异常时的受控提示。 */
+    private static final String LOGIN_SERVICE_UNAVAILABLE_MESSAGE = "登录服务暂不可用，请稍后再试";
+
     /** 服务日志。 */
     private static final Logger LOGGER = LoggerFactory.getLogger(SysLoginService.class);
 
@@ -146,7 +152,7 @@ public class SysLoginService {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, RsaUtils.decryptByPrivateKey(password))
+                    new UsernamePasswordAuthenticationToken(username, decryptPassword(password))
             );
         } catch (Exception ex) {
             if (ex instanceof BadCredentialsException) {
@@ -175,8 +181,13 @@ public class SysLoginService {
                 }
                 throw new UserPasswordNotMatchException();
             }
-            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, ex.getMessage()));
-            throw new CustomException(ex.getMessage());
+            if (ex instanceof CustomException customException) {
+                AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, customException.getMessage()));
+                throw customException;
+            }
+            LOGGER.error("账号密码登录失败，username={}", username, ex);
+            AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, LOGIN_SERVICE_UNAVAILABLE_MESSAGE));
+            throw new CustomException(LOGIN_SERVICE_UNAVAILABLE_MESSAGE, ex);
         }
 
         redisCache.deleteObject("login_error:" + username);
@@ -186,6 +197,21 @@ public class SysLoginService {
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
         recordLoginInfo(loginUser.getUser());
         return tokenService.createToken(loginUser);
+    }
+
+    /**
+     * 解密前端传入的密码密文，并把底层解密异常转换成受控登录语义。
+     *
+     * @param encryptedPassword 前端提交的密码密文
+     * @return 解密后的密码明文
+     */
+    private String decryptPassword(String encryptedPassword) {
+        try {
+            return RsaUtils.decryptByPrivateKey(encryptedPassword);
+        } catch (Exception exception) {
+            LOGGER.warn("登录密码解密失败", exception);
+            throw new CustomException(INVALID_LOGIN_CREDENTIAL_MESSAGE, exception);
+        }
     }
 
     /**

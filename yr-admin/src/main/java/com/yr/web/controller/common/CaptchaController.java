@@ -83,7 +83,7 @@ public class CaptchaController {
         try {
             ImageIO.write(image, "jpg", os);
         } catch (IOException e) {
-            return AjaxResult.error(e.getMessage());
+            return AjaxResult.error("生成验证码失败");
         }
 
         ajax.put("uuid", uuid);

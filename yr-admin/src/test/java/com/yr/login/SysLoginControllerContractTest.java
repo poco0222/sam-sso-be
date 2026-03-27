@@ -6,6 +6,7 @@
 package com.yr.login;
 
 import com.yr.common.core.redis.RedisCache;
+import com.yr.common.exception.CustomException;
 import com.yr.framework.config.ResourcesConfig;
 import com.yr.framework.config.SecurityConfig;
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
@@ -35,6 +36,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -130,6 +133,43 @@ class SysLoginControllerContractTest {
                         .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("token-123"));
+    }
+
+    /**
+     * 验证登录链路出现未知异常时，不会把底层异常文本直接透传给前端。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldReturnControlledMessageWhenLoginThrowsUnexpectedException() throws Exception {
+        when(loginService.login(eq("admin"), anyString(), any(), any(), eq("mgmt")))
+                .thenThrow(new RuntimeException("jdbc url leaked"));
+
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("系统繁忙，请稍后再试"))
+                .andExpect(jsonPath("$.msg", not(containsString("jdbc"))));
+    }
+
+    /**
+     * 验证业务异常仍保留稳定业务文案，避免控制器契约被统一错误处理误伤。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldPreserveBusinessMessageWhenLoginThrowsCustomException() throws Exception {
+        when(loginService.login(eq("admin"), anyString(), any(), any(), eq("mgmt")))
+                .thenThrow(new CustomException("账号密码错误，请重新登录"));
+
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("账号密码错误，请重新登录"));
     }
 
     /**
