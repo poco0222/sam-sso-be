@@ -1,78 +1,97 @@
 /**
  * @file Spring Security 认证与接口放行配置
  * @author PopoY
- * @date 2026-03-24
+ * @date 2026-03-27
  */
 package com.yr.framework.config;
 
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
 import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.filter.CorsFilter;
 
-import javax.annotation.Resource;
-
 /**
  * 一期 Spring Security 配置。
  */
-@EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+@Configuration
+@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
+public class SecurityConfig {
 
     /** 用户认证明细服务。 */
-    @Resource(description = "userDetailsService")
-    @Autowired
-    private UserDetailsService userDetailsService;
+    private final UserDetailsService userDetailsService;
 
     /** 未认证访问处理器。 */
-    @Autowired
-    private AuthenticationEntryPointImpl unauthorizedHandler;
+    private final AuthenticationEntryPointImpl unauthorizedHandler;
 
     /** 退出登录处理器。 */
-    @Autowired
-    private LogoutSuccessHandlerImpl logoutSuccessHandler;
+    private final LogoutSuccessHandlerImpl logoutSuccessHandler;
 
     /** JWT 认证过滤器。 */
-    @Autowired
-    private JwtAuthenticationTokenFilter authenticationTokenFilter;
+    private final JwtAuthenticationTokenFilter authenticationTokenFilter;
 
     /** 跨域过滤器。 */
-    @Autowired
-    private CorsFilter corsFilter;
+    private final CorsFilter corsFilter;
+
+    /**
+     * @param userDetailsService 用户认证明细服务
+     * @param unauthorizedHandler 未认证访问处理器
+     * @param logoutSuccessHandler 退出登录处理器
+     * @param authenticationTokenFilter JWT 认证过滤器
+     * @param corsFilter 跨域过滤器
+     */
+    public SecurityConfig(UserDetailsService userDetailsService,
+                          AuthenticationEntryPointImpl unauthorizedHandler,
+                          LogoutSuccessHandlerImpl logoutSuccessHandler,
+                          JwtAuthenticationTokenFilter authenticationTokenFilter,
+                          CorsFilter corsFilter) {
+        this.userDetailsService = userDetailsService;
+        this.unauthorizedHandler = unauthorizedHandler;
+        this.logoutSuccessHandler = logoutSuccessHandler;
+        this.authenticationTokenFilter = authenticationTokenFilter;
+        this.corsFilter = corsFilter;
+    }
 
     /**
      * 暴露 AuthenticationManager，供登录服务执行用户名密码认证。
      *
+     * @param httpSecurity HttpSecurity 配置器
      * @return Spring Security AuthenticationManager
      * @throws Exception Bean 创建失败时抛出
      */
     @Bean
-    @Override
-    public AuthenticationManager authenticationManagerBean() throws Exception {
-        return super.authenticationManagerBean();
+    public AuthenticationManager authenticationManager(HttpSecurity httpSecurity) throws Exception {
+        AuthenticationManagerBuilder authenticationManagerBuilder =
+                httpSecurity.getSharedObject(AuthenticationManagerBuilder.class);
+        authenticationManagerBuilder.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder());
+        return authenticationManagerBuilder.build();
     }
 
     /**
      * 配置一期认证入口与受保护资源。
      *
      * @param httpSecurity HttpSecurity 配置器
+     * @param authenticationManager 认证管理器
+     * @return SecurityFilterChain 安全过滤链
      * @throws Exception 安全链配置失败时抛出
      */
-    @Override
-    protected void configure(HttpSecurity httpSecurity) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity,
+                                                   AuthenticationManager authenticationManager) throws Exception {
         httpSecurity
+                .authenticationManager(authenticationManager)
                 .csrf().disable()
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
@@ -111,6 +130,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         httpSecurity.addFilterBefore(authenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
         httpSecurity.addFilterBefore(corsFilter, JwtAuthenticationTokenFilter.class);
         httpSecurity.addFilterBefore(corsFilter, LogoutFilter.class);
+        return httpSecurity.build();
     }
 
     /**
@@ -121,16 +141,5 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    /**
-     * 配置用户认证与密码校验策略。
-     *
-     * @param auth AuthenticationManagerBuilder
-     * @throws Exception 认证器配置失败时抛出
-     */
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder());
     }
 }

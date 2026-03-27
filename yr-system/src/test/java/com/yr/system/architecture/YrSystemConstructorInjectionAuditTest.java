@@ -1,94 +1,59 @@
 /**
- * @file 审计 yr-system 剩余字段注入 Bean 的架构测试
- * @author Codex
- * @date 2026-03-16
+ * @file 审计安全相关 framework Bean 的字段注入残留
+ * @author PopoY
+ * @date 2026-03-27
  */
 package com.yr.system.architecture;
 
-import com.yr.system.service.impl.SysDeptServiceImpl;
-import com.yr.system.service.impl.SysLogininforServiceImpl;
-import com.yr.system.service.impl.SysOperLogServiceImpl;
-import com.yr.system.service.impl.SysOrgServiceImpl;
-import com.yr.system.service.impl.SysUserDeptServiceImpl;
-import com.yr.system.service.impl.SysUserDprServiceImpl;
-import com.yr.system.service.impl.SysUserOrgServiceImpl;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 锁定 yr-system Phase 3 构造器注入迁移清单的架构测试。
+ * 锁定 Task 5 需要迁移到构造器注入的关键 framework Bean 清单。
  */
 class YrSystemConstructorInjectionAuditTest {
 
+    /** 需要收口字段注入的 framework 源码文件。 */
+    private static final List<Path> SECURITY_BEAN_SOURCES = List.of(
+            Path.of("../yr-framework/src/main/java/com/yr/framework/config/SecurityConfig.java"),
+            Path.of("../yr-framework/src/main/java/com/yr/framework/security/filter/JwtAuthenticationTokenFilter.java"),
+            Path.of("../yr-framework/src/main/java/com/yr/framework/web/service/UserDetailsServiceImpl.java"),
+            Path.of("../yr-framework/src/main/java/com/yr/framework/web/service/PermissionService.java")
+    );
+
     /**
-     * 验证当前迁移清单完整，避免漏掉 review 已识别的问题 Bean。
+     * 验证当前 Task 5 的构造器注入迁移目标清单保持稳定。
      */
     @Test
     void shouldTrackAllPendingConstructorInjectionTargets() {
-        assertThat(pendingConstructorInjectionTargets())
-                .as("Phase 3 字段注入迁移清单应保持稳定")
-                .hasSize(7);
+        assertThat(SECURITY_BEAN_SOURCES)
+                .as("Task 5 安全相关字段注入迁移清单应保持稳定")
+                .hasSize(4);
     }
 
     /**
-     * 验证 yr-system Bean 已不再使用字段级注入。
+     * 验证安全相关 framework Bean 不再保留字段级依赖注入。
+     *
+     * @throws IOException 读取源码失败时抛出
      */
     @Test
-    void shouldAvoidFieldInjectionInYrSystemBeans() {
-        assertThat(pendingConstructorInjectionTargets())
-                .as("以下 Bean 仍使用字段注入，需要迁移到构造器注入: %s",
-                        pendingConstructorInjectionTargets().stream()
-                                .filter(this::usesFieldInjection)
-                                .map(Class::getSimpleName)
-                                .toList())
-                .allSatisfy(type -> assertThat(usesFieldInjection(type))
-                        .as("%s 不应保留字段级 @Autowired", type.getSimpleName())
-                        .isFalse());
-    }
+    void shouldAvoidFieldInjectionInSecurityRelatedFrameworkBeans() throws IOException {
+        for (Path sourcePath : SECURITY_BEAN_SOURCES) {
+            String source = Files.readString(sourcePath, StandardCharsets.UTF_8);
 
-    /**
-     * 收敛本轮 review 识别出的剩余字段注入 Bean。
-     *
-     * @return 待迁移 Bean 列表
-     */
-    private List<Class<?>> pendingConstructorInjectionTargets() {
-        return List.of(
-                SysDeptServiceImpl.class,
-                SysLogininforServiceImpl.class,
-                SysOperLogServiceImpl.class,
-                SysOrgServiceImpl.class,
-                SysUserDeptServiceImpl.class,
-                SysUserDprServiceImpl.class,
-                SysUserOrgServiceImpl.class
-        );
-    }
-
-    /**
-     * 判断目标类是否仍存在字段级注入。
-     *
-     * @param type 待检查类型
-     * @return true 表示存在字段注入
-     */
-    private boolean usesFieldInjection(Class<?> type) {
-        return Arrays.stream(type.getDeclaredFields())
-                .filter(this::isInstanceField)
-                .anyMatch(field -> field.isAnnotationPresent(Autowired.class));
-    }
-
-    /**
-     * 过滤出实例字段，避免把静态常量误判为依赖。
-     *
-     * @param field 待判断字段
-     * @return true 表示实例字段
-     */
-    private boolean isInstanceField(Field field) {
-        return !Modifier.isStatic(field.getModifiers());
+            assertThat(source)
+                    .as("%s 不应继续保留字段级 @Autowired", sourcePath.getFileName())
+                    .doesNotContain("@Autowired\n    private");
+            assertThat(source)
+                    .as("%s 不应继续保留字段级 @Resource", sourcePath.getFileName())
+                    .doesNotContain("@Resource");
+        }
     }
 }
