@@ -27,6 +27,8 @@ import java.nio.file.Path;
 
 /**
  * @file 通用文件控制器
+ * @author PopoY
+ * @date 2026-03-27
  *
  * 该控制器仅保留模板项目所需的基础文件上传、下载与删除能力，
  * 已移除与 PDM、工程零件、MES 图片等业务模块强耦合的接口。
@@ -118,10 +120,10 @@ public class CommonController {
      *
      * @param file 上传文件
      * @return 包含文件地址的返回结果
-     * @throws Exception 上传异常
      */
+    @PreAuthorize("@ss.hasPermi('common:file:upload')")
     @PostMapping("/common/upload")
-    public AjaxResult uploadFile(MultipartFile file) throws Exception {
+    public AjaxResult uploadFile(MultipartFile file) {
         try {
             String filePath = YrConfig.getUploadPath();
             String fileName = FileUploadUtils.upload(filePath, file);
@@ -131,7 +133,7 @@ public class CommonController {
             ajax.put("url", url);
             return ajax;
         } catch (Exception exception) {
-            return AjaxResult.error(exception.getMessage());
+            throw new CustomException("上传文件失败", exception);
         }
     }
 
@@ -140,10 +142,10 @@ public class CommonController {
      *
      * @param file 上传文件
      * @return 包含文件地址的返回结果
-     * @throws Exception 上传异常
      */
+    @PreAuthorize("@ss.hasPermi('common:file:upload')")
     @PostMapping("/common/upload2")
-    public AjaxResult uploadFile2(MultipartFile file) throws Exception {
+    public AjaxResult uploadFile2(MultipartFile file) {
         try {
             String filePath = YrConfig.getUploadPath();
             String fileName = FileUploadUtils.upload2(filePath, file);
@@ -153,7 +155,7 @@ public class CommonController {
             ajax.put("url", url);
             return ajax;
         } catch (Exception exception) {
-            return AjaxResult.error(exception.getMessage());
+            throw new CustomException("上传文件失败（兼容模式）", exception);
         }
     }
 
@@ -162,10 +164,10 @@ public class CommonController {
      *
      * @param file 上传文件
      * @return 包含文件地址的返回结果
-     * @throws Exception 上传异常
      */
+    @PreAuthorize("@ss.hasPermi('common:file:upload')")
     @PostMapping("/common/upload-param")
-    public AjaxResult uploadFileWithParamName(@RequestParam("uploadFile") MultipartFile file) throws Exception {
+    public AjaxResult uploadFileWithParamName(@RequestParam("uploadFile") MultipartFile file) {
         try {
             String filePath = YrConfig.getUploadPath();
             if ("bpmn".equals(FileUploadUtils.getExtension(file))) {
@@ -179,7 +181,7 @@ public class CommonController {
             ajax.put("url", url);
             return ajax;
         } catch (Exception exception) {
-            return AjaxResult.error(exception.getMessage());
+            throw new CustomException("上传文件失败（指定参数名）", exception);
         }
     }
 

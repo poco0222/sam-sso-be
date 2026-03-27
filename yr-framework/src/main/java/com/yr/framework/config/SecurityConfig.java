@@ -115,9 +115,11 @@ public class SecurityConfig {
                         "/websocket/message/**",
                         "/**/*.css",
                         "/**/*.js",
-                        "/profile/**",
+                        "/profile/avatar/**",
                         "/system/file/download"
                 ).permitAll()
+                // 头像目录仍需支持前端通过原生 `<img>` 直连展示，其余 `/profile/**` 资源必须鉴权。
+                .antMatchers("/profile/**").authenticated()
                 // 通用文件下载仅允许已登录用户访问，避免匿名绕过控制层边界。
                 .antMatchers("/common/download**").authenticated()
                 .antMatchers("/common/tmplDownload**").authenticated()

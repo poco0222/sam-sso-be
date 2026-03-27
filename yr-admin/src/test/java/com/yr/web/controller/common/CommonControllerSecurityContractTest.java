@@ -58,6 +58,18 @@ class CommonControllerSecurityContractTest {
     }
 
     /**
+     * 验证上传接口同样必须声明显式权限，避免仅依赖全局 authenticated（已认证）兜底。
+     *
+     * @throws NoSuchMethodException 方法签名变化时抛出
+     */
+    @Test
+    void shouldRequireExplicitPermissionOnUploadEndpoints() throws NoSuchMethodException {
+        assertUploadMethodProtected("uploadFile", org.springframework.web.multipart.MultipartFile.class);
+        assertUploadMethodProtected("uploadFile2", org.springframework.web.multipart.MultipartFile.class);
+        assertUploadMethodProtected("uploadFileWithParamName", org.springframework.web.multipart.MultipartFile.class);
+    }
+
+    /**
      * 验证文件删除与下载链路使用标准化路径解析并做根目录前缀校验。
      *
      * @throws IOException 读取源码失败时抛出
@@ -96,6 +108,10 @@ class CommonControllerSecurityContractTest {
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载文件失败\"");
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载模板文件失败\"");
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载资源文件失败\"");
+        assertThat(commonControllerSource).doesNotContain("return AjaxResult.error(exception.getMessage())");
+        assertThat(commonControllerSource).contains("throw new CustomException(\"上传文件失败\"");
+        assertThat(commonControllerSource).contains("throw new CustomException(\"上传文件失败（兼容模式）\"");
+        assertThat(commonControllerSource).contains("throw new CustomException(\"上传文件失败（指定参数名）\"");
     }
 
     /**
@@ -110,5 +126,21 @@ class CommonControllerSecurityContractTest {
         assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/download**\").anonymous()");
         assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/tmplDownload**\").anonymous()");
         assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/download/resource**\").anonymous()");
+    }
+
+    /**
+     * 断言上传方法声明了显式权限。
+     *
+     * @param methodName 方法名
+     * @param parameterTypes 方法参数
+     * @throws NoSuchMethodException 方法签名变化时抛出
+     */
+    private void assertUploadMethodProtected(String methodName,
+                                             Class<?>... parameterTypes) throws NoSuchMethodException {
+        Method uploadMethod = CommonController.class.getMethod(methodName, parameterTypes);
+
+        assertThat(uploadMethod.getAnnotation(PreAuthorize.class))
+                .as("%s 必须声明显式权限控制", methodName)
+                .isNotNull();
     }
 }

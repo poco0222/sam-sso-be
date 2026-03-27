@@ -1,3 +1,8 @@
+/**
+ * @file token 验证处理服务
+ * @author PopoY
+ * @date 2026-03-27
+ */
 package com.yr.framework.web.service;
 
 import com.yr.common.constant.Constants;
@@ -18,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.MessageDigest;
@@ -48,6 +54,16 @@ public class TokenService {
     private int expireTime;
     @Autowired
     private RedisCache redisCache;
+
+    /**
+     * 在 Spring 容器启动阶段校验关键 JWT（JSON Web Token）签名配置，避免系统使用空密钥启动。
+     */
+    @PostConstruct
+    public void validateTokenSecretConfiguration() {
+        if (StringUtils.isBlank(secret)) {
+            throw new IllegalStateException("token.secret 未配置或为空，系统拒绝使用空 JWT 签名密钥启动");
+        }
+    }
 
     /**
      * 获取用户身份信息
@@ -220,9 +236,14 @@ public class TokenService {
      */
     private Key getSigningKey() {
         try {
+            if (StringUtils.isBlank(secret)) {
+                throw new IllegalStateException("token.secret 未配置或为空，无法生成 JWT 签名密钥");
+            }
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
-            byte[] signingKeyBytes = digest.digest(String.valueOf(secret).getBytes(StandardCharsets.UTF_8));
+            byte[] signingKeyBytes = digest.digest(secret.getBytes(StandardCharsets.UTF_8));
             return Keys.hmacShaKeyFor(signingKeyBytes);
+        } catch (IllegalStateException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("生成 JWT 签名密钥失败", ex);
         }

@@ -49,6 +49,22 @@ class SsoSecuritySurfaceContractTest {
     }
 
     /**
+     * 验证 `/profile/**` 只允许头像目录匿名访问，其余上传资源必须经过认证。
+     *
+     * @throws IOException 读取源码失败时抛出
+     */
+    @Test
+    void shouldOnlyExposeAvatarResourcesAnonymouslyUnderProfilePath() throws IOException {
+        String securityConfigSource = Files.readString(
+                REPOSITORY_ROOT.resolve("yr-framework/src/main/java/com/yr/framework/config/SecurityConfig.java"),
+                StandardCharsets.UTF_8
+        );
+
+        assertThat(securityConfigSource).contains("\"/profile/avatar/**\"");
+        assertThat(securityConfigSource).contains(".antMatchers(\"/profile/**\").authenticated()");
+    }
+
+    /**
      * 验证配置文件不再保留弱默认值与可直接使用的生产密钥兜底。
      *
      * @throws IOException 读取配置文件失败时抛出
