@@ -16,9 +16,6 @@ public class SystemInfoView {
     /** 端口。 */
     private Integer port;
 
-    /** 数据库用户名，仅对数据库连接视图有意义。 */
-    private String username;
-
     /** 数据库名，仅对数据库连接视图有意义。 */
     private String basename;
 
@@ -38,7 +35,6 @@ public class SystemInfoView {
         SystemInfoView view = new SystemInfoView();
         view.setHost(databaseInfo.getHost());
         view.setPort(databaseInfo.getPort());
-        view.setUsername(databaseInfo.getUsername());
         view.setBasename(databaseInfo.getBasename());
         return view;
     }
@@ -72,14 +68,6 @@ public class SystemInfoView {
 
     public void setPort(Integer port) {
         this.port = port;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
     }
 
     public String getBasename() {

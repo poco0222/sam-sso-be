@@ -73,7 +73,7 @@ spring:
       master:
         url: ${SPRING_DATASOURCE_DRUID_MASTER_URL:jdbc:mysql://127.0.0.1:3306/yr_template_prod?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
         username: ${SPRING_DATASOURCE_DRUID_MASTER_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_MASTER_PASSWORD}
+        password: ${SPRING_DATASOURCE_DRUID_MASTER_PASSWORD:}
         host: ${SPRING_DATASOURCE_DRUID_MASTER_HOST:127.0.0.1}
         port: ${SPRING_DATASOURCE_DRUID_MASTER_PORT:3306}
         basename: ${SPRING_DATASOURCE_DRUID_MASTER_BASENAME:yr_template_prod}
@@ -82,21 +82,21 @@ spring:
         enabled: false
         url: ${SPRING_DATASOURCE_DRUID_SLAVE_URL:jdbc:mysql://127.0.0.1:3306/yr_template_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
         username: ${SPRING_DATASOURCE_DRUID_SLAVE_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD}
+        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:}
       # 扩展 SQL Server 从库数据源（按需启用）
       slaveec:
         enabled: false
         driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
         url: ${SPRING_DATASOURCE_DRUID_SLAVEEC_URL:jdbc:sqlserver://127.0.0.1:1433;databaseName=template_db;encrypt=false}
         username: ${SPRING_DATASOURCE_DRUID_SLAVEEC_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_SLAVEEC_PASSWORD:template_password}
+        password: ${SPRING_DATASOURCE_DRUID_SLAVEEC_PASSWORD:}
       # 扩展 SQL Server 从库数据源2（按需启用）
       slavexx:
         enabled: false
         driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
         url: ${SPRING_DATASOURCE_DRUID_SLAVEXX_URL:jdbc:sqlserver://127.0.0.1:1433;databaseName=template_db;encrypt=false}
         username: ${SPRING_DATASOURCE_DRUID_SLAVEXX_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_SLAVEXX_PASSWORD:template_password}
+        password: ${SPRING_DATASOURCE_DRUID_SLAVEXX_PASSWORD:}
       # 初始连接数
       initialSize: 5
       # 最小连接池数量
@@ -125,8 +125,8 @@ spring:
         allow:
         url-pattern: /druid/*
         # 控制台管理用户名和密码
-        login-username: ${DRUID_STAT_VIEW_LOGIN_USERNAME}
-        login-password: ${DRUID_STAT_VIEW_LOGIN_PASSWORD}
+        login-username: ${DRUID_STAT_VIEW_LOGIN_USERNAME:}
+        login-password: ${DRUID_STAT_VIEW_LOGIN_PASSWORD:}
       filter:
         stat:
           enabled: true
@@ -197,11 +197,11 @@ token:
   # 令牌自定义标识
   header: ${TOKEN_HEADER:Authorization}
   # 令牌密钥
-  secret: ${TOKEN_SECRET}
+  secret: ${TOKEN_SECRET:}
   # 令牌有效期（默认30分钟）
   expireTime: ${TOKEN_EXPIRE_TIME:600}
   # 单点登录加密盐
-  ssoSalt: ${TOKEN_SSO_SALT}
+  ssoSalt: ${TOKEN_SSO_SALT:}
   # 是否需要检验用户名称与登录账号 Y/N
   ssoCheckName: ${TOKEN_SSO_CHECK_NAME:N}
 
