@@ -278,7 +278,7 @@ file:
     host: ${FILE_FTP_HOST:localhost}
     port: ${FILE_FTP_PORT:21}
     username: ${FILE_FTP_USERNAME:ftpuser}
-    password: ${FILE_FTP_PASSWORD:1qazxsw2}
+    password: ${FILE_FTP_PASSWORD:}
 
 
 #plc驱动以及数采
