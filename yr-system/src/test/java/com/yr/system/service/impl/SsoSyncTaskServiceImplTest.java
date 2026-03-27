@@ -16,10 +16,12 @@ import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -148,18 +150,30 @@ class SsoSyncTaskServiceImplTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoSyncTask existingTask = buildExistingTask();
 
         ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         doReturn(existingTask).when(service).getById(11L);
         doReturn(true).when(service).updateById(any(SsoSyncTask.class));
         doThrow(new RuntimeException("legacy source unavailable")).when(ssoIdentityImportService).execute(eq(existingTask), eq(null));
+        doAnswer(invocation -> {
+            SsoSyncTask failedTask = invocation.getArgument(0);
+            RuntimeException exception = invocation.getArgument(1);
+
+            failedTask.setStatus(SsoSyncTask.STATUS_FAILED);
+            failedTask.setResultSummary(exception.getMessage());
+            failedTask.setExecuteAt(new Date());
+            return null;
+        }).when(ssoSyncTaskFailureRecorder).recordFailure(eq(existingTask), any(RuntimeException.class));
 
         assertThatThrownBy(() -> service.retryTask(11L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("legacy source unavailable");
-        assertThat(existingTask.getStatus()).isEqualTo("FAILED");
+        verify(ssoSyncTaskFailureRecorder).recordFailure(eq(existingTask), any(RuntimeException.class));
+        assertThat(existingTask.getStatus()).isEqualTo(SsoSyncTask.STATUS_FAILED);
         assertThat(existingTask.getResultSummary()).contains("legacy source unavailable");
     }
 

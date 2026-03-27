@@ -22,6 +22,7 @@ import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskService;
 import com.yr.system.service.ISsoSyncTaskItemService;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,10 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
     /** MQ 履历查询 Mapper；在未启用 MQ 模块时允许为空。 */
     @Autowired(required = false)
     private MqMessageLogMapper mqMessageLogMapper;
+
+    /** 失败状态独立事务记录器。 */
+    @Autowired
+    private SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder;
 
     /**
      * 查询同步任务列表。
@@ -256,10 +261,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
             task.setFailedItemCount(executionResult.getFailedItemCount());
             return task;
         } catch (RuntimeException exception) {
-            task.setStatus(SsoSyncTask.STATUS_FAILED);
-            task.setResultSummary(exception.getMessage());
-            task.setExecuteAt(new Date());
-            this.updateById(task);
+            ssoSyncTaskFailureRecorder.recordFailure(task, exception);
             throw exception;
         }
     }
@@ -300,14 +302,18 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      * @return INIT_IMPORT 任务载荷 JSON
      */
     private String buildInitImportPayload() {
-        return String.format(
-                "{\"entityScopes\":[\"org\",\"dept\",\"user\",\"user_org_relation\",\"user_dept_relation\"],"
-                        + "\"identityRules\":{\"org\":\"%1$s\",\"dept\":\"%1$s\",\"user\":\"%1$s\","
-                        + "\"user_org_relation\":\"%2$s\",\"user_dept_relation\":\"%3$s\"}}",
-                SsoSyncTask.ID_STRATEGY_INHERIT_SOURCE_ID,
-                USER_ORG_RELATION_IDENTITY,
-                USER_DEPT_RELATION_IDENTITY
-        );
+        List<String> entityScopes = List.of("org", "dept", "user", "user_org_relation", "user_dept_relation");
+        Map<String, Object> identityRules = new LinkedHashMap<>();
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        identityRules.put("org", SsoSyncTask.ID_STRATEGY_INHERIT_SOURCE_ID);
+        identityRules.put("dept", SsoSyncTask.ID_STRATEGY_INHERIT_SOURCE_ID);
+        identityRules.put("user", SsoSyncTask.ID_STRATEGY_INHERIT_SOURCE_ID);
+        identityRules.put("user_org_relation", USER_ORG_RELATION_IDENTITY);
+        identityRules.put("user_dept_relation", USER_DEPT_RELATION_IDENTITY);
+        payload.put("entityScopes", entityScopes);
+        payload.put("identityRules", identityRules);
+        return JSON.toJSONString(payload);
     }
 
     /**
@@ -316,13 +322,13 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      * @return DISTRIBUTION 任务载荷 JSON
      */
     private String buildDistributionPayload() {
-        return String.format(
-                "{\"entityScopes\":[\"org\",\"dept\",\"user\",\"user_org_relation\",\"user_dept_relation\"],"
-                        + "\"deliveryMode\":\"%s\",\"mqActionType\":\"%s\",\"sourceSystem\":\"%s\"}",
-                SsoDistributionMessagePayload.DELIVERY_MODE_FULL_BATCH_SNAPSHOT,
-                "UPSERT",
-                SsoDistributionMessagePayload.SOURCE_SYSTEM_LOCAL_SAM_EMPTY
-        );
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("entityScopes", List.of("org", "dept", "user", "user_org_relation", "user_dept_relation"));
+        payload.put("deliveryMode", SsoDistributionMessagePayload.DELIVERY_MODE_FULL_BATCH_SNAPSHOT);
+        payload.put("mqActionType", "UPSERT");
+        payload.put("sourceSystem", SsoDistributionMessagePayload.SOURCE_SYSTEM_LOCAL_SAM_EMPTY);
+        return JSON.toJSONString(payload);
     }
 
     /**
@@ -333,17 +339,21 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      * @return 补偿任务 payload
      */
     private String buildCompensationPayload(SsoSyncTask sourceTask, List<SsoSyncTaskItem> failedItems) {
-        String scopedItems = failedItems.stream()
-                .map(item -> String.format("{\"entityType\":\"%s\",\"sourceId\":\"%s\"}", item.getEntityType(), item.getSourceId()))
-                .reduce((left, right) -> left + "," + right)
-                .orElse("");
-        return String.format(
-                "{\"sourceTaskId\":%d,\"sourceTaskType\":\"%s\",\"sourceBatchNo\":\"%s\",\"failedItems\":[%s]}",
-                sourceTask.getTaskId(),
-                sourceTask.getTaskType(),
-                sourceTask.getSourceBatchNo(),
-                scopedItems
-        );
+        List<Map<String, Object>> scopedItems = failedItems.stream()
+                .map(item -> {
+                    Map<String, Object> scopedItem = new LinkedHashMap<>();
+                    scopedItem.put("entityType", item.getEntityType());
+                    scopedItem.put("sourceId", item.getSourceId());
+                    return scopedItem;
+                })
+                .toList();
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("sourceTaskId", sourceTask.getTaskId());
+        payload.put("sourceTaskType", sourceTask.getTaskType());
+        payload.put("sourceBatchNo", sourceTask.getSourceBatchNo());
+        payload.put("failedItems", scopedItems);
+        return JSON.toJSONString(payload);
     }
 
     /**

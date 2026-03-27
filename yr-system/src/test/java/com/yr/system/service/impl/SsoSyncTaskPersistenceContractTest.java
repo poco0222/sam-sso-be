@@ -11,9 +11,13 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
@@ -66,6 +70,28 @@ class SsoSyncTaskPersistenceContractTest {
                 .withFailMessage("SsoSyncTaskItem.msgKey 不应再声明为非持久化字段")
                 .isTrue();
         assertThat(messageLogField.getType().getSimpleName()).isEqualTo("SsoSyncTaskMessageLogView");
+    }
+
+    /**
+     * 验证同步任务失败状态会通过独立事务记录器落库，避免随外层业务异常一起回滚。
+     *
+     * @throws NoSuchMethodException 当方法不存在时抛出
+     */
+    @Test
+    void shouldDeclareDedicatedRequiresNewFailureRecorder() throws NoSuchMethodException {
+        Method recordFailureMethod = SsoSyncTaskFailureRecorder.class.getMethod(
+                "recordFailure",
+                SsoSyncTask.class,
+                RuntimeException.class
+        );
+        Transactional transactional = recordFailureMethod.getAnnotation(Transactional.class);
+
+        assertThat(transactional)
+                .withFailMessage("SsoSyncTaskFailureRecorder.recordFailure 必须声明事务边界")
+                .isNotNull();
+        assertThat(transactional.propagation())
+                .as("失败状态记录必须使用 REQUIRES_NEW，避免被外层回滚吞掉")
+                .isEqualTo(Propagation.REQUIRES_NEW);
     }
 
     /**
