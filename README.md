@@ -16,6 +16,13 @@
 - `yr-quartz`：定时任务能力
 - `yr-activiti7`：工作流基础能力
 
+## 最新边界基线
+
+- `yr-framework` 显式承载 `Spring Security`、`Redis`、`JWT` 等安全基础设施，不再直接依赖 `yr-system`
+- `yr-common` 已移除 `spring-boot-starter-security`、`spring-boot-starter-data-redis`、`mybatis-plus-boot-starter`、`rocketmq-spring-boot-starter` 等重量 starter（启动器）
+- `yr-admin` 与 `yr-quartz` 按消费关系显式依赖 `yr-system`，不再通过 `yr-framework` 的传递依赖间接拿业务 Bean
+- 当前全仓标准验证入口为 `mvn test`
+
 ## 已剔除模块
 
 - `sam-erp`
@@ -44,7 +51,7 @@ Java version: 1.8.x
 请在当前终端先设置 JDK 17，再执行模块测试：
 
 ```bash
-export JAVA_HOME=/Users/PopoY/Library/Java/JavaVirtualMachines/corretto-17.0.18/Contents/Home
+export JAVA_HOME=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home
 export PATH="$JAVA_HOME/bin:$PATH"
 mvn -pl yr-system test
 ```
