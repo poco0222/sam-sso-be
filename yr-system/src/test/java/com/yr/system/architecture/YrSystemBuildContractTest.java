@@ -94,7 +94,7 @@ class YrSystemBuildContractTest {
     void shouldDeclareStableJdk17BaselineAcrossReadmePlanAndBuildContract() throws IOException {
         Path repositoryRoot = resolveRepositoryRoot();
         Path readmePath = repositoryRoot.resolve("README.md");
-        Path remediationPlanPath = repositoryRoot.resolve("docs/superpowers/plans/2026-03-27-sso-backend-best-practice-remediation.md");
+        Path remediationPlanPath = repositoryRoot.resolve("docs/superpowers/plans/2026-03-24-yr-system-official-best-practice-convergence.md");
         Path buildContractPath = repositoryRoot.resolve("pom.xml");
 
         assertSourceContains(readmePath, "JDK 17");
