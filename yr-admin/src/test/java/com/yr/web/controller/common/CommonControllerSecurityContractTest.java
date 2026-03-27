@@ -33,6 +33,9 @@ class CommonControllerSecurityContractTest {
     /** FileUploadUtils 源码路径。 */
     private static final Path FILE_UPLOAD_UTILS_PATH = Path.of("../yr-common/src/main/java/com/yr/common/utils/file/FileUploadUtils.java");
 
+    /** SecurityConfig 源码路径。 */
+    private static final Path SECURITY_CONFIG_PATH = Path.of("../yr-framework/src/main/java/com/yr/framework/config/SecurityConfig.java");
+
     /**
      * 验证删除接口不再以 GET 暴露，并声明显式权限。
      *
@@ -93,5 +96,19 @@ class CommonControllerSecurityContractTest {
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载文件失败\"");
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载模板文件失败\"");
         assertThat(commonControllerSource).contains("throw new CustomException(\"下载资源文件失败\"");
+    }
+
+    /**
+     * 验证通用下载入口不会继续以匿名方式暴露，避免文件接口绕过登录边界。
+     *
+     * @throws IOException 读取源码失败时抛出
+     */
+    @Test
+    void shouldNotExposeCommonDownloadEndpointsAnonymously() throws IOException {
+        String securityConfigSource = Files.readString(SECURITY_CONFIG_PATH, StandardCharsets.UTF_8);
+
+        assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/download**\").anonymous()");
+        assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/tmplDownload**\").anonymous()");
+        assertThat(securityConfigSource).doesNotContain(".antMatchers(\"/common/download/resource**\").anonymous()");
     }
 }

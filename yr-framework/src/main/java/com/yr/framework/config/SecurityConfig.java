@@ -99,9 +99,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         "/profile/**",
                         "/system/file/download"
                 ).permitAll()
-                .antMatchers("/common/download**").anonymous()
-                .antMatchers("/common/tmplDownload**").anonymous()
-                .antMatchers("/common/download/resource**").anonymous()
+                // 通用文件下载仅允许已登录用户访问，避免匿名绕过控制层边界。
+                .antMatchers("/common/download**").authenticated()
+                .antMatchers("/common/tmplDownload**").authenticated()
+                .antMatchers("/common/download/resource**").authenticated()
                 .anyRequest().authenticated()
                 .and()
                 .headers().frameOptions().disable();
