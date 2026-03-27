@@ -8,6 +8,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 /**
  * 文件处理工具类
@@ -91,18 +93,63 @@ public class FileUtils {
      * @return true 正常 false 非法
      */
     public static boolean checkAllowDownload(String resource) {
-        // 禁止目录上跳级别
-        if (StringUtils.contains(resource, "..")) {
+        Path normalizedResource;
+        try {
+            normalizedResource = Path.of(resource).normalize();
+        } catch (InvalidPathException exception) {
+            return false;
+        }
+
+        if (normalizedResource.isAbsolute()) {
+            return false;
+        }
+
+        if (normalizedResource.startsWith("..")) {
+            return false;
+        }
+
+        String fileName = normalizedResource.getFileName() == null
+                ? StringUtils.EMPTY
+                : normalizedResource.getFileName().toString();
+        if (!isValidFilename(fileName)) {
             return false;
         }
 
         // 检查允许下载的文件规则
-        if (ArrayUtils.contains(MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, FileTypeUtils.getFileType(resource))) {
+        if (ArrayUtils.contains(MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION, FileTypeUtils.getFileType(fileName))) {
             return true;
         }
 
         // 不在允许下载的文件规则
         return false;
+    }
+
+    /**
+     * 在给定根目录下解析并校验相对路径，防止目录穿越与绝对路径逃逸。
+     *
+     * @param rootDir 根目录
+     * @param relativePath 相对路径
+     * @return 标准化后的目标路径
+     * @throws IOException 路径非法时抛出
+     */
+    public static Path resolveSecurePath(String rootDir, String relativePath) throws IOException {
+        Path normalizedRoot = Path.of(rootDir).toAbsolutePath().normalize();
+        Path normalizedRelative;
+        try {
+            normalizedRelative = Path.of(relativePath).normalize();
+        } catch (InvalidPathException exception) {
+            throw new IOException("文件路径非法", exception);
+        }
+
+        if (normalizedRelative.isAbsolute() || normalizedRelative.startsWith("..")) {
+            throw new IOException("文件路径非法");
+        }
+
+        Path targetPath = normalizedRoot.resolve(normalizedRelative).normalize();
+        if (!targetPath.startsWith(normalizedRoot)) {
+            throw new IOException("文件路径非法");
+        }
+        return targetPath;
     }
 
     /**

@@ -66,7 +66,7 @@ public class SysUserController extends BaseController {
         return getDataTable(list);
     }
 
-    //@PreAuthorize("@ss.hasPermi('system:user:list')")
+    @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/list/v2")
     public TableDataInfo listV2(SysUser user) {
         if (user.getOrgId() == null) {
@@ -84,11 +84,13 @@ public class SysUserController extends BaseController {
         return getDataTable(list);
     }
 
+    @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/alllist")
     public AjaxResult allList() {
         return AjaxResult.success(userService.selectUserList(new SysUser()));
     }
 
+    @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/getAllUserForOptions")
     public AjaxResult getAllUserForOptions() {
         return AjaxResult.success(sysUserMapper.getAllUserForOptions());
@@ -115,6 +117,7 @@ public class SysUserController extends BaseController {
         return AjaxResult.success(message);
     }
 
+    @PreAuthorize("@ss.hasPermi('system:user:import')")
     @GetMapping("/importTemplate")
     public AjaxResult importTemplate() {
         ExcelUtil<SysUser> util = new ExcelUtil<SysUser>(SysUser.class);

@@ -30,6 +30,10 @@ class SysSystemControllerPermissionContractTest {
      */
     @Test
     void shouldProtectHighRiskSysUserControllerEndpoints() throws NoSuchMethodException {
+        assertProtectedOrAllowlisted(SysUserController.class, "listV2", SysUser.class);
+        assertProtectedOrAllowlisted(SysUserController.class, "allList");
+        assertProtectedOrAllowlisted(SysUserController.class, "getAllUserForOptions");
+        assertProtectedOrAllowlisted(SysUserController.class, "importTemplate");
         assertProtectedOrAllowlisted(SysUserController.class, "selectSysUserById", String.class);
         assertProtectedOrAllowlisted(SysUserController.class, "batchSelectUserByDeptId", String.class);
         assertProtectedOrAllowlisted(SysUserController.class, "listV2ForAF", SysUser.class);
@@ -43,6 +47,8 @@ class SysSystemControllerPermissionContractTest {
     @Test
     void shouldProtectHighRiskSysDeptControllerEndpoints() throws NoSuchMethodException {
         assertProtectedOrAllowlisted(SysDeptController.class, "list", SysDept.class);
+        assertProtectedOrAllowlisted(SysDeptController.class, "getCheckDeptList");
+        assertProtectedOrAllowlisted(SysDeptController.class, "selectSysDept");
         assertProtectedOrAllowlisted(SysDeptController.class, "treeselect", SysDept.class);
         assertProtectedOrAllowlisted(SysDeptController.class, "getAllSysDeptForOptions");
         assertProtectedOrAllowlisted(SysDeptController.class, "getChildrenDept", String.class);

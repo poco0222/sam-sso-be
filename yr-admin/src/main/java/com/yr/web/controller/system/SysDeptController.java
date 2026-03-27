@@ -47,6 +47,7 @@ public class SysDeptController extends BaseController {
         return AjaxResult.success(depts);
     }
 
+    @PreAuthorize("@ss.hasPermi('system:dept:list')")
     @GetMapping("/getCheckDeptList")
     public AjaxResult getCheckDeptList() {
         List<SysDept> depts = deptService.getCheckDeptList();
@@ -162,6 +163,7 @@ public class SysDeptController extends BaseController {
     /*
     获取启用的部门名称和编号
      */
+    @PreAuthorize("@ss.hasPermi('system:dept:list')")
     @GetMapping("/selectSysDept")
     public AjaxResult selectSysDept() {
         List<SysDept> list = deptService.selectSysDept();

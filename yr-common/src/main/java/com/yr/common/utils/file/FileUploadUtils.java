@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Date;
 import java.util.Objects;
 
@@ -146,7 +147,14 @@ public class FileUploadUtils {
     }
 
     public static final File getAbsoluteFile(String uploadDir, String fileName) throws IOException {
-        File desc = new File(uploadDir + File.separator + fileName);
+        Path normalizedRoot = Path.of(uploadDir).toAbsolutePath().normalize();
+        Path normalizedTarget = normalizedRoot.resolve(fileName).normalize();
+
+        if (!normalizedTarget.startsWith(normalizedRoot)) {
+            throw new IOException("文件路径非法");
+        }
+
+        File desc = normalizedTarget.toFile();
 
         if (!desc.getParentFile().exists()) {
             desc.getParentFile().mkdirs();
