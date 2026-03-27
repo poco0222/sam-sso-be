@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -23,9 +24,10 @@ import java.util.Map;
 /**
  * swagger 用户测试方法
  *
- * @author Youngron
+ * @author PopoY
  */
 @Tag(name = "用户信息管理")
+@Profile("local")
 @RestController
 @RequestMapping("/test/user")
 public class TestController extends BaseController {

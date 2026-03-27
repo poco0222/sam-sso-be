@@ -79,6 +79,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .authorizeRequests()
                 // 一期认证面只保留账号密码登录、验证码与企业微信登录相关匿名入口。
                 .antMatchers("/login", "/captchaImage", "/auth/wxwork/pre-login", "/auth/wxwork/login").anonymous()
+                // Swagger / springdoc / Druid 不再默认匿名开放，必须经过认证后才能访问。
+                .antMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/webjars/**",
+                        "/druid/**"
+                ).authenticated()
                 .antMatchers(
                         HttpMethod.GET,
                         "/",
@@ -94,11 +102,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/common/download**").anonymous()
                 .antMatchers("/common/tmplDownload**").anonymous()
                 .antMatchers("/common/download/resource**").anonymous()
-                .antMatchers("/swagger-ui.html").anonymous()
-                .antMatchers("/swagger-ui/**").anonymous()
-                .antMatchers("/v3/api-docs/**").anonymous()
-                .antMatchers("/webjars/**").anonymous()
-                .antMatchers("/druid/**").anonymous()
                 .anyRequest().authenticated()
                 .and()
                 .headers().frameOptions().disable();

@@ -19,6 +19,9 @@ yr:
     initPassword: ${YR_USER_INIT_PASSWORD:Init@123}
   # 验证码类型 math 数组计算 char 字符验证
   captchaType: ${CAPTCHA_TYPE:math}
+  security:
+    cors:
+      allowed-origin-patterns: ${YR_SECURITY_CORS_ALLOWED_ORIGIN_PATTERNS:}
 
 # 开发环境配置
 server:
@@ -70,7 +73,7 @@ spring:
       master:
         url: ${SPRING_DATASOURCE_DRUID_MASTER_URL:jdbc:mysql://127.0.0.1:3306/yr_template_prod?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
         username: ${SPRING_DATASOURCE_DRUID_MASTER_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_MASTER_PASSWORD:template_password}
+        password: ${SPRING_DATASOURCE_DRUID_MASTER_PASSWORD}
         host: ${SPRING_DATASOURCE_DRUID_MASTER_HOST:127.0.0.1}
         port: ${SPRING_DATASOURCE_DRUID_MASTER_PORT:3306}
         basename: ${SPRING_DATASOURCE_DRUID_MASTER_BASENAME:yr_template_prod}
@@ -79,7 +82,7 @@ spring:
         enabled: false
         url: ${SPRING_DATASOURCE_DRUID_SLAVE_URL:jdbc:mysql://127.0.0.1:3306/yr_template_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&nullCatalogMeansCurrent=true&connectTimeout=5000&socketTimeout=30000&tcpKeepAlive=true}
         username: ${SPRING_DATASOURCE_DRUID_SLAVE_USERNAME:template_user}
-        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:template_password}
+        password: ${SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD}
       # 扩展 SQL Server 从库数据源（按需启用）
       slaveec:
         enabled: false
@@ -117,13 +120,13 @@ spring:
       webStatFilter:
         enabled: true
       statViewServlet:
-        enabled: true
+        enabled: ${DRUID_STAT_VIEW_SERVLET_ENABLED:false}
         # 设置白名单，不填则允许所有访问
         allow:
         url-pattern: /druid/*
         # 控制台管理用户名和密码
-        login-username: yr
-        login-password: 123456
+        login-username: ${DRUID_STAT_VIEW_LOGIN_USERNAME}
+        login-password: ${DRUID_STAT_VIEW_LOGIN_PASSWORD}
       filter:
         stat:
           enabled: true
@@ -194,11 +197,11 @@ token:
   # 令牌自定义标识
   header: ${TOKEN_HEADER:Authorization}
   # 令牌密钥
-  secret: ${TOKEN_SECRET:abcdefghijklmnopqrstuvwxyz}
+  secret: ${TOKEN_SECRET}
   # 令牌有效期（默认30分钟）
   expireTime: ${TOKEN_EXPIRE_TIME:600}
   # 单点登录加密盐
-  ssoSalt: ${TOKEN_SSO_SALT:abcdefghijklmnopqrstuvwxyz}
+  ssoSalt: ${TOKEN_SSO_SALT}
   # 是否需要检验用户名称与登录账号 Y/N
   ssoCheckName: ${TOKEN_SSO_CHECK_NAME:N}
 
@@ -244,15 +247,15 @@ pagehelper:
 # Swagger配置
 swagger:
   # 是否开启swagger
-  enabled: ${SWAGGER_ENABLED:true}
+  enabled: ${SWAGGER_ENABLED:false}
   # 请求前缀
   pathMapping: ${SWAGGER_PATH_MAPPING:/dev-api}
 
 springdoc:
   api-docs:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
     path: /swagger-ui.html
 
 # 防止XSS攻击
