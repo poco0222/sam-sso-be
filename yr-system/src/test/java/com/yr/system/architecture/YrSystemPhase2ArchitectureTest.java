@@ -46,7 +46,7 @@ class YrSystemPhase2ArchitectureTest {
     @Test
     void shouldMoveWarmupOutOfServicePostConstruct() {
         assertThat(YrSystemWarmupRunner.class).isNotNull();
-        assertThat(Arrays.stream(YrSystemWarmupRunner.class.getDeclaredFields()).map(Field::getType).toList())
+        assertThat(collectInstanceFields(YrSystemWarmupRunner.class).stream().map(Field::getType).toList())
                 .as("一期 warmup runner 不应再持有任何 legacy 预热依赖")
                 .isEmpty();
     }

@@ -116,15 +116,11 @@ class YrSystemSqlContractTest {
     }
 
     /**
-     * 验证文件分页查询的筛选字段与返回展示字段保持一致，避免“展示原始文件名、筛选存储文件名”。
-     *
-     * @throws IOException 读取 mapper 失败
+     * 验证一期边界已经移除 SysFileMapper，避免测试继续锁定已下线文件内容。
      */
     @Test
-    void shouldFilterSysFileByDisplayedAttachmentName() throws IOException {
-        assertMapperContains("SysFileMapper.xml", "sa.attach_name as fileName");
-        assertMapperContains("SysFileMapper.xml", "AND sa.attach_name LIKE");
-        assertMapperDoesNotContainIgnoringCase("SysFileMapper.xml", "AND sf.file_name LIKE");
+    void shouldRemoveSysFileMapperFromPhaseOneBoundary() {
+        assertMapperPathDoesNotExist("SysFileMapper.xml");
     }
 
     /**

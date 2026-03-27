@@ -86,19 +86,21 @@ class YrSystemBuildContractTest {
     }
 
     /**
-     * 确认仓库根目录的 AGENTS 指南使用当前机器可用的 JDK 17 路径示例。
+     * 确认 README、执行计划与构建契约都稳定声明 JDK 17 基线，不绑定机器专属路径或本地 AGENTS 文件。
      *
-     * @throws IOException 读取 AGENTS 文件失败
+     * @throws IOException 读取文档失败
      */
     @Test
-    void shouldDocumentCurrentJdk17PathInAgentsGuide() throws IOException {
+    void shouldDeclareStableJdk17BaselineAcrossReadmePlanAndBuildContract() throws IOException {
         Path repositoryRoot = resolveRepositoryRoot();
-        Path agentsPath = repositoryRoot.resolve("AGENTS.md");
+        Path readmePath = repositoryRoot.resolve("README.md");
+        Path remediationPlanPath = repositoryRoot.resolve("docs/superpowers/plans/2026-03-27-sso-backend-best-practice-remediation.md");
+        Path buildContractPath = repositoryRoot.resolve("pom.xml");
 
-        assertSourceContains(
-                agentsPath,
-                "/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home"
-        );
+        assertSourceContains(readmePath, "JDK 17");
+        assertSourceContains(remediationPlanPath, "JDK 17");
+        assertSourceContains(buildContractPath, "<java.version>17</java.version>");
+        assertSourceContains(buildContractPath, "<release>${java.version}</release>");
     }
 
     /**
