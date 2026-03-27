@@ -97,8 +97,8 @@ class YrSystemBuildContractTest {
         Path remediationPlanPath = repositoryRoot.resolve("docs/superpowers/plans/2026-03-24-yr-system-official-best-practice-convergence.md");
         Path buildContractPath = repositoryRoot.resolve("pom.xml");
 
-        assertSourceContains(readmePath, "JDK 17");
-        assertSourceContains(remediationPlanPath, "JDK 17");
+        assertSourceContains(readmePath, "当前构建基线为 `JDK 17 + Spring Boot 2.7.18`");
+        assertSourceContains(remediationPlanPath, "**Tech Stack:** `JDK 17`, `Spring Boot 2.7.18`");
         assertSourceContains(buildContractPath, "<java.version>17</java.version>");
         assertSourceContains(buildContractPath, "<release>${java.version}</release>");
     }
