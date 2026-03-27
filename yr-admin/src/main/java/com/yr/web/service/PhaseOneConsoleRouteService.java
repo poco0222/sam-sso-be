@@ -19,8 +19,11 @@ import java.util.List;
 @Service
 public class PhaseOneConsoleRouteService {
 
+    /** 组织架构根菜单 ID。 */
+    private static final long ORG_STRUCTURE_ROOT_MENU_ID = 9000L;
+
     /** 身份管理根菜单 ID。 */
-    private static final long IDENTITY_ROOT_MENU_ID = 9000L;
+    private static final long IDENTITY_ROOT_MENU_ID = 9007L;
 
     /** 客户端管理菜单 ID。 */
     private static final long CLIENT_MENU_ID = 9001L;
@@ -60,9 +63,8 @@ public class PhaseOneConsoleRouteService {
      */
     private List<RouterVo> buildMgmtRoutes() {
         List<RouterVo> routes = new ArrayList<>();
+        routes.add(buildOrganizationRoute());
         routes.add(buildIdentityRoute());
-        routes.add(buildClientRoute());
-        routes.add(buildSyncTaskRoute());
         return routes;
     }
 
@@ -77,45 +79,34 @@ public class PhaseOneConsoleRouteService {
     }
 
     /**
+     * 构造组织架构根路由及其子项。
+     *
+     * @return 组织架构根路由
+     */
+    private RouterVo buildOrganizationRoute() {
+        RouterVo organizationRoute = buildTopLevelRoute("/system", "System", "组织架构", "tree", ORG_STRUCTURE_ROOT_MENU_ID);
+        organizationRoute.setChildren(List.of(
+                buildChildRoute("user", "system/user/index", "SystemUser", "用户管理", "user", USER_MENU_ID, false),
+                buildChildRoute("org", "system/org/index", "SystemOrg", "组织管理", "tree", ORG_MENU_ID, false),
+                buildChildRoute("dept", "system/dept/index", "SystemDept", "部门管理", "tree-table", DEPT_MENU_ID, false)
+        ));
+        return organizationRoute;
+    }
+
+    /**
      * 构造身份管理根路由及其子项。
      *
      * @return 身份管理根路由
      */
     private RouterVo buildIdentityRoute() {
-        RouterVo identityRoute = buildTopLevelRoute("/system", "System", "身份管理", "peoples", IDENTITY_ROOT_MENU_ID);
+        RouterVo identityRoute = buildTopLevelRoute("/identity", "IdentityRoot", "身份管理", "peoples", IDENTITY_ROOT_MENU_ID);
         identityRoute.setChildren(List.of(
-                buildChildRoute("user", "system/user/index", "SystemUser", "用户管理", "user", USER_MENU_ID, false),
-                buildChildRoute("org", "system/org/index", "SystemOrg", "组织管理", "tree", ORG_MENU_ID, false),
-                buildChildRoute("dept", "system/dept/index", "SystemDept", "部门管理", "tree-table", DEPT_MENU_ID, false)
+                // 使用绝对路径保留既有访问地址，只调整侧栏展示层级。
+                buildChildRoute("/client", "client/index", "Client", "客户端管理", "link", CLIENT_MENU_ID, false),
+                buildChildRoute("/sync-task", "sync-task/index", "SyncTask", "同步任务控制台", "job", SYNC_TASK_MENU_ID, false),
+                buildChildRoute("/sync-task/log", "sync-task/log", "SyncTaskLog", "任务日志", "history", SYNC_TASK_LOG_MENU_ID, true)
         ));
         return identityRoute;
-    }
-
-    /**
-     * 构造客户端管理固定路由。
-     *
-     * @return 客户端管理路由
-     */
-    private RouterVo buildClientRoute() {
-        RouterVo clientRoute = buildTopLevelRoute("/client", "ClientRoot", "客户端管理", "link", CLIENT_MENU_ID);
-        clientRoute.setChildren(List.of(
-                buildChildRoute("index", "client/index", "Client", "客户端管理", "link", CLIENT_MENU_ID, false)
-        ));
-        return clientRoute;
-    }
-
-    /**
-     * 构造同步任务固定路由。
-     *
-     * @return 同步任务路由
-     */
-    private RouterVo buildSyncTaskRoute() {
-        RouterVo syncTaskRoute = buildTopLevelRoute("/sync-task", "SyncTaskRoot", "同步任务控制台", "job", SYNC_TASK_MENU_ID);
-        syncTaskRoute.setChildren(List.of(
-                buildChildRoute("index", "sync-task/index", "SyncTask", "同步任务控制台", "job", SYNC_TASK_MENU_ID, false),
-                buildChildRoute("log", "sync-task/log", "SyncTaskLog", "任务日志", "history", SYNC_TASK_LOG_MENU_ID, true)
-        ));
-        return syncTaskRoute;
     }
 
     /**
