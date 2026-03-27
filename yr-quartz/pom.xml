@@ -35,6 +35,12 @@
             <artifactId>yr-common</artifactId>
         </dependency>
 
+        <!-- MQ 重试任务依赖 system 提供的发送实现 -->
+        <dependency>
+            <groupId>com.yr</groupId>
+            <artifactId>yr-system</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>

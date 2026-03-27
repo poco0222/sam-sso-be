@@ -1,28 +1,20 @@
 package com.yr.framework.config;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.parser.ParserConfig;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.util.Assert;
 
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
- * Redis使用FastJson序列化
+ * Redis 使用 Jackson（Jackson JSON 库）序列化
  *
  * @author Youngron
  */
 public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
-    public static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
-
-    static {
-        ParserConfig.getGlobalInstance().setAutoTypeSupport(true);
-    }
+    public static final java.nio.charset.Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     @SuppressWarnings("unused")
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -38,7 +30,11 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
         if (t == null) {
             return new byte[0];
         }
-        return JSON.toJSONString(t, SerializerFeature.WriteClassName).getBytes(DEFAULT_CHARSET);
+        try {
+            return objectMapper.writeValueAsString(t).getBytes(DEFAULT_CHARSET);
+        } catch (JsonProcessingException ex) {
+            throw new SerializationException("Redis 序列化失败", ex);
+        }
     }
 
     @Override
@@ -46,17 +42,15 @@ public class FastJson2JsonRedisSerializer<T> implements RedisSerializer<T> {
         if (bytes == null || bytes.length <= 0) {
             return null;
         }
-        String str = new String(bytes, DEFAULT_CHARSET);
-
-        return JSON.parseObject(str, clazz);
+        try {
+            return objectMapper.readValue(bytes, clazz);
+        } catch (Exception ex) {
+            throw new SerializationException("Redis 反序列化失败", ex);
+        }
     }
 
     public void setObjectMapper(ObjectMapper objectMapper) {
         Assert.notNull(objectMapper, "'objectMapper' must not be null");
         this.objectMapper = objectMapper;
-    }
-
-    protected JavaType getJavaType(Class<?> clazz) {
-        return TypeFactory.defaultInstance().constructType(clazz);
     }
 }

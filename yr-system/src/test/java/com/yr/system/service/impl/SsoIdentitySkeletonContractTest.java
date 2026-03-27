@@ -7,7 +7,9 @@ package com.yr.system.service.impl;
 
 import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -16,6 +18,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -67,7 +70,8 @@ class SsoIdentitySkeletonContractTest {
     @Test
     void shouldLockInitImportOwnershipTransferContract() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
-        doReturn(true).when(service).save(any(SsoSyncTask.class));
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         SsoSyncTask command = new SsoSyncTask();
         command.setTargetClientCode("sam-mgmt");
 
@@ -90,7 +94,7 @@ class SsoIdentitySkeletonContractTest {
                 .contains("user_dept_relation")
                 .contains("userId+orgId")
                 .contains("userId+deptId");
-        verify(service).save(command);
+        verify(ssoSyncTaskFailureRecorder).persistNewTask(command);
     }
 
     /**
@@ -99,7 +103,8 @@ class SsoIdentitySkeletonContractTest {
     @Test
     void shouldLockDistributionTaskContract() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
-        doReturn(true).when(service).save(any(SsoSyncTask.class));
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         SsoSyncTask command = new SsoSyncTask();
         command.setTargetClientCode("sam-mgmt");
 
@@ -121,6 +126,6 @@ class SsoIdentitySkeletonContractTest {
                 .contains("user")
                 .contains("user_org_relation")
                 .contains("user_dept_relation");
-        verify(service).save(command);
+        verify(ssoSyncTaskFailureRecorder).persistNewTask(command);
     }
 }

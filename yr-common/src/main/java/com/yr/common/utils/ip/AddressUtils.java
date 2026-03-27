@@ -1,6 +1,7 @@
 package com.yr.common.utils.ip;
 
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.config.YrConfig;
 import com.yr.common.constant.Constants;
 import com.yr.common.utils.StringUtils;
@@ -18,6 +19,8 @@ public class AddressUtils {
     public static final String IP_URL = "http://whois.pconline.com.cn/ipJson.jsp";
     // 未知地址
     public static final String UNKNOWN = "XX XX";
+    /** Jackson 对象映射器，用于替代 fastjson。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(AddressUtils.class);
 
     public static String getRealAddressByIP(String ip) {
@@ -33,9 +36,9 @@ public class AddressUtils {
                     log.error("获取地理位置异常 {}", ip);
                     return UNKNOWN;
                 }
-                JSONObject obj = JSONObject.parseObject(rspStr);
-                String region = obj.getString("pro");
-                String city = obj.getString("city");
+                JsonNode addressJson = OBJECT_MAPPER.readTree(rspStr);
+                String region = addressJson.path("pro").asText(StringUtils.EMPTY);
+                String city = addressJson.path("city").asText(StringUtils.EMPTY);
                 return String.format("%s %s", region, city);
             } catch (Exception e) {
                 log.error("获取地理位置异常 {}", ip);

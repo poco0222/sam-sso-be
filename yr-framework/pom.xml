@@ -17,6 +17,12 @@
 
     <dependencies>
 
+        <!-- 通用工具与共享领域模型 -->
+        <dependency>
+            <groupId>com.yr</groupId>
+            <artifactId>yr-common</artifactId>
+        </dependency>
+
         <!-- SpringBoot Web容器 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -39,6 +45,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Spring Security 基础设施 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Redis 缓存能力从 common 上移到 framework -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
         <!-- 阿里数据库连接池 -->
@@ -65,10 +83,20 @@
             <artifactId>oshi-core</artifactId>
         </dependency>
 
-        <!-- 系统模块-->
+        <!-- JWT 令牌依赖升级到 0.11.x -->
         <dependency>
-            <groupId>com.yr</groupId>
-            <artifactId>yr-system</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- 单元测试依赖，用于验证异步线程池配置行为 -->

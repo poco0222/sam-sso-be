@@ -1,7 +1,7 @@
 package com.yr.framework.interceptor;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.constant.Constants;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.redis.RedisCache;
@@ -26,6 +26,8 @@ import javax.servlet.http.HttpServletResponse;
 
 @Component
 public class LoginFailInterceptor implements HandlerInterceptor {
+    /** JSON 解析与序列化器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private RedisCache redisCache;
@@ -39,15 +41,15 @@ public class LoginFailInterceptor implements HandlerInterceptor {
         }
         RepeatedlyRequestWrapper repeatedlyRequest = (RepeatedlyRequestWrapper) request;
         String bodyString = HttpHelper.getBodyString(repeatedlyRequest);
-        JSONObject jsonObject = JSON.parseObject(bodyString);
-        Integer errorTimes = redisCache.getCacheInteger("login_error:" + jsonObject.getString("username"));
+        JsonNode loginPayload = OBJECT_MAPPER.readTree(bodyString);
+        Integer errorTimes = redisCache.getCacheInteger("login_error:" + loginPayload.path("username").asText());
         if (errorTimes != null && errorTimes >= loginErrorTimesLimit) {
             // 锁定时长（分钟）
             Integer lockTime = redisCache.getCacheInteger(Constants.SYS_CONFIG_KEY + "sys.loginErrorLockTime");
             if (lockTime == null) {
                 lockTime = 30;
             }
-            ServletUtils.renderString(response, JSON.toJSONString(AjaxResult.error("账户已被锁定，请" + lockTime + "分钟后再试")));
+            ServletUtils.renderString(response, OBJECT_MAPPER.writeValueAsString(AjaxResult.error("账户已被锁定，请" + lockTime + "分钟后再试")));
             return false;
         }
         return true;

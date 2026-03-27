@@ -28,13 +28,12 @@
         <kaptcha.version>2.3.2</kaptcha.version>
         <mybatis-spring-boot.version>2.3.1</mybatis-spring-boot.version>
         <pagehelper.boot.version>1.4.7</pagehelper.boot.version>
-        <fastjson.version>1.2.76</fastjson.version>
         <oshi.version>5.8.0</oshi.version>
         <jna.version>5.8.0</jna.version>
         <commons.io.version>2.10.0</commons.io.version>
         <commons.fileupload.version>1.4</commons.fileupload.version>
         <poi.version>4.1.2</poi.version>
-        <jwt.version>0.9.1</jwt.version>
+        <jjwt.version>0.11.5</jjwt.version>
         <mybatis-plus.version>3.4.3.4</mybatis-plus.version>
         <liquibase.version>4.3.5</liquibase.version>
         <rocketmq-spring.version>2.2.3</rocketmq-spring.version>
@@ -128,18 +127,23 @@
                 <version>${poi.version}</version>
             </dependency>
 
-            <!-- 阿里JSON解析器 -->
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson.version}</version>
-            </dependency>
-
-            <!-- Token生成与解析-->
+            <!-- Token 生成与解析 -->
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
-                <version>${jwt.version}</version>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
             </dependency>
 
             <!-- 验证码 -->
@@ -153,6 +157,12 @@
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-extension</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
 

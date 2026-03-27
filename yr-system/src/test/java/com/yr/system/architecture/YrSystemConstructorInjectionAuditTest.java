@@ -16,15 +16,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 锁定 Task 5 需要迁移到构造器注入的关键 framework Bean 清单。
+ * 锁定 Task 5 需要迁移到构造器注入的关键安全 Bean 清单。
  */
 class YrSystemConstructorInjectionAuditTest {
 
-    /** 需要收口字段注入的 framework 源码文件。 */
+    /** 需要收口字段注入的安全源码文件。 */
     private static final List<Path> SECURITY_BEAN_SOURCES = List.of(
             Path.of("../yr-framework/src/main/java/com/yr/framework/config/SecurityConfig.java"),
             Path.of("../yr-framework/src/main/java/com/yr/framework/security/filter/JwtAuthenticationTokenFilter.java"),
-            Path.of("../yr-framework/src/main/java/com/yr/framework/web/service/UserDetailsServiceImpl.java"),
+            Path.of("../yr-admin/src/main/java/com/yr/framework/web/service/UserDetailsServiceImpl.java"),
             Path.of("../yr-framework/src/main/java/com/yr/framework/web/service/PermissionService.java")
     );
 
@@ -39,7 +39,7 @@ class YrSystemConstructorInjectionAuditTest {
     }
 
     /**
-     * 验证安全相关 framework Bean 不再保留字段级依赖注入。
+     * 验证安全相关 Bean 不再保留字段级依赖注入。
      *
      * @throws IOException 读取源码失败时抛出
      */

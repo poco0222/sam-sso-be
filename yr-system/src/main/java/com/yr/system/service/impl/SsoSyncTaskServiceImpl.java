@@ -5,9 +5,10 @@
  */
 package com.yr.system.service.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.MqMessageLog;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
@@ -40,6 +41,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper, SsoSyncTask> implements ISsoSyncTaskService {
+    /** JSON 序列化器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /** INIT_IMPORT 中用户组织关系采用组合键继承语义。 */
     private static final String USER_ORG_RELATION_IDENTITY = "userId+orgId";
@@ -313,7 +316,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         identityRules.put("user_dept_relation", USER_DEPT_RELATION_IDENTITY);
         payload.put("entityScopes", entityScopes);
         payload.put("identityRules", identityRules);
-        return JSON.toJSONString(payload);
+        return writeJson(payload);
     }
 
     /**
@@ -328,7 +331,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         payload.put("deliveryMode", SsoDistributionMessagePayload.DELIVERY_MODE_FULL_BATCH_SNAPSHOT);
         payload.put("mqActionType", "UPSERT");
         payload.put("sourceSystem", SsoDistributionMessagePayload.SOURCE_SYSTEM_LOCAL_SAM_EMPTY);
-        return JSON.toJSONString(payload);
+        return writeJson(payload);
     }
 
     /**
@@ -353,7 +356,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         payload.put("sourceTaskType", sourceTask.getTaskType());
         payload.put("sourceBatchNo", sourceTask.getSourceBatchNo());
         payload.put("failedItems", scopedItems);
-        return JSON.toJSONString(payload);
+        return writeJson(payload);
     }
 
     /**
@@ -401,8 +404,8 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         if (task.getPayloadJson() == null || task.getPayloadJson().isBlank()) {
             return SsoSyncTask.TASK_TYPE_INIT_IMPORT;
         }
-        JSONObject payload = JSON.parseObject(task.getPayloadJson());
-        String sourceTaskType = payload.getString("sourceTaskType");
+        JsonNode payload = readJson(task.getPayloadJson());
+        String sourceTaskType = payload.path("sourceTaskType").asText();
         return sourceTaskType == null || sourceTaskType.isBlank() ? SsoSyncTask.TASK_TYPE_INIT_IMPORT : sourceTaskType;
     }
 
@@ -420,11 +423,40 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
                 continue;
             }
             try {
-                JSONObject detailJson = JSON.parseObject(item.getDetailJson());
-                item.setMsgKey(detailJson.getString("msgKey"));
+                JsonNode detailJson = readJson(item.getDetailJson());
+                JsonNode msgKeyNode = detailJson.get("msgKey");
+                item.setMsgKey(msgKeyNode == null || msgKeyNode.isNull() ? null : msgKeyNode.asText());
             } catch (Exception exception) {
                 item.setMsgKey(null);
             }
+        }
+    }
+
+    /**
+     * 把对象序列化为 JSON（JavaScript 对象表示法）字符串。
+     *
+     * @param payload 待序列化对象
+     * @return JSON 字符串
+     */
+    private String writeJson(Object payload) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("同步任务 payload 序列化失败", ex);
+        }
+    }
+
+    /**
+     * 读取 JSON（JavaScript 对象表示法）字符串。
+     *
+     * @param json JSON 字符串
+     * @return JSON 树节点
+     */
+    private JsonNode readJson(String json) {
+        try {
+            return OBJECT_MAPPER.readTree(json);
+        } catch (Exception ex) {
+            throw new IllegalStateException("同步任务 payload 解析失败", ex);
         }
     }
 

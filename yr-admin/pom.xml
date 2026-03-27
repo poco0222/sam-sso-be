@@ -68,6 +68,12 @@
             <artifactId>yr-framework</artifactId>
         </dependency>
 
+        <!-- 业务系统模块，承载认证装配与 MQ 支撑实现 -->
+        <dependency>
+            <groupId>com.yr</groupId>
+            <artifactId>yr-system</artifactId>
+        </dependency>
+
         <!-- 定时任务-->
         <dependency>
             <groupId>com.yr</groupId>

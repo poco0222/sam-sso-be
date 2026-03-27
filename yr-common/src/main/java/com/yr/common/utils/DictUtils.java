@@ -6,12 +6,13 @@
 package com.yr.common.utils;
 
 import com.yr.common.constant.Constants;
-import com.yr.common.core.redis.RedisCache;
 import com.yr.common.utils.spring.SpringUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 
+import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +43,7 @@ public class DictUtils {
      * @param dictDatas 字典数据列表
      */
     public static void setDictCache(String key, List<?> dictDatas) {
-        SpringUtils.getBean(RedisCache.class).setCacheObject(getCacheKey(key), dictDatas);
+        invokeRedisMethod("setCacheObject", new Class<?>[]{String.class, Object.class}, getCacheKey(key), dictDatas);
     }
 
     /**
@@ -52,7 +53,7 @@ public class DictUtils {
      * @return dictDatas 字典数据列表
      */
     public static List<?> getDictCache(String key) {
-        Object cacheObj = SpringUtils.getBean(RedisCache.class).getCacheObject(getCacheKey(key));
+        Object cacheObj = invokeRedisMethod("getCacheObject", new Class<?>[]{String.class}, getCacheKey(key));
         if (StringUtils.isNotNull(cacheObj)) {
             List<?> dictDatas = StringUtils.cast(cacheObj);
             return dictDatas;
@@ -158,15 +159,17 @@ public class DictUtils {
      * @param key 字典键
      */
     public static void removeDictCache(String key) {
-        SpringUtils.getBean(RedisCache.class).deleteObject(getCacheKey(key));
+        invokeRedisMethod("deleteObject", new Class<?>[]{String.class}, getCacheKey(key));
     }
 
     /**
      * 清空字典缓存
      */
     public static void clearDictCache() {
-        Collection<String> keys = SpringUtils.getBean(RedisCache.class).keys(Constants.SYS_DICT_KEY + "*");
-        SpringUtils.getBean(RedisCache.class).deleteObject(keys);
+        Collection<String> keys = invokeRedisMethod("keys", new Class<?>[]{String.class}, Constants.SYS_DICT_KEY + "*");
+        if (keys != null && !keys.isEmpty()) {
+            invokeRedisMethod("deleteObject", new Class<?>[]{Collection.class}, keys);
+        }
     }
 
     /**
@@ -217,6 +220,35 @@ public class DictUtils {
             return fieldValue == null ? StringUtils.EMPTY : String.valueOf(fieldValue);
         } catch (Exception ex) {
             return StringUtils.EMPTY;
+        }
+    }
+
+    /**
+     * 通过反射访问迁移到 framework 模块的 RedisCache Bean，避免 common 再直接绑定 redis 依赖。
+     *
+     * @param methodName 方法名
+     * @param parameterTypes 参数类型
+     * @param args 实参数组
+     * @param <T> 返回值类型
+     * @return Redis 调用结果；Bean 缺失或调用失败时返回 null
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T invokeRedisMethod(String methodName, Class<?>[] parameterTypes, Object... args) {
+        if (!SpringUtils.containsBean("redisCache")) {
+            if ("keys".equals(methodName)) {
+                return (T) Collections.emptyList();
+            }
+            return null;
+        }
+        try {
+            Object redisCacheBean = SpringUtils.getBean("redisCache");
+            Method method = redisCacheBean.getClass().getMethod(methodName, parameterTypes);
+            return (T) method.invoke(redisCacheBean, args);
+        } catch (Exception ex) {
+            if ("keys".equals(methodName)) {
+                return (T) Collections.emptyList();
+            }
+            return null;
         }
     }
 }

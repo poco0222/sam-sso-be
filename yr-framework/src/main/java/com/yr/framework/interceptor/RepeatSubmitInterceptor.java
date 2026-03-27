@@ -1,6 +1,6 @@
 package com.yr.framework.interceptor;
 
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.annotation.RepeatSubmit;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.utils.ServletUtils;
@@ -19,6 +19,9 @@ import java.lang.reflect.Method;
  */
 @Component
 public abstract class RepeatSubmitInterceptor extends HandlerInterceptorAdapter {
+    /** JSON 序列化器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (handler instanceof HandlerMethod) {
@@ -28,7 +31,7 @@ public abstract class RepeatSubmitInterceptor extends HandlerInterceptorAdapter 
             if (annotation != null) {
                 if (this.isRepeatSubmit(request)) {
                     AjaxResult ajaxResult = AjaxResult.error("不允许重复提交，请稍后再试");
-                    ServletUtils.renderString(response, JSONObject.toJSONString(ajaxResult));
+                    ServletUtils.renderString(response, OBJECT_MAPPER.writeValueAsString(ajaxResult));
                     return false;
                 }
             }

@@ -7,7 +7,6 @@ package com.yr.framework.config;
 
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
-import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -20,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.filter.CorsFilter;
 
@@ -37,7 +37,7 @@ public class SecurityConfig {
     private final AuthenticationEntryPointImpl unauthorizedHandler;
 
     /** 退出登录处理器。 */
-    private final LogoutSuccessHandlerImpl logoutSuccessHandler;
+    private final LogoutSuccessHandler logoutSuccessHandler;
 
     /** JWT 认证过滤器。 */
     private final JwtAuthenticationTokenFilter authenticationTokenFilter;
@@ -54,7 +54,7 @@ public class SecurityConfig {
      */
     public SecurityConfig(UserDetailsService userDetailsService,
                           AuthenticationEntryPointImpl unauthorizedHandler,
-                          LogoutSuccessHandlerImpl logoutSuccessHandler,
+                          LogoutSuccessHandler logoutSuccessHandler,
                           JwtAuthenticationTokenFilter authenticationTokenFilter,
                           CorsFilter corsFilter) {
         this.userDetailsService = userDetailsService;

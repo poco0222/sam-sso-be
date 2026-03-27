@@ -32,11 +32,13 @@ class SsoInitImportLocalProfileDatasourceContractTest {
 
         assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_MASTER_URL:jdbc:mysql://127.0.0.1:3306/local_sam_empty");
         assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_MASTER_USERNAME:root");
-        assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_MASTER_PASSWORD:Popo0222");
+        assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_MASTER_PASSWORD:");
+        assertThat(applicationLocal).doesNotContain("SPRING_DATASOURCE_DRUID_MASTER_PASSWORD:Popo0222");
         assertThat(applicationLocal).contains("enabled: true");
         assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_SLAVE_URL:jdbc:mysql://127.0.0.1:3306/local_sam");
         assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_SLAVE_USERNAME:root");
-        assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:Popo0222");
+        assertThat(applicationLocal).contains("SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:");
+        assertThat(applicationLocal).doesNotContain("SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD:Popo0222");
         assertThat(applicationLocal).contains("legacy-source-datasource: ${SSO_INIT_IMPORT_LEGACY_SOURCE_DATASOURCE:SLAVE}");
     }
 }

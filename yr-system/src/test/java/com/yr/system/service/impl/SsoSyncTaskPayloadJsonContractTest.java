@@ -5,9 +5,8 @@
  */
 package com.yr.system.service.impl;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -16,8 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -33,6 +33,9 @@ import static org.mockito.Mockito.when;
  * 锁定 INIT_IMPORT / DISTRIBUTION / COMPENSATION 的 payload 仍是合法 JSON。
  */
 class SsoSyncTaskPayloadJsonContractTest {
+    /** JSON 解析器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
 
     /**
      * 验证补偿 payload 在包含引号与反斜杠时仍是合法 JSON，并保留原始值。
@@ -61,16 +64,15 @@ class SsoSyncTaskPayloadJsonContractTest {
         verify(ssoSyncTaskFailureRecorder).persistNewTask(persistedTaskCaptor.capture());
         String payloadJson = persistedTaskCaptor.getValue().getPayloadJson();
 
-        assertThatCode(() -> JSON.parseObject(payloadJson))
+        assertThatCode(() -> OBJECT_MAPPER.readTree(payloadJson))
                 .as("补偿 payload 必须保持为合法 JSON")
                 .doesNotThrowAnyException();
-        JSONObject payload = JSON.parseObject(payloadJson);
-        JSONArray failedItems = payload.getJSONArray("failedItems");
-        JSONObject firstFailedItem = failedItems.getJSONObject(0);
+        JsonNode payload = readJson(payloadJson);
+        JsonNode firstFailedItem = payload.path("failedItems").get(0);
 
-        assertThat(payload.getLong("sourceTaskId")).isEqualTo(11L);
-        assertThat(firstFailedItem.getString("entityType")).isEqualTo("user\"type");
-        assertThat(firstFailedItem.getString("sourceId")).isEqualTo("30\\1/\"A");
+        assertThat(payload.path("sourceTaskId").asLong()).isEqualTo(11L);
+        assertThat(firstFailedItem.path("entityType").asText()).isEqualTo("user\"type");
+        assertThat(firstFailedItem.path("sourceId").asText()).isEqualTo("30\\1/\"A");
     }
 
     /**
@@ -95,16 +97,16 @@ class SsoSyncTaskPayloadJsonContractTest {
         service.initImportTask(initCommand);
         service.distributionTask(distributionCommand);
 
-        assertThatCode(() -> JSON.parseObject(initCommand.getPayloadJson())).doesNotThrowAnyException();
-        assertThatCode(() -> JSON.parseObject(distributionCommand.getPayloadJson())).doesNotThrowAnyException();
+        assertThatCode(() -> OBJECT_MAPPER.readTree(initCommand.getPayloadJson())).doesNotThrowAnyException();
+        assertThatCode(() -> OBJECT_MAPPER.readTree(distributionCommand.getPayloadJson())).doesNotThrowAnyException();
 
-        JSONObject initPayload = JSON.parseObject(initCommand.getPayloadJson());
-        JSONObject distributionPayload = JSON.parseObject(distributionCommand.getPayloadJson());
+        JsonNode initPayload = readJson(initCommand.getPayloadJson());
+        JsonNode distributionPayload = readJson(distributionCommand.getPayloadJson());
 
-        assertThat(initPayload.getJSONArray("entityScopes"))
+        assertThat(StreamSupport.stream(initPayload.path("entityScopes").spliterator(), false).map(JsonNode::asText).toList())
                 .contains("org", "dept", "user", "user_org_relation", "user_dept_relation");
-        assertThat(distributionPayload.getString("deliveryMode")).isEqualTo("FULL_BATCH_SNAPSHOT");
-        assertThat(distributionPayload.getString("mqActionType")).isEqualTo("UPSERT");
+        assertThat(distributionPayload.path("deliveryMode").asText()).isEqualTo("FULL_BATCH_SNAPSHOT");
+        assertThat(distributionPayload.path("mqActionType").asText()).isEqualTo("UPSERT");
     }
 
     /**
@@ -139,5 +141,19 @@ class SsoSyncTaskPayloadJsonContractTest {
         item.setSourceId(sourceId);
         item.setStatus(status);
         return item;
+    }
+
+    /**
+     * 读取 JSON（JavaScript 对象表示法）字符串。
+     *
+     * @param json JSON 字符串
+     * @return JSON 树节点
+     */
+    private JsonNode readJson(String json) {
+        try {
+            return OBJECT_MAPPER.readTree(json);
+        } catch (Exception ex) {
+            throw new IllegalStateException("测试 JSON 解析失败", ex);
+        }
     }
 }

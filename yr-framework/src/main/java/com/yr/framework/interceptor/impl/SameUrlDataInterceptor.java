@@ -1,6 +1,7 @@
 package com.yr.framework.interceptor.impl;
 
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.constant.Constants;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.common.filter.RepeatedlyRequestWrapper;
@@ -24,6 +25,9 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
+    /** JSON 序列化器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     public final String REPEAT_PARAMS = "repeatParams";
 
     public final String REPEAT_TIME = "repeatTime";
@@ -57,7 +61,7 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
 
         // body参数为空，获取Parameter的数据
         if (StringUtils.isEmpty(nowParams)) {
-            nowParams = JSONObject.toJSONString(request.getParameterMap());
+            nowParams = writeJson(request.getParameterMap());
         }
         Map<String, Object> nowDataMap = new HashMap<String, Object>();
         nowDataMap.put(REPEAT_PARAMS, nowParams);
@@ -89,6 +93,20 @@ public class SameUrlDataInterceptor extends RepeatSubmitInterceptor {
         cacheMap.put(url, nowDataMap);
         redisCache.setCacheObject(cacheRepeatKey, cacheMap, intervalTime, TimeUnit.SECONDS);
         return false;
+    }
+
+    /**
+     * 把对象稳定序列化为 JSON（JavaScript 对象表示法）字符串。
+     *
+     * @param payload 待序列化对象
+     * @return JSON 字符串；失败时回退到字符串表示
+     */
+    private String writeJson(Object payload) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            return String.valueOf(payload);
+        }
     }
 
     /**

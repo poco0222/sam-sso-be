@@ -12,11 +12,15 @@ import eu.bitwalker.useragentutils.UserAgent;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -161,10 +165,10 @@ public class TokenService {
      * @return 令牌
      */
     private String createToken(Map<String, Object> claims) {
-        String token = Jwts.builder()
+        return Jwts.builder()
                 .setClaims(claims)
-                .signWith(SignatureAlgorithm.HS512, secret).compact();
-        return token;
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .compact();
     }
 
     /**
@@ -174,8 +178,9 @@ public class TokenService {
      * @return 数据声明
      */
     private Claims parseToken(String token) {
-        return Jwts.parser()
-                .setSigningKey(secret)
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
@@ -203,6 +208,24 @@ public class TokenService {
             token = token.replace(Constants.TOKEN_PREFIX, "");
         }
         return token;
+    }
+
+    /**
+     * 生成 JWT（JSON Web Token）签名密钥。
+     *
+     * JJWT 0.11.x 会校验 HMAC（基于哈希的消息认证码）密钥长度，这里对原始配置做
+     * SHA-512（安全散列算法 512 位）摘要，兼容现有配置长度同时消除旧版弱 API。
+     *
+     * @return JWT 签名密钥
+     */
+    private Key getSigningKey() {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            byte[] signingKeyBytes = digest.digest(String.valueOf(secret).getBytes(StandardCharsets.UTF_8));
+            return Keys.hmacShaKeyFor(signingKeyBytes);
+        } catch (Exception ex) {
+            throw new IllegalStateException("生成 JWT 签名密钥失败", ex);
+        }
     }
 
     private String getTokenKey(String uuid) {

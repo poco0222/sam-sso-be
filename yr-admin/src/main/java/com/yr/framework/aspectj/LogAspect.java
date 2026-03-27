@@ -1,6 +1,7 @@
 package com.yr.framework.aspectj;
 
-import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.annotation.Log;
 import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.enums.BusinessStatus;
@@ -42,6 +43,8 @@ import java.util.Map;
 @Component  //把这个类交给springbean管理
 public class LogAspect {
     private static final Logger log = LoggerFactory.getLogger(LogAspect.class);
+    /** JSON 序列化器。 */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // 配置织入点
     @Pointcut("@annotation(com.yr.common.annotation.Log)")
@@ -87,7 +90,7 @@ public class LogAspect {
             String ip = IpUtils.getIpAddr(ServletUtils.getRequest());
             operLog.setOperIp(ip);
             // 返回参数
-            operLog.setJsonResult(JSON.toJSONString(jsonResult));
+            operLog.setJsonResult(writeJson(jsonResult));
 
             operLog.setOperUrl(ServletUtils.getRequest().getRequestURI());
             if (loginUser != null) {
@@ -176,12 +179,25 @@ public class LogAspect {
         if (paramsArray != null && paramsArray.length > 0) {
             for (int i = 0; i < paramsArray.length; i++) {
                 if (StringUtils.isNotNull(paramsArray[i]) && !isFilterObject(paramsArray[i])) {
-                    Object jsonObj = JSON.toJSON(paramsArray[i]);
-                    params += jsonObj.toString() + " ";
+                    params += writeJson(paramsArray[i]) + " ";
                 }
             }
         }
         return params.trim();
+    }
+
+    /**
+     * 把对象稳定序列化为 JSON（JavaScript 对象表示法）字符串。
+     *
+     * @param payload 待序列化对象
+     * @return JSON 字符串；失败时回退到字符串表示
+     */
+    private String writeJson(Object payload) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            return String.valueOf(payload);
+        }
     }
 
     /**
