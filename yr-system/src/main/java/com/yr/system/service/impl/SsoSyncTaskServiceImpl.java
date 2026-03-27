@@ -111,7 +111,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         }
         newTask.setImportSnapshotAt(new Date());
         newTask.setPayloadJson(buildInitImportPayload());
-        this.save(newTask);
+        ssoSyncTaskFailureRecorder.persistNewTask(newTask);
         return executeTask(newTask, null, newTask.getTaskType());
     }
 
@@ -143,7 +143,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         }
         newTask.setImportSnapshotAt(new Date());
         newTask.setPayloadJson(buildDistributionPayload());
-        this.save(newTask);
+        ssoSyncTaskFailureRecorder.persistNewTask(newTask);
         return executeTask(newTask, null, newTask.getTaskType());
     }
 
@@ -198,7 +198,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         compensationTask.setImportSnapshotAt(new Date());
         compensationTask.setCreateBy(sourceTask.getCreateBy());
         compensationTask.setPayloadJson(buildCompensationPayload(sourceTask, failedItems));
-        this.save(compensationTask);
+        ssoSyncTaskFailureRecorder.persistNewTask(compensationTask);
         return executeTask(compensationTask, failedItems, sourceTask.getTaskType());
     }
 

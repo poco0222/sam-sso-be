@@ -30,6 +30,16 @@ public class SsoSyncTaskFailureRecorder {
     }
 
     /**
+     * 在独立事务中创建任务骨架，确保后续失败更新时数据库中已有可见记录。
+     *
+     * @param task 待持久化的新任务
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public void persistNewTask(SsoSyncTask task) {
+        ssoSyncTaskMapper.insert(task);
+    }
+
+    /**
      * 在独立事务中回写 FAILED 状态与失败摘要。
      *
      * @param task 失败任务

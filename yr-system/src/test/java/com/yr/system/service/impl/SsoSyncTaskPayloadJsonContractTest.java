@@ -11,6 +11,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.system.service.ISsoSyncTaskItemService;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -40,23 +41,25 @@ class SsoSyncTaskPayloadJsonContractTest {
     void compensateTaskShouldSerializeSpecialCharactersIntoValidJsonPayload() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
-        ArgumentCaptor<SsoSyncTask> savedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        ArgumentCaptor<SsoSyncTask> persistedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
         SsoSyncTask sourceTask = buildExistingTask();
         SsoSyncTaskItem failedItem = buildItem("user\"type", "30\\1/\"A", SsoSyncTask.STATUS_FAILED);
 
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         doReturn(sourceTask).when(service).getById(11L);
         doAnswer(invocation -> {
-            SsoSyncTask savedTask = invocation.getArgument(0);
-            savedTask.setTaskId(12L);
-            return true;
-        }).when(service).save(any(SsoSyncTask.class));
+            SsoSyncTask persistedTask = invocation.getArgument(0);
+            persistedTask.setTaskId(12L);
+            return null;
+        }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
         when(ssoSyncTaskItemService.selectFailedByTaskId(11L)).thenReturn(List.of(failedItem));
 
         service.compensateTask(11L);
 
-        verify(service).save(savedTaskCaptor.capture());
-        String payloadJson = savedTaskCaptor.getValue().getPayloadJson();
+        verify(ssoSyncTaskFailureRecorder).persistNewTask(persistedTaskCaptor.capture());
+        String payloadJson = persistedTaskCaptor.getValue().getPayloadJson();
 
         assertThatCode(() -> JSON.parseObject(payloadJson))
                 .as("补偿 payload 必须保持为合法 JSON")
@@ -77,15 +80,17 @@ class SsoSyncTaskPayloadJsonContractTest {
     void initImportAndDistributionPayloadShouldRemainValidJsonObjects() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         AtomicLong taskIdSeed = new AtomicLong(100L);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoSyncTask initCommand = new SsoSyncTask();
         SsoSyncTask distributionCommand = new SsoSyncTask();
 
         distributionCommand.setTargetClientCode("sam-mgmt");
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         doAnswer(invocation -> {
-            SsoSyncTask savedTask = invocation.getArgument(0);
-            savedTask.setTaskId(taskIdSeed.getAndIncrement());
-            return true;
-        }).when(service).save(any(SsoSyncTask.class));
+            SsoSyncTask persistedTask = invocation.getArgument(0);
+            persistedTask.setTaskId(taskIdSeed.getAndIncrement());
+            return null;
+        }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
 
         service.initImportTask(initCommand);
         service.distributionTask(distributionCommand);

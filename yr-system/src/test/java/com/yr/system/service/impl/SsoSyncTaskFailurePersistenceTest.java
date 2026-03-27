@@ -107,6 +107,40 @@ class SsoSyncTaskFailurePersistenceTest {
     }
 
     /**
+     * 验证新建任务在执行器抛错前会先独立持久化，避免失败回写时找不到数据库记录。
+     */
+    @Test
+    void shouldPersistNewTaskBeforeExecutionFailureWhenInitImportThrows() {
+        List<String> insertedStatuses = new ArrayList<>();
+        List<String> updatedStatuses = new ArrayList<>();
+        SsoSyncTask command = new SsoSyncTask();
+
+        when(ssoSyncTaskMapper.insert(any(SsoSyncTask.class))).thenAnswer(invocation -> {
+            SsoSyncTask insertedTask = invocation.getArgument(0);
+            insertedTask.setTaskId(21L);
+            insertedStatuses.add(insertedTask.getStatus());
+            return 1;
+        });
+        when(ssoSyncTaskMapper.updateById(any(SsoSyncTask.class))).thenAnswer(invocation -> {
+            SsoSyncTask updatedTask = invocation.getArgument(0);
+            updatedStatuses.add(updatedTask.getStatus());
+            return 1;
+        });
+        when(ssoIdentityImportService.execute(any(SsoSyncTask.class), eq(null)))
+                .thenThrow(new RuntimeException("init import failed"));
+
+        assertThatThrownBy(() -> ssoSyncTaskService.initImportTask(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("init import failed");
+
+        assertThat(transactionManager.getBeginCount()).isEqualTo(3);
+        assertThat(transactionManager.getCommitCount()).isEqualTo(2);
+        assertThat(transactionManager.getRollbackCount()).isEqualTo(1);
+        assertThat(insertedStatuses).containsExactly(SsoSyncTask.STATUS_RUNNING);
+        assertThat(updatedStatuses).containsExactly(SsoSyncTask.STATUS_FAILED);
+    }
+
+    /**
      * 构造已有同步任务，模拟数据库中已存在的 retry 目标。
      *
      * @return 已存在任务

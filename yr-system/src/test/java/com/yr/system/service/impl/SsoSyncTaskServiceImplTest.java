@@ -108,31 +108,33 @@ class SsoSyncTaskServiceImplTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoSyncTask sourceTask = buildExistingTask();
         SsoSyncTaskItem failedUserItem = buildItem("user", "301", "FAILED");
         SsoSyncTaskItem failedDeptItem = buildItem("dept", "201", "FAILED");
         SsoIdentityImportExecutionResult executionResult = buildExecutionResult("SUCCESS", 2, 2, 0);
-        ArgumentCaptor<SsoSyncTask> savedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
+        ArgumentCaptor<SsoSyncTask> persistedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
 
         ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         doReturn(sourceTask).when(service).getById(11L);
+        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
         doAnswer(invocation -> {
             SsoSyncTask task = invocation.getArgument(0);
             task.setTaskId(12L);
-            return true;
-        }).when(service).save(any(SsoSyncTask.class));
-        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
+            return null;
+        }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
         when(ssoSyncTaskItemService.selectFailedByTaskId(11L)).thenReturn(List.of(failedUserItem, failedDeptItem));
         when(ssoIdentityImportService.execute(any(SsoSyncTask.class), eq(List.of(failedUserItem, failedDeptItem))))
                 .thenReturn(executionResult);
 
         SsoSyncTask result = service.compensateTask(11L);
 
-        verify(service).save(savedTaskCaptor.capture());
-        assertThat(savedTaskCaptor.getValue().getTaskType()).isEqualTo("COMPENSATION");
-        assertThat(savedTaskCaptor.getValue().getBatchNo()).startsWith("COMP-");
-        assertThat(savedTaskCaptor.getValue().getPayloadJson())
+        verify(ssoSyncTaskFailureRecorder).persistNewTask(persistedTaskCaptor.capture());
+        assertThat(persistedTaskCaptor.getValue().getTaskType()).isEqualTo("COMPENSATION");
+        assertThat(persistedTaskCaptor.getValue().getBatchNo()).startsWith("COMP-");
+        assertThat(persistedTaskCaptor.getValue().getPayloadJson())
                 .contains("\"sourceTaskId\":11")
                 .contains("\"entityType\":\"user\"")
                 .contains("\"sourceId\":\"301\"")
@@ -185,28 +187,30 @@ class SsoSyncTaskServiceImplTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ISsoIdentityDistributionService ssoIdentityDistributionService = mock(ISsoIdentityDistributionService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoSyncTaskExecutionResult executionResult = buildExecutionResult("SUCCESS", 2, 2, 0);
-        ArgumentCaptor<SsoSyncTask> savedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
+        ArgumentCaptor<SsoSyncTask> persistedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
 
         ReflectionTestUtils.setField(service, "ssoIdentityDistributionService", ssoIdentityDistributionService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
         doAnswer(invocation -> {
             SsoSyncTask task = invocation.getArgument(0);
             task.setTaskId(21L);
-            return true;
-        }).when(service).save(any(SsoSyncTask.class));
-        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
+            return null;
+        }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
         when(ssoIdentityDistributionService.execute(any(SsoSyncTask.class), eq(null))).thenReturn(executionResult);
 
         SsoSyncTask command = new SsoSyncTask();
         command.setTargetClientCode("sam-mgmt");
         SsoSyncTask result = service.distributionTask(command);
 
-        verify(service).save(savedTaskCaptor.capture());
-        assertThat(savedTaskCaptor.getValue().getTaskType()).isEqualTo("DISTRIBUTION");
-        assertThat(savedTaskCaptor.getValue().getBatchNo()).startsWith("DIST-");
-        assertThat(savedTaskCaptor.getValue().getSourceBatchNo()).startsWith("LOCAL-");
-        assertThat(savedTaskCaptor.getValue().getPayloadJson())
+        verify(ssoSyncTaskFailureRecorder).persistNewTask(persistedTaskCaptor.capture());
+        assertThat(persistedTaskCaptor.getValue().getTaskType()).isEqualTo("DISTRIBUTION");
+        assertThat(persistedTaskCaptor.getValue().getBatchNo()).startsWith("DIST-");
+        assertThat(persistedTaskCaptor.getValue().getSourceBatchNo()).startsWith("LOCAL-");
+        assertThat(persistedTaskCaptor.getValue().getPayloadJson())
                 .contains("\"deliveryMode\":\"FULL_BATCH_SNAPSHOT\"")
                 .contains("\"mqActionType\":\"UPSERT\"")
                 .contains("\"sourceSystem\":\"local_sam_empty\"");
