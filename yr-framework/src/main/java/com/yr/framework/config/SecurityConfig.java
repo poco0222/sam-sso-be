@@ -7,6 +7,7 @@ package com.yr.framework.config;
 
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -50,13 +51,13 @@ public class SecurityConfig {
      * @param unauthorizedHandler 未认证访问处理器
      * @param logoutSuccessHandler 退出登录处理器
      * @param authenticationTokenFilter JWT 认证过滤器
-     * @param corsFilter 跨域过滤器
+     * @param corsFilter 自定义跨域过滤器
      */
     public SecurityConfig(UserDetailsService userDetailsService,
                           AuthenticationEntryPointImpl unauthorizedHandler,
                           LogoutSuccessHandler logoutSuccessHandler,
                           JwtAuthenticationTokenFilter authenticationTokenFilter,
-                          CorsFilter corsFilter) {
+                          @Qualifier("yrCorsFilter") CorsFilter corsFilter) {
         this.userDetailsService = userDetailsService;
         this.unauthorizedHandler = unauthorizedHandler;
         this.logoutSuccessHandler = logoutSuccessHandler;
@@ -112,7 +113,6 @@ public class SecurityConfig {
                         "/api/public/**",
                         "/*.html",
                         "/**/*.html",
-                        "/websocket/message/**",
                         "/**/*.css",
                         "/**/*.js",
                         "/profile/avatar/**",

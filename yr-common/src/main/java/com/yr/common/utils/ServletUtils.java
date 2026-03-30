@@ -1,6 +1,8 @@
 package com.yr.common.utils;
 
 import com.yr.common.core.text.Convert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -16,6 +18,9 @@ import java.io.IOException;
  * @author Youngron
  */
 public class ServletUtils {
+    /** Servlet 工具日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServletUtils.class);
+
     /**
      * 获取String参数
      */
@@ -84,7 +89,7 @@ public class ServletUtils {
             response.setCharacterEncoding("utf-8");
             response.getWriter().print(string);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("渲染响应字符串失败", e);
         }
         return null;
     }

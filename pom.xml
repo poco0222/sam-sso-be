@@ -257,16 +257,6 @@
         </repository>
 
         <repository>
-            <id>sam-pub</id>
-            <name>sam nexus</name>
-            <!-- 公司内网私服当前仍为 HTTP，后续建议通过 settings.xml 统一镜像治理 -->
-            <url>http://192.168.19.198:8081/repository/maven-public/</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-        </repository>
-
-        <repository>
             <id>jeecg</id>
             <name>jeecg Repository</name>
             <url>https://maven.jeecg.org/nexus/content/repositories/jeecg</url>

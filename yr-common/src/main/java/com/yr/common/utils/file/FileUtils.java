@@ -2,6 +2,8 @@ package com.yr.common.utils.file;
 
 import com.yr.common.utils.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -17,6 +19,9 @@ import java.nio.file.Path;
  * @author Youngron
  */
 public class FileUtils {
+    /** 文件工具日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
+
     public static String FILENAME_PATTERN = "[a-zA-Z0-9_\\-\\|\\.\\u4e00-\\u9fa5]+";
 
     /**
@@ -46,14 +51,14 @@ public class FileUtils {
                 try {
                     os.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
+                    LOGGER.warn("关闭输出流失败，filePath={}", filePath, e1);
                 }
             }
             if (fis != null) {
                 try {
                     fis.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
+                    LOGGER.warn("关闭文件输入流失败，filePath={}", filePath, e1);
                 }
             }
         }

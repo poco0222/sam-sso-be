@@ -1,20 +1,18 @@
-# sam-project-be-empty
+# sam-sso-be
 
 ## 项目说明
 
-该仓库是从既有多模块后端工程中剥离业务模块后保留下来的空壳模板，
-用于后续新项目快速复用基础平台能力。
+该仓库是当前一期 `SSO`（单点登录）后端工程，边界聚焦在 `user/org/dept` 主数据、同步任务、`RocketMQ`（消息队列）分发与基础认证能力。
 
 当前构建基线为 `JDK 17 + Spring Boot 2.7.18`。其中 `yr-system` 是当前阶段重点校验模块，执行 Maven 命令前必须先切换到 JDK 17。
 
-## 当前保留模块
+## 当前构建模块
 
 - `yr-admin`：Spring Boot 启动入口
 - `yr-framework`：安全、拦截器、配置等框架层能力
-- `yr-system`：组织架构、用户、角色、菜单、字典、参数、日志等系统管理能力
+- `yr-system`：`SSO` 主数据、同步任务与系统管理核心能力
 - `yr-common`：公共工具、通用实体与基础响应结构
 - `yr-quartz`：定时任务能力
-- `yr-activiti7`：工作流基础能力
 
 ## 最新边界基线
 
@@ -23,7 +21,7 @@
 - `yr-admin` 与 `yr-quartz` 按消费关系显式依赖 `yr-system`，不再通过 `yr-framework` 的传递依赖间接拿业务 Bean
 - 当前全仓标准验证入口为 `mvn test`
 
-## 已剔除模块
+## 当前未纳入构建范围
 
 - `sam-erp`
 - `sam-yrda`
@@ -31,6 +29,7 @@
 - `sam-spots`
 - `yr-generator`
 - `yr-demo`
+- `yr-activiti7`
 
 ## 构建前检查
 
@@ -88,5 +87,5 @@ mvn -pl yr-system test
 ## 说明
 
 - 数据库脚本本次未作为模板收敛依据，需要后续按新项目实际情况自行整理
-- 详细设计与实施计划见 `docs/plans/` 目录
+- `SSO` backend 审计与整改主文档见 `docs/review_plans/2026-03-27-sso-backend-best-practice-audit-remediation-overview.md`
 - `yr-system` Phase 0 验收记录见 `docs/review_plans/2026-03-16-yr-system-phase-0-baseline.md`

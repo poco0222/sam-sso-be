@@ -244,12 +244,8 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      * @return 执行后的任务
      */
     private SsoSyncTask executeTask(SsoSyncTask task, List<SsoSyncTaskItem> scopedItems, String executionTaskType) {
-        if (!hasExecutor(executionTaskType) || ssoSyncTaskItemService == null) {
-            task.setStatus(SsoSyncTask.STATUS_PENDING);
-            attachTaskStatistics(task, new ArrayList<>());
-            return task;
-        }
         try {
+            ensureExecutorReady(executionTaskType);
             SsoSyncTaskExecutionResult executionResult = executeByTaskType(executionTaskType, task, scopedItems);
             task.setStatus(executionResult.getStatus());
             task.setResultSummary(executionResult.getResultSummary());
@@ -266,6 +262,20 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         } catch (RuntimeException exception) {
             ssoSyncTaskFailureRecorder.recordFailure(task, exception);
             throw exception;
+        }
+    }
+
+    /**
+     * 在真正执行前校验执行器与关键依赖是否已启用，缺失时直接 fail-fast。
+     *
+     * @param executionTaskType 本轮执行类型
+     */
+    private void ensureExecutorReady(String executionTaskType) {
+        if (!hasExecutor(executionTaskType)) {
+            throw new CustomException(executionTaskType + "执行器未启用，任务无法执行");
+        }
+        if (ssoSyncTaskItemService == null) {
+            throw new CustomException("同步任务明细服务未启用，任务无法执行");
         }
     }
 

@@ -89,7 +89,6 @@ public class SysProfileController extends BaseController {
     @PutMapping("/updatePwd")
     public AjaxResult updatePwd(String oldPassword, String newPassword) {
         LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
-        String userName = loginUser.getUsername();
         String password = loginUser.getPassword();
         if (!SecurityUtils.matchesPassword(oldPassword, password)) {
             return AjaxResult.error("修改密码失败，旧密码错误");
@@ -97,10 +96,16 @@ public class SysProfileController extends BaseController {
         if (SecurityUtils.matchesPassword(newPassword, password)) {
             return AjaxResult.error("新密码不能与旧密码相同");
         }
-        if (userService.resetUserPwd(userName, SecurityUtils.encryptPassword(newPassword)) > 0) {
+        String encodedPassword = SecurityUtils.encryptPassword(newPassword);
+        SysUser resetUser = new SysUser();
+        resetUser.setUserId(loginUser.getUserId());
+        resetUser.setPassword(encodedPassword);
+        resetUser.setFirstLogin("0");
+        resetUser.setUpdateBy(loginUser.getUsername());
+        if (userService.resetUserPwd(resetUser) > 0) {
             // 更新缓存用户密码
             SysUser sysUser = loginUser.getUser();
-            sysUser.setPassword(SecurityUtils.encryptPassword(newPassword));
+            sysUser.setPassword(encodedPassword);
             sysUser.setFirstLogin("0");
             tokenService.setLoginUser(loginUser);
             return AjaxResult.success();

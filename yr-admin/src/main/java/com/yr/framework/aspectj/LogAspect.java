@@ -112,10 +112,7 @@ public class LogAspect {
             // 保存数据库
             AsyncManager.me().execute(AsyncFactory.recordOper(operLog));
         } catch (Exception exp) {
-            // 记录本地异常日志
-            log.error("==前置通知异常==");
-            log.error("异常信息:{}", exp.getMessage());
-            exp.printStackTrace();
+            log.error("操作日志切面处理失败", exp);
         }
     }
 

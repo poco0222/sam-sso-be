@@ -20,6 +20,8 @@ import com.yr.common.utils.ServletUtils;
 import com.yr.common.utils.StringUtils;
 import com.yr.common.utils.poi.ExcelUtil;
 import com.yr.framework.web.service.TokenService;
+import com.yr.web.controller.system.dto.ChangeUserStatusRequest;
+import com.yr.web.controller.system.dto.ResetUserPasswordRequest;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.service.ISysDeptService;
 import com.yr.system.service.ISysUserService;
@@ -202,7 +204,8 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/resetPwd")
-    public AjaxResult resetPwd(@RequestBody SysUser user) {
+    public AjaxResult resetPwd(@Validated @RequestBody ResetUserPasswordRequest request) {
+        SysUser user = buildPasswordResetUser(request);
         userService.checkUserAllowed(user);
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         user.setUpdateBy(SecurityUtils.getUsername());
@@ -229,10 +232,38 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
-    public AjaxResult changeStatus(@RequestBody SysUser user) {
+    public AjaxResult changeStatus(@Validated @RequestBody ChangeUserStatusRequest request) {
+        SysUser user = buildStatusChangeUser(request);
         userService.checkUserAllowed(user);
         user.setUpdateBy(SecurityUtils.getUsername());
         return toAjax(userService.updateUserStatus(user));
+    }
+
+    /**
+     * 构造密码重置专用用户写入对象，只保留允许下沉到 service 的字段。
+     *
+     * @param request 密码重置请求
+     * @return 精简后的用户写入对象
+     */
+    private SysUser buildPasswordResetUser(ResetUserPasswordRequest request) {
+        SysUser user = new SysUser();
+        user.setUserId(request.getUserId());
+        user.setPassword(request.getPassword());
+        user.setFirstLogin(request.getFirstLogin());
+        return user;
+    }
+
+    /**
+     * 构造状态修改专用用户写入对象，只保留状态修改必要字段。
+     *
+     * @param request 状态修改请求
+     * @return 精简后的用户写入对象
+     */
+    private SysUser buildStatusChangeUser(ChangeUserStatusRequest request) {
+        SysUser user = new SysUser();
+        user.setUserId(request.getUserId());
+        user.setStatus(request.getStatus());
+        return user;
     }
 
     /**

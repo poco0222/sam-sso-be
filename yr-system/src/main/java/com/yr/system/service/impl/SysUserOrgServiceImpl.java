@@ -93,6 +93,18 @@ public class SysUserOrgServiceImpl extends CustomServiceImpl<SysUserOrgMapper, S
     }
 
     @Override
+    public boolean hasEnabledOrgMembership(Long userId, Long orgId) {
+        if (userId == null || orgId == null) {
+            return false;
+        }
+        LambdaQueryWrapper<SysUserOrg> queryWrapper = new LambdaQueryWrapper<SysUserOrg>()
+                .eq(SysUserOrg::getUserId, userId)
+                .eq(SysUserOrg::getOrgId, orgId)
+                .eq(SysUserOrg::getEnabled, 1);
+        return this.count(queryWrapper) > 0;
+    }
+
+    @Override
     public List<SysUserOrg> getCurrUserAllOrg() {
         SysUserOrg sysUserOrg = new SysUserOrg();
         sysUserOrg.setUserId(SecurityUtils.getUserId());

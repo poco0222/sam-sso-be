@@ -14,6 +14,7 @@ import com.yr.framework.config.SecurityConfig;
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
 import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
+import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.service.ISsoClientService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
@@ -114,11 +115,13 @@ class SsoClientControllerContractTest {
         ssoClient.setClientId(7L);
         ssoClient.setClientCode("sam-mgmt");
         ssoClient.setClientName("SAM 管理后台");
+        ssoClient.setClientSecret("phase1-secret");
         when(ssoClientService.selectSsoClientList(any(SsoClient.class))).thenReturn(List.of(ssoClient));
 
         mockMvc.perform(get("/sso/client/list"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rows[0].clientCode").value("sam-mgmt"));
+                .andExpect(jsonPath("$.rows[0].clientCode").value("sam-mgmt"))
+                .andExpect(jsonPath("$.rows[0].clientSecret").doesNotExist());
     }
 
     /**
@@ -129,18 +132,47 @@ class SsoClientControllerContractTest {
     @Test
     void shouldCreateClient() throws Exception {
         setAuthenticatedUser("phase1-operator");
-        when(ssoClientService.insertSsoClient(any(SsoClient.class))).thenReturn(1);
+        SsoClientSecretIssueResult issueResult = new SsoClientSecretIssueResult();
+        issueResult.setClientId(7L);
+        issueResult.setClientCode("sam-mgmt");
+        issueResult.setClientSecret("secret-created");
+        when(ssoClientService.insertSsoClient(any(SsoClient.class))).thenReturn(issueResult);
 
         mockMvc.perform(post("/sso/client")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "clientCode":"sam-mgmt",
-                                  "clientName":"SAM 管理后台"
+                                  "clientName":"SAM 管理后台",
+                                  "status":"0"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.clientSecret").value("secret-created"));
+    }
+
+    /**
+     * 验证新增客户端缺少 clientCode 时必须被输入校验拦截。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankClientCodeWhenCreatingClient() throws Exception {
+        setAuthenticatedUser("phase3-operator");
+
+        mockMvc.perform(post("/sso/client")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "clientCode":"",
+                                  "clientName":"SAM 管理后台",
+                                  "status":"0"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.msg").value("clientCode不能为空"));
     }
 
     /**
@@ -159,7 +191,8 @@ class SsoClientControllerContractTest {
                                 {
                                   "clientId":7,
                                   "clientCode":"sam-mgmt",
-                                  "clientName":"SAM 管理后台"
+                                  "clientName":"SAM 管理后台",
+                                  "status":"0"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -205,14 +238,19 @@ class SsoClientControllerContractTest {
      */
     @Test
     void shouldFailFastWhenOperatorContextMissing() throws Exception {
-        when(ssoClientService.insertSsoClient(any(SsoClient.class))).thenReturn(1);
+        SsoClientSecretIssueResult issueResult = new SsoClientSecretIssueResult();
+        issueResult.setClientId(7L);
+        issueResult.setClientCode("sam-mgmt");
+        issueResult.setClientSecret("secret-created");
+        when(ssoClientService.insertSsoClient(any(SsoClient.class))).thenReturn(issueResult);
 
         mockMvc.perform(post("/sso/client")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "clientCode":"sam-mgmt",
-                                  "clientName":"SAM 管理后台"
+                                  "clientName":"SAM 管理后台",
+                                  "status":"0"
                                 }
                                 """))
                 .andExpect(status().isOk())

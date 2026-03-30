@@ -74,7 +74,7 @@ public class ResourcesConfig implements WebMvcConfigurer {
     /**
      * 跨域配置
      */
-    @Bean
+    @Bean(name = "yrCorsFilter")
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();

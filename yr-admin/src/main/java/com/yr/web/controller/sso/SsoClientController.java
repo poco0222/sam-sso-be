@@ -12,8 +12,13 @@ import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.page.TableDataInfo;
 import com.yr.common.enums.BusinessType;
 import com.yr.common.utils.SecurityUtils;
+import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.service.ISsoClientService;
+import com.yr.web.controller.sso.dto.SsoClientCreateRequest;
+import com.yr.web.controller.sso.dto.SsoClientUpdateRequest;
+import com.yr.web.controller.sso.dto.SsoClientView;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +27,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.github.pagehelper.PageInfo;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -52,7 +60,12 @@ public class SsoClientController extends BaseController {
     public TableDataInfo list(SsoClient query) {
         startPage();
         List<SsoClient> list = ssoClientService.selectSsoClientList(query);
-        return getDataTable(list);
+        long total = new PageInfo<>(list).getTotal();
+        List<SsoClientView> viewList = new ArrayList<>(list.size());
+        for (SsoClient ssoClient : list) {
+            viewList.add(toView(ssoClient));
+        }
+        return getDataTable(viewList, total);
     }
 
     /**
@@ -64,9 +77,15 @@ public class SsoClientController extends BaseController {
     @PreAuthorize("@ss.hasPermi('sso:client:add')")
     @Log(title = "客户端管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@RequestBody SsoClient ssoClient) {
+    public AjaxResult add(@Validated @RequestBody SsoClientCreateRequest request) {
+        SsoClient ssoClient = toCreateEntity(request);
         ssoClient.setCreateBy(resolveOperator());
-        return toAjax(ssoClientService.insertSsoClient(ssoClient));
+        SsoClientSecretIssueResult issueResult = ssoClientService.insertSsoClient(ssoClient);
+        AjaxResult ajaxResult = AjaxResult.success("新增客户端成功");
+        ajaxResult.put("clientId", issueResult.getClientId());
+        ajaxResult.put("clientCode", issueResult.getClientCode());
+        ajaxResult.put("clientSecret", issueResult.getClientSecret());
+        return ajaxResult;
     }
 
     /**
@@ -78,7 +97,8 @@ public class SsoClientController extends BaseController {
     @PreAuthorize("@ss.hasPermi('sso:client:edit')")
     @Log(title = "客户端管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@RequestBody SsoClient ssoClient) {
+    public AjaxResult edit(@Validated @RequestBody SsoClientUpdateRequest request) {
+        SsoClient ssoClient = toUpdateEntity(request);
         ssoClient.setUpdateBy(resolveOperator());
         return toAjax(ssoClientService.updateSsoClient(ssoClient));
     }
@@ -119,5 +139,65 @@ public class SsoClientController extends BaseController {
      */
     private String resolveOperator() {
         return SecurityUtils.getUsername();
+    }
+
+    /**
+     * 把创建请求转换为领域对象，避免控制器直接暴露 entity 写接口。
+     *
+     * @param request 创建请求
+     * @return 领域对象
+     */
+    private SsoClient toCreateEntity(SsoClientCreateRequest request) {
+        SsoClient ssoClient = new SsoClient();
+        ssoClient.setClientCode(request.getClientCode());
+        ssoClient.setClientName(request.getClientName());
+        ssoClient.setRedirectUris(request.getRedirectUris());
+        ssoClient.setAllowPasswordLogin(request.getAllowPasswordLogin());
+        ssoClient.setAllowWxworkLogin(request.getAllowWxworkLogin());
+        ssoClient.setSyncEnabled(request.getSyncEnabled());
+        ssoClient.setStatus(request.getStatus());
+        return ssoClient;
+    }
+
+    /**
+     * 把更新请求转换为领域对象。
+     *
+     * @param request 更新请求
+     * @return 领域对象
+     */
+    private SsoClient toUpdateEntity(SsoClientUpdateRequest request) {
+        SsoClient ssoClient = new SsoClient();
+        ssoClient.setClientId(request.getClientId());
+        ssoClient.setClientCode(request.getClientCode());
+        ssoClient.setClientName(request.getClientName());
+        ssoClient.setRedirectUris(request.getRedirectUris());
+        ssoClient.setAllowPasswordLogin(request.getAllowPasswordLogin());
+        ssoClient.setAllowWxworkLogin(request.getAllowWxworkLogin());
+        ssoClient.setSyncEnabled(request.getSyncEnabled());
+        ssoClient.setStatus(request.getStatus());
+        return ssoClient;
+    }
+
+    /**
+     * 把 entity 映射为不含密钥的视图对象。
+     *
+     * @param ssoClient 领域对象
+     * @return 列表视图
+     */
+    private SsoClientView toView(SsoClient ssoClient) {
+        SsoClientView view = new SsoClientView();
+        view.setClientId(ssoClient.getClientId());
+        view.setClientCode(ssoClient.getClientCode());
+        view.setClientName(ssoClient.getClientName());
+        view.setRedirectUris(ssoClient.getRedirectUris());
+        view.setAllowPasswordLogin(ssoClient.getAllowPasswordLogin());
+        view.setAllowWxworkLogin(ssoClient.getAllowWxworkLogin());
+        view.setSyncEnabled(ssoClient.getSyncEnabled());
+        view.setStatus(ssoClient.getStatus());
+        view.setCreateBy(ssoClient.getCreateBy());
+        view.setCreateTime(ssoClient.getCreateTime());
+        view.setUpdateBy(ssoClient.getUpdateBy());
+        view.setUpdateTime(ssoClient.getUpdateTime());
+        return view;
     }
 }

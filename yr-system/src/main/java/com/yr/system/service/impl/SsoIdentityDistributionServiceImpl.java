@@ -22,9 +22,12 @@ import com.yr.system.domain.entity.SysUserDept;
 import com.yr.system.domain.entity.SysUserOrg;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,6 +43,9 @@ import java.util.Map;
 @Service
 @ConditionalOnBean(MqProducerService.class)
 public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistributionService {
+
+    /** 服务日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(SsoIdentityDistributionServiceImpl.class);
 
     /** RocketMQ distribution topic。 */
     private static final String DISTRIBUTION_TOPIC = "sso-identity-distribution";
@@ -64,6 +70,9 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
 
     /** 失败状态。 */
     private static final String ITEM_STATUS_FAILED = "FAILED";
+
+    /** 待发送状态。 */
+    private static final String ITEM_STATUS_PENDING = "PENDING";
 
     /** item 错误信息长度上限。 */
     private static final int MAX_ITEM_ERROR_MESSAGE_LENGTH = 500;
@@ -92,13 +101,14 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
 
     /**
      * 执行分发。
+     * 事务边界由上层 SsoSyncTaskService（同步任务服务）持有，
+     * 这里不要再自带事务，避免 afterCommit（提交后回调）错误绑定到内层事务。
      *
      * @param task 同步任务
      * @param scopedItems 指定执行范围；为空时表示当前全量快照
      * @return 执行结果
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SsoSyncTaskExecutionResult execute(SsoSyncTask task, List<SsoSyncTaskItem> scopedItems) {
         SsoIdentityImportSnapshot snapshot = scopedItems == null || scopedItems.isEmpty()
                 ? ssoCurrentIdentitySnapshotLoader.loadSnapshot()
@@ -108,6 +118,11 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
                 : cloneScopedItems(scopedItems);
 
         SnapshotIndex snapshotIndex = snapshot == null ? null : buildSnapshotIndex(snapshot);
+        if (shouldDeferMqSendUntilAfterCommit()) {
+            prepareItemsForAfterCommit(task, itemList, snapshotIndex);
+            registerAfterCommitDispatch(task, itemList);
+            return buildPendingResult(itemList);
+        }
         int successCount = 0;
         int failedCount = 0;
 
@@ -131,6 +146,94 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
         result.setFailedItemCount(failedCount);
         result.setStatus(resolveTaskStatus(itemList.size(), successCount, failedCount));
         result.setResultSummary(buildResultSummary(itemList.size(), successCount, failedCount));
+        return result;
+    }
+
+    /**
+     * 判断当前是否应把 MQ 发送延后到事务提交后。
+     *
+     * @return true 表示当前有活动事务，且允许注册 afterCommit 回调
+     */
+    private boolean shouldDeferMqSendUntilAfterCommit() {
+        return TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive();
+    }
+
+    /**
+     * 在事务提交前先构建好明细消息体，提交后再真正发送。
+     *
+     * @param task 当前任务
+     * @param itemList 当前明细
+     * @param snapshotIndex 快照索引
+     */
+    private void prepareItemsForAfterCommit(SsoSyncTask task, List<SsoSyncTaskItem> itemList, SnapshotIndex snapshotIndex) {
+        for (SsoSyncTaskItem item : itemList) {
+            SsoDistributionMessagePayload payload = item.getDetailJson() == null || item.getDetailJson().isBlank()
+                    ? buildPayloadFromSnapshot(task, item, snapshotIndex)
+                    : rebuildPayloadFromStoredDetail(task, item);
+            item.setMsgKey(payload.getMsgKey());
+            item.setTargetId(item.getSourceId());
+            item.setDetailJson(serializeDetail(payload));
+            item.setStatus(ITEM_STATUS_PENDING);
+            item.setErrorMessage(null);
+        }
+    }
+
+    /**
+     * 在事务提交后执行 MQ 外发，避免 DB rollback 时消息已出队。
+     *
+     * @param task 当前任务
+     * @param itemList 当前明细
+     */
+    private void registerAfterCommitDispatch(SsoSyncTask task, List<SsoSyncTaskItem> itemList) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (SsoSyncTaskItem item : itemList) {
+                    try {
+                        sendPreparedItem(task, item);
+                    } catch (RuntimeException exception) {
+                        LOGGER.error("DISTRIBUTION afterCommit发送失败，taskId={}, msgKey={}", task.getTaskId(), item.getMsgKey(), exception);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * 使用事务内预构建好的 detailJson 在 afterCommit 阶段发送 MQ。
+     *
+     * @param task 当前任务
+     * @param item 当前明细
+     */
+    private void sendPreparedItem(SsoSyncTask task, SsoSyncTaskItem item) {
+        SsoDistributionMessagePayload payload = rebuildPayloadFromStoredDetail(task, item);
+        boolean sendResult = mqProducerService.send(
+                DISTRIBUTION_TOPIC,
+                resolveTargetTag(task),
+                MqActionType.UPSERT,
+                payload.getMsgKey(),
+                payload
+        );
+        if (!sendResult) {
+            throw new CustomException("MQ 发送失败，请检查 mq_message_log，msgKey=" + payload.getMsgKey());
+        }
+    }
+
+    /**
+     * 构造事务提交后发送场景下的待执行结果。
+     *
+     * @param itemList 当前明细
+     * @return 待发送结果
+     */
+    private SsoSyncTaskExecutionResult buildPendingResult(List<SsoSyncTaskItem> itemList) {
+        SsoSyncTaskExecutionResult result = new SsoSyncTaskExecutionResult();
+        result.setItemList(itemList);
+        result.setTotalItemCount(itemList.size());
+        result.setSuccessItemCount(0);
+        result.setFailedItemCount(0);
+        result.setStatus(SsoSyncTask.STATUS_PENDING);
+        result.setResultSummary("消息将在事务提交后发送");
         return result;
     }
 

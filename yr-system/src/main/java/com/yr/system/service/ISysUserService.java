@@ -148,11 +148,10 @@ public interface ISysUserService {
     /**
      * 重置用户密码
      *
-     * @param userName 用户名
-     * @param password 密码
+     * @param user 用户信息
      * @return 结果
      */
-    public int resetUserPwd(String userName, String password);
+    public int resetUserPwd(SysUser user);
 
     /**
      * 批量删除用户信息

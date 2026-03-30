@@ -27,6 +27,7 @@ import com.yr.common.utils.ip.IpUtils;
 import com.yr.common.utils.sign.RsaUtils;
 import com.yr.framework.manager.AsyncManager;
 import com.yr.framework.manager.factory.AsyncFactory;
+import com.yr.system.service.ISysUserOrgService;
 import com.yr.system.service.ISysUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +101,10 @@ public class SysLoginService {
     /** 用户服务，用于查询系统用户。 */
     @Autowired
     private ISysUserService userService;
+
+    /** 用户组织关联服务，用于校验切组织归属关系。 */
+    @Autowired
+    private ISysUserOrgService sysUserOrgService;
 
     /** 一期验证码开关，改为直接读取 application 配置。 */
     @Value("${yr.captcha.enabled:true}")
@@ -221,8 +226,17 @@ public class SysLoginService {
      * @return 新 token
      */
     public String changeOrg(Long orgId) {
-        String username = SecurityUtils.getUsername();
-        SysUser user = userService.selectUserByUserName(username, orgId);
+        if (orgId == null) {
+            throw new CustomException("组织ID不能为空");
+        }
+        LoginUser currentLoginUser = SecurityUtils.getLoginUser();
+        if (!sysUserOrgService.hasEnabledOrgMembership(currentLoginUser.getUserId(), orgId)) {
+            throw new CustomException("目标组织不属于当前用户或已停用");
+        }
+        SysUser user = userService.selectUserByUserName(currentLoginUser.getUsername(), orgId);
+        if (user == null) {
+            throw new CustomException("目标组织用户上下文不存在或已停用");
+        }
         LoginUser loginUser = new LoginUser(
                 user,
                 permissionService.getMenuPermission(user),
@@ -230,10 +244,11 @@ public class SysLoginService {
                 UserDetailsServiceImpl.getActivitiAuthority(user)
         );
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(loginUser, loginUser.getPassword())
+                new UsernamePasswordAuthenticationToken(loginUser, loginUser.getPassword(), loginUser.getAuthorities())
         );
-        String userKey = Constants.LOGIN_TOKEN_KEY + loginUser.getToken();
-        redisCache.deleteObject(userKey);
+        if (StringUtils.isNotBlank(currentLoginUser.getToken())) {
+            tokenService.delLoginUser(currentLoginUser.getToken());
+        }
         return tokenService.createToken(loginUser);
     }
 

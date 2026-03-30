@@ -455,14 +455,14 @@ public class ExcelUtil<T> {
                 try {
                     wb.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
+                    log.warn("关闭 Workbook 失败", e1);
                 }
             }
             if (out != null) {
                 try {
                     out.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
+                    log.warn("关闭导出输出流失败", e1);
                 }
             }
         }

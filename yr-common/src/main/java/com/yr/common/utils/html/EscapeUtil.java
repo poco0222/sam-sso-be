@@ -1,5 +1,8 @@
 package com.yr.common.utils.html;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.yr.common.utils.StringUtils;
 
 /**
@@ -8,6 +11,9 @@ import com.yr.common.utils.StringUtils;
  * @author Youngron
  */
 public class EscapeUtil {
+    /** HTML 转义工具日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(EscapeUtil.class);
+
     public static final String RE_HTML_MARK = "(<[^<]*?>)|(<[\\s]*?/[^<]*?>)|(<[^<]*?/[\\s]*?>)";
 
     private static final char[][] TEXT = new char[64][];
@@ -139,8 +145,8 @@ public class EscapeUtil {
         // String html = "<scr<script>ipt>alert(\"XSS\")</scr<script>ipt>";
         // String html = "<123";
         // String html = "123>";
-        System.out.println(EscapeUtil.clean(html));
-        System.out.println(EscapeUtil.escape(html));
-        System.out.println(EscapeUtil.unescape(html));
+        LOGGER.info("clean={}", EscapeUtil.clean(html));
+        LOGGER.info("escape={}", EscapeUtil.escape(html));
+        LOGGER.info("unescape={}", EscapeUtil.unescape(html));
     }
 }

@@ -28,11 +28,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -87,10 +85,6 @@ class SsoDistributionMqSmokeTest {
     /** 分发快照读取器测试桩；保留真实 datasource type，只覆盖 loadSnapshot 行为。 */
     @SpyBean
     private SsoCurrentIdentitySnapshotLoader ssoCurrentIdentitySnapshotLoader;
-
-    /** non-web 测试上下文不提供 servlet websocket 容器，这里用 mock 隔离无关启动依赖。 */
-    @MockBean
-    private ServerEndpointExporter serverEndpointExporter;
 
     /** 本轮演练创建的任务 ID。 */
     private Long lastTaskId;

@@ -255,7 +255,13 @@ public class SysUserServiceImpl implements ISysUserService {
      */
     @Override
     public int updateUserStatus(SysUser user) {
-        return userMapper.updateUser(user);
+        if (user == null || user.getUserId() == null) {
+            throw new CustomException("用户ID不能为空");
+        }
+        if (StringUtils.isBlank(user.getStatus())) {
+            throw new CustomException("用户状态不能为空");
+        }
+        return userMapper.updateUserStatus(user);
     }
 
     /**
@@ -289,7 +295,7 @@ public class SysUserServiceImpl implements ISysUserService {
      */
     @Override
     public int resetPwd(SysUser user) {
-        return userMapper.updateUser(user);
+        return resetUserPwd(user);
     }
 
     /**
@@ -300,8 +306,17 @@ public class SysUserServiceImpl implements ISysUserService {
      * @return 结果
      */
     @Override
-    public int resetUserPwd(String userName, String password) {
-        return userMapper.resetUserPwd(userName, password);
+    public int resetUserPwd(SysUser user) {
+        if (user == null || user.getUserId() == null) {
+            throw new CustomException("用户ID不能为空");
+        }
+        if (StringUtils.isBlank(user.getPassword())) {
+            throw new CustomException("密码不能为空");
+        }
+        if (StringUtils.isBlank(user.getFirstLogin())) {
+            user.setFirstLogin("0");
+        }
+        return userMapper.resetUserPwd(user);
     }
 
     /**

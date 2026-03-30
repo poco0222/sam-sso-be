@@ -70,6 +70,14 @@ public interface SysUserMapper {
     public int updateUser(SysUser user);
 
     /**
+     * 修改用户状态。
+     *
+     * @param user 用户状态信息
+     * @return 结果
+     */
+    public int updateUserStatus(SysUser user);
+
+    /**
      * 修改用户头像
      *
      * @param userName 用户名
@@ -85,7 +93,7 @@ public interface SysUserMapper {
      * @param password 密码
      * @return 结果
      */
-    public int resetUserPwd(@Param("userName") String userName, @Param("password") String password);
+    public int resetUserPwd(SysUser user);
 
     /**
      * 通过用户ID删除用户

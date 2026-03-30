@@ -324,9 +324,11 @@
 
     <update id="resetUserPwd" parameterType="SysUser">
         update sys_user
-        set password    = #{password},
-            first_login = '0'
-        where user_name = #{userName}
+        set password = #{password},
+            first_login = #{firstLogin},
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where user_id = #{userId}
     </update>
 
     <delete id="deleteUserById" parameterType="Long">

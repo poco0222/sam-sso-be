@@ -9,6 +9,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
+import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
+import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.service.ISsoIdentityDistributionService;
+import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
 import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
@@ -43,21 +47,25 @@ class SsoSyncTaskPayloadJsonContractTest {
     @Test
     void compensateTaskShouldSerializeSpecialCharactersIntoValidJsonPayload() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         ArgumentCaptor<SsoSyncTask> persistedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
         SsoSyncTask sourceTask = buildExistingTask();
         SsoSyncTaskItem failedItem = buildItem("user\"type", "30\\1/\"A", SsoSyncTask.STATUS_FAILED);
 
+        ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         doReturn(sourceTask).when(service).getById(11L);
+        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
         doAnswer(invocation -> {
             SsoSyncTask persistedTask = invocation.getArgument(0);
             persistedTask.setTaskId(12L);
             return null;
         }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
         when(ssoSyncTaskItemService.selectFailedByTaskId(11L)).thenReturn(List.of(failedItem));
+        when(ssoIdentityImportService.execute(any(SsoSyncTask.class), any())).thenReturn(buildPendingImportResult());
 
         service.compensateTask(11L);
 
@@ -81,18 +89,27 @@ class SsoSyncTaskPayloadJsonContractTest {
     @Test
     void initImportAndDistributionPayloadShouldRemainValidJsonObjects() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
+        ISsoIdentityDistributionService ssoIdentityDistributionService = mock(ISsoIdentityDistributionService.class);
+        ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         AtomicLong taskIdSeed = new AtomicLong(100L);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoSyncTask initCommand = new SsoSyncTask();
         SsoSyncTask distributionCommand = new SsoSyncTask();
 
         distributionCommand.setTargetClientCode("sam-mgmt");
+        ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
+        ReflectionTestUtils.setField(service, "ssoIdentityDistributionService", ssoIdentityDistributionService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
         doAnswer(invocation -> {
             SsoSyncTask persistedTask = invocation.getArgument(0);
             persistedTask.setTaskId(taskIdSeed.getAndIncrement());
             return null;
         }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
+        when(ssoIdentityImportService.execute(any(SsoSyncTask.class), any())).thenReturn(buildPendingImportResult());
+        when(ssoIdentityDistributionService.execute(any(SsoSyncTask.class), any())).thenReturn(buildPendingDistributionResult());
 
         service.initImportTask(initCommand);
         service.distributionTask(distributionCommand);
@@ -155,5 +172,37 @@ class SsoSyncTaskPayloadJsonContractTest {
         } catch (Exception ex) {
             throw new IllegalStateException("测试 JSON 解析失败", ex);
         }
+    }
+
+    /**
+     * 构造 INIT_IMPORT 的最小待执行结果，避免 payload 契约测试依赖真实执行器。
+     *
+     * @return INIT_IMPORT 待执行结果
+     */
+    private SsoIdentityImportExecutionResult buildPendingImportResult() {
+        SsoIdentityImportExecutionResult result = new SsoIdentityImportExecutionResult();
+        result.setItemList(List.of());
+        result.setTotalItemCount(0);
+        result.setSuccessItemCount(0);
+        result.setFailedItemCount(0);
+        result.setStatus(SsoSyncTask.STATUS_PENDING);
+        result.setResultSummary("init import queued");
+        return result;
+    }
+
+    /**
+     * 构造 DISTRIBUTION 的最小待执行结果，避免 payload 契约测试依赖真实执行器。
+     *
+     * @return DISTRIBUTION 待执行结果
+     */
+    private SsoSyncTaskExecutionResult buildPendingDistributionResult() {
+        SsoSyncTaskExecutionResult result = new SsoSyncTaskExecutionResult();
+        result.setItemList(List.of());
+        result.setTotalItemCount(0);
+        result.setSuccessItemCount(0);
+        result.setFailedItemCount(0);
+        result.setStatus(SsoSyncTask.STATUS_PENDING);
+        result.setResultSummary("distribution queued");
+        return result;
     }
 }

@@ -15,7 +15,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -27,7 +26,7 @@ public class FileUploadUtils {
     /**
      * 默认大小 50M
      */
-    public static final long DEFAULT_MAX_SIZE = 20000L * 1024 * 1024;
+    public static final long DEFAULT_MAX_SIZE = 50L * 1024 * 1024;
 
     /**
      * 默认的文件名最大长度 100
@@ -101,14 +100,12 @@ public class FileUploadUtils {
     public static final String upload(String baseDir, MultipartFile file, String[] allowedExtension)
             throws FileSizeLimitExceededException, IOException, FileNameLengthLimitExceededException,
             InvalidExtensionException {
-        System.out.println(new Date());
         int fileNamelength = file.getOriginalFilename().length();
         if (fileNamelength > FileUploadUtils.DEFAULT_FILE_NAME_LENGTH) {
             throw new FileNameLengthLimitExceededException(FileUploadUtils.DEFAULT_FILE_NAME_LENGTH);
         }
 
         assertAllowed(file, allowedExtension);
-        System.out.println(new Date());
         String fileName = extractFilename(file);
 
         File desc = getAbsoluteFile(baseDir, fileName);
@@ -181,7 +178,6 @@ public class FileUploadUtils {
     public static final void assertAllowed(MultipartFile file, String[] allowedExtension)
             throws FileSizeLimitExceededException, InvalidExtensionException {
         long size = file.getSize();
-        System.out.println(DEFAULT_MAX_SIZE);
         if (DEFAULT_MAX_SIZE != -1 && size > DEFAULT_MAX_SIZE) {
             throw new FileSizeLimitExceededException(DEFAULT_MAX_SIZE / 1024 / 1024);
         }

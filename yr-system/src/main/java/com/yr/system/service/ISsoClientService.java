@@ -7,6 +7,7 @@ package com.yr.system.service;
 
 import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.mybatisplus.service.ICustomService;
+import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 
 import java.util.List;
 
@@ -29,7 +30,7 @@ public interface ISsoClientService extends ICustomService<SsoClient> {
      * @param ssoClient 客户端信息
      * @return 影响行数
      */
-    int insertSsoClient(SsoClient ssoClient);
+    SsoClientSecretIssueResult insertSsoClient(SsoClient ssoClient);
 
     /**
      * 更新客户端。
