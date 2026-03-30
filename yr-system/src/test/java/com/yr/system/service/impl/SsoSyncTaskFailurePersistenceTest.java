@@ -199,11 +199,13 @@ class SsoSyncTaskFailurePersistenceTest {
 
         /**
          * @param ssoSyncTaskMapper 同步任务 Mapper
+         * @param ssoSyncTaskItemService 任务明细服务
          * @return 失败状态记录器
          */
         @Bean
-        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder(SsoSyncTaskMapper ssoSyncTaskMapper) {
-            return new SsoSyncTaskFailureRecorder(ssoSyncTaskMapper);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder(SsoSyncTaskMapper ssoSyncTaskMapper,
+                                                              ISsoSyncTaskItemService ssoSyncTaskItemService) {
+            return new SsoSyncTaskFailureRecorder(ssoSyncTaskMapper, ssoSyncTaskItemService);
         }
 
         /**

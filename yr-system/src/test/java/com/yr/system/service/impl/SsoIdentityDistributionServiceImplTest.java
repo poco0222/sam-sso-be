@@ -11,6 +11,8 @@ import com.yr.common.enums.MqActionType;
 import com.yr.common.service.MqProducerService;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
+import com.yr.system.service.support.SsoDistributionDispatchResultRecorder;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -35,6 +37,14 @@ class SsoIdentityDistributionServiceImplTest {
     /** MQ 发送服务。 */
     @Mock
     private MqProducerService mqProducerService;
+
+    /** after-commit 结果回写器。 */
+    @Mock
+    private SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder;
+
+    /** after-commit 失败兜底记录器。 */
+    @Mock
+    private SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder;
 
     /**
      * 验证 full-batch distribution 会生成五类 item，并用 UPSERT 契约发 MQ。
@@ -97,7 +107,9 @@ class SsoIdentityDistributionServiceImplTest {
         return new SsoIdentityDistributionServiceImpl(
                 ssoCurrentIdentitySnapshotLoader,
                 mqProducerService,
-                new ObjectMapper()
+                new ObjectMapper(),
+                ssoDistributionDispatchResultRecorder,
+                ssoSyncTaskFailureRecorder
         );
     }
 }

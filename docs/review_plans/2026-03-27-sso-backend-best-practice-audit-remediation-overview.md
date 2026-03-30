@@ -1,5 +1,9 @@
 # SSO Backend Best Practice Audit Remediation Overview
 
+> Historical overview only: superseded on 2026-03-30 by `docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md`.
+>
+> This document preserves the previous audit/remediation snapshot. For any new execution turn, use the 2026-03-30 tail-closure plan as the canonical execution entrypoint.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在不偏离当前一期边界的前提下，把 `sam-sso-be` 收敛到更符合 `JDK 17 + Spring Boot 2.7.18` 官方最佳实践（best practice，最佳实践）的状态，优先修复安全边界、凭据处理、任务一致性与输入契约问题。
@@ -13,8 +17,9 @@
 ## 当前执行状态
 
 - 更新时间：2026-03-30
-- 审计模式：整改完成（remediation completed，整改完成）
-- 当前阶段：`All phases completed`
+- 文档模式：历史总览（historical overview，历史总览）
+- 当前阶段：`Superseded by 2026-03-30 tail-closure plan`
+- 当前执行入口：`docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md`
 - 当前仓库：
   - wrapper repo: `/Users/PopoY/workingFiles/Projects/SAM/sso`
   - backend repo: `/Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be`
@@ -55,7 +60,7 @@ mvn -pl yr-admin,yr-framework,yr-system \
   - `mvn -pl yr-system -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SysUserServiceImplWriteBoundaryContractTest,SysUserServiceImplTransactionTest test` -> `BUILD SUCCESS`
   - `mvn -pl yr-admin,yr-system -am -Dsurefire.failIfNoSpecifiedTests=false -Dtest=SysLoginServiceChangeOrgSecurityTest,SysUserControllerPasswordResetContractTest,SysUserControllerChangeStatusContractTest,SysUserServiceImplWriteBoundaryContractTest,SysUserServiceImplTransactionTest test` -> `BUILD SUCCESS`
   - 已完成 `Phase 2` 实施：
-    - `changeOrg` 已改为基于当前登录态校验 `userId + orgId` 归属，并使用当前 token 删除旧登录态
+    - `changeOrg` 已改为基于当前登录态校验 `userId + orgId` 归属，并使用当前 token 删除旧登录缓存
     - 密码重置入口已切到 `ResetUserPasswordRequest`，service 已改走专用 `resetUserPwd` SQL
     - 状态修改入口已切到 `ChangeUserStatusRequest`，service 已改走专用 `updateUserStatus` SQL
     - `SysProfileController.updatePwd` 已同步切到专用密码写入链路，避免继续依赖旧签名
@@ -473,13 +478,13 @@ mvn test
 2. canonical doc（权威文档）：
 
 ```text
-docs/review_plans/2026-03-27-sso-backend-best-practice-audit-remediation-overview.md
+docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md
 ```
 
 3. 当前状态：
 
 ```text
-只读审计已完成；已确认“架构底座基本可用，优先修代码实现”；请从 Phase 1 开始执行，逐任务汇报检查点，不跳步，并同步更新文档状态和进度。
+只读审计已完成；2026-03-27 文档仅保留历史快照；请从 2026-03-30 的 tail-closure plan 开始执行，逐任务汇报检查点，不跳步，并同步更新文档状态和进度。
 ```
 
 4. 当前已验证命令：
@@ -491,5 +496,5 @@ mvn -pl yr-admin,yr-framework,yr-system -Dtest=SsoIdentityBackendBoundaryContrac
 ## 建议的新对话首句
 
 ```text
-请以 /Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be 为 cwd，按照 docs/review_plans/2026-03-27-sso-backend-best-practice-audit-remediation-overview.md 从 Phase 1 开始执行，逐任务汇报检查点，不跳步，并同步更新文档状态和进度。
+请以 /Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be 为 cwd，按照 docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md 从 Task 1 开始执行，逐任务汇报检查点，不跳步，并同步更新文档状态和进度；旧文档 docs/review_plans/2026-03-27-sso-backend-best-practice-audit-remediation-overview.md 仅作为历史背景参考。
 ```

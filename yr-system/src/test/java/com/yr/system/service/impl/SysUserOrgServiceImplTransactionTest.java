@@ -6,6 +6,7 @@
 package com.yr.system.service.impl;
 
 import com.yr.common.exception.CustomException;
+import com.yr.system.mapper.SysOrgMapper;
 import com.yr.system.mapper.SysUserOrgMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.framework.ProxyFactory;
@@ -49,7 +50,7 @@ class SysUserOrgServiceImplTransactionTest {
      */
     private SysUserOrgServiceImpl buildProxiedService(ProbeTransactionManager transactionManager,
                                                       SysUserOrgMapper mapper) {
-        SysUserOrgServiceImpl target = new SysUserOrgServiceImpl(mapper);
+        SysUserOrgServiceImpl target = new SysUserOrgServiceImpl(mapper, mock(SysOrgMapper.class));
         ProxyFactory proxyFactory = new ProxyFactory(target);
         proxyFactory.setProxyTargetClass(true);
         proxyFactory.addAdvice(new TransactionInterceptor(transactionManager, new AnnotationTransactionAttributeSource()));

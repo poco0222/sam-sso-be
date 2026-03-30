@@ -1,5 +1,5 @@
 /**
- * @file DISTRIBUTION after-commit 契约测试
+ * @file DISTRIBUTION after-commit recorder 失败闭环契约测试
  * @author PopoY
  * @date 2026-03-30
  */
@@ -7,8 +7,11 @@ package com.yr.system.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.entity.SsoSyncTask;
+import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.common.service.MqProducerService;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.mapper.SsoSyncTaskMapper;
+import com.yr.system.service.ISsoSyncTaskItemService;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
 import com.yr.system.service.support.SsoDistributionDispatchResultRecorder;
 import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
@@ -25,41 +28,57 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 锁定 MQ 外发必须在事务提交后发生，避免 DB 回滚时消息已出队。
+ * 锁定：MQ 已发送但 after-commit 最终态回写失败时，系统仍必须留下可恢复的任务级对账失败标记。
  */
-@SpringJUnitConfig(classes = SsoIdentityDistributionServiceAfterCommitContractTest.TestConfig.class)
-class SsoIdentityDistributionServiceAfterCommitContractTest {
+@SpringJUnitConfig(classes = SsoIdentityDistributionRecorderFailureContractTest.TestConfig.class)
+class SsoIdentityDistributionRecorderFailureContractTest {
 
+    /** 待测 DISTRIBUTION 服务。 */
     @Autowired
     private SsoIdentityDistributionServiceImpl ssoIdentityDistributionService;
 
+    /** 事务探针。 */
     @Autowired
     private ProbeTransactionManager transactionManager;
 
+    /** 当前主数据快照读取器测试桩。 */
     @Autowired
     private SsoCurrentIdentitySnapshotLoader ssoCurrentIdentitySnapshotLoader;
 
+    /** MQ 发送服务测试桩。 */
     @Autowired
     private MqProducerService mqProducerService;
 
+    /** after-commit 结果回写器测试桩。 */
     @Autowired
     private SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder;
 
+    /** after-commit 失败兜底记录器测试桩。 */
     @Autowired
     private SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder;
+
+    /** 同步任务 Mapper 测试桩。 */
+    @Autowired
+    private SsoSyncTaskMapper ssoSyncTaskMapper;
+
+    /** 同步任务明细服务测试桩。 */
+    @Autowired
+    private ISsoSyncTaskItemService ssoSyncTaskItemService;
 
     /**
      * 每个用例后重置 mock 与事务计数器，避免状态串用。
@@ -71,56 +90,51 @@ class SsoIdentityDistributionServiceAfterCommitContractTest {
                 ssoCurrentIdentitySnapshotLoader,
                 mqProducerService,
                 ssoDistributionDispatchResultRecorder,
-                ssoSyncTaskFailureRecorder
+                ssoSyncTaskMapper,
+                ssoSyncTaskItemService
         );
     }
 
     /**
-     * 验证外层事务在任务明细写库失败并回滚时，MQ 发送不得先发生。
-     */
-    @Test
-    void shouldNotSendMqBeforeOuterTransactionCommits() {
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-
-        when(ssoCurrentIdentitySnapshotLoader.loadSnapshot()).thenReturn(SsoDistributionTestFixtures.minimalSnapshot());
-        when(mqProducerService.send(any(), any(), any(), any(), any())).thenReturn(true);
-
-        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(status -> {
-            ssoIdentityDistributionService.execute(buildTask(), null);
-            throw new IllegalStateException("task item persistence failed");
-        }))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("task item persistence failed");
-
-        assertThat(transactionManager.getRollbackCount()).isGreaterThanOrEqualTo(1);
-        verify(mqProducerService, never()).send(any(), any(), any(), any(), any());
-        verify(ssoDistributionDispatchResultRecorder, never()).recordDispatchResult(any(), any());
-    }
-
-    /**
-     * 验证 after-commit（提交后回调）发送成功后，结果状态应从 PENDING（待发送）闭环到 SUCCESS（成功）。
+     * 验证 MQ 已经成功发送但 recorder 回写失败时，任务侧仍会留下 reconciliation failure（对账失败）标记。
      *
      * @author PopoY
      */
     @Test
-    void shouldClosePendingResultToSuccessAfterCommitDispatch() {
+    void shouldLeaveTaskLevelReconciliationMarkerWhenRecorderFailsAfterCommit() {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         AtomicReference<SsoSyncTaskExecutionResult> resultRef = new AtomicReference<>();
+        SsoSyncTask task = buildTask();
 
         when(ssoCurrentIdentitySnapshotLoader.loadSnapshot()).thenReturn(SsoDistributionTestFixtures.minimalSnapshot());
         when(mqProducerService.send(any(), any(), any(), any(), any())).thenReturn(true);
+        when(ssoSyncTaskMapper.updateById(any(SsoSyncTask.class))).thenReturn(1);
+        doThrow(new RuntimeException("dispatch result recorder unavailable"))
+                .when(ssoDistributionDispatchResultRecorder)
+                .recordDispatchResult(any(SsoSyncTask.class), any(SsoSyncTaskExecutionResult.class));
 
-        transactionTemplate.executeWithoutResult(status ->
-                resultRef.set(ssoIdentityDistributionService.execute(buildTask(), null))
-        );
+        catchThrowable(() -> transactionTemplate.executeWithoutResult(status ->
+                resultRef.set(ssoIdentityDistributionService.execute(task, null))
+        ));
 
         assertThat(transactionManager.getCommitCount()).isGreaterThanOrEqualTo(1);
         assertThat(resultRef.get()).isNotNull();
-        assertThat(resultRef.get().getStatus()).isEqualTo(SsoSyncTask.STATUS_SUCCESS);
         assertThat(resultRef.get().getItemList())
+                .as("MQ 已成功发送时，item 级发送结果仍应保持 SUCCESS")
                 .allSatisfy(item -> assertThat(item.getStatus()).isEqualTo(SsoSyncTask.STATUS_SUCCESS));
+        assertThat(task.getStatus())
+                .as("task 级状态不应继续停留在纯 SUCCESS，而应留下可查询的对账失败标记")
+                .isIn(SsoSyncTask.STATUS_FAILED, SsoSyncTask.STATUS_PARTIAL_SUCCESS);
+        assertThat(task.getResultSummary())
+                .as("task 级摘要应显式提示 dispatch state reconciliation failed")
+                .contains("dispatch state reconciliation failed");
         verify(mqProducerService, times(5)).send(any(), any(), any(), any(), any());
-        verify(ssoDistributionDispatchResultRecorder, times(1)).recordDispatchResult(any(), any());
+        verify(ssoDistributionDispatchResultRecorder, times(1)).recordDispatchResult(any(SsoSyncTask.class), any(SsoSyncTaskExecutionResult.class));
+        verify(ssoSyncTaskMapper, times(1)).updateById(any(SsoSyncTask.class));
+        verify(ssoSyncTaskItemService, times(1))
+                .updateDispatchResult(eq(99L), argThat(itemList -> itemList != null
+                        && !itemList.isEmpty()
+                        && itemList.stream().map(SsoSyncTaskItem::getStatus).allMatch(SsoSyncTask.STATUS_SUCCESS::equals)));
     }
 
     /**
@@ -130,15 +144,15 @@ class SsoIdentityDistributionServiceAfterCommitContractTest {
      */
     private SsoSyncTask buildTask() {
         SsoSyncTask task = new SsoSyncTask();
-        task.setTaskId(88L);
-        task.setBatchNo("DIST-88");
+        task.setTaskId(99L);
+        task.setBatchNo("DIST-99");
         task.setTargetClientCode("sam-mgmt");
-        task.setCreateBy("phase1");
+        task.setCreateBy("phase2");
         return task;
     }
 
     /**
-     * 测试专用 Spring 配置，只加载 after-commit 契约所需的最小 Bean。
+     * 测试专用 Spring 配置，只加载 recorder failure 契约所需的最小 Bean。
      */
     @Configuration
     @EnableTransactionManagement(proxyTargetClass = true)
@@ -177,11 +191,30 @@ class SsoIdentityDistributionServiceAfterCommitContractTest {
         }
 
         /**
-         * @return after-commit 失败兜底记录器 mock
+         * @return 同步任务 Mapper mock
          */
         @Bean
-        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder() {
-            return mock(SsoSyncTaskFailureRecorder.class);
+        SsoSyncTaskMapper ssoSyncTaskMapper() {
+            return mock(SsoSyncTaskMapper.class);
+        }
+
+        /**
+         * @return 同步任务明细服务 mock
+         */
+        @Bean
+        ISsoSyncTaskItemService ssoSyncTaskItemService() {
+            return mock(ISsoSyncTaskItemService.class);
+        }
+
+        /**
+         * @param ssoSyncTaskMapper 同步任务 Mapper
+         * @param ssoSyncTaskItemService 同步任务明细服务
+         * @return after-commit 失败兜底记录器
+         */
+        @Bean
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder(SsoSyncTaskMapper ssoSyncTaskMapper,
+                                                              ISsoSyncTaskItemService ssoSyncTaskItemService) {
+            return new SsoSyncTaskFailureRecorder(ssoSyncTaskMapper, ssoSyncTaskItemService);
         }
 
         /**
@@ -196,6 +229,7 @@ class SsoIdentityDistributionServiceAfterCommitContractTest {
          * @param ssoCurrentIdentitySnapshotLoader 当前主数据快照读取器
          * @param mqProducerService MQ 发送服务
          * @param objectMapper JSON 序列化器
+         * @param ssoDistributionDispatchResultRecorder after-commit 结果回写器
          * @return Spring 管理的分发服务
          */
         @Bean
@@ -240,24 +274,10 @@ class SsoIdentityDistributionServiceAfterCommitContractTest {
         }
 
         /**
-         * @return 已开启事务次数
-         */
-        int getBeginCount() {
-            return beginCount.get();
-        }
-
-        /**
          * @return 已提交事务次数
          */
         int getCommitCount() {
             return commitCount.get();
-        }
-
-        /**
-         * @return 已回滚事务次数
-         */
-        int getRollbackCount() {
-            return rollbackCount.get();
         }
 
         @Override

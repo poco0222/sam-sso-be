@@ -38,4 +38,12 @@ public interface ISsoSyncTaskItemService extends ICustomService<SsoSyncTaskItem>
      * @param itemList 新明细列表
      */
     void replaceTaskItems(Long taskId, List<SsoSyncTaskItem> itemList);
+
+    /**
+     * 按既有 `msgKey` 原位回写 DISTRIBUTION after-commit 的最终状态。
+     *
+     * @param taskId 任务 ID
+     * @param itemList 最终明细列表
+     */
+    void updateDispatchResult(Long taskId, List<SsoSyncTaskItem> itemList);
 }

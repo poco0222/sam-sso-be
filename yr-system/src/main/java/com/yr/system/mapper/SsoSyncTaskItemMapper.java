@@ -39,4 +39,22 @@ public interface SsoSyncTaskItemMapper extends CustomMapper<SsoSyncTaskItem> {
      * @return 受影响行数
      */
     int deleteByTaskId(@Param("taskId") Long taskId);
+
+    /**
+     * 按 taskId + msgKey 原位回写 after-commit 的最终状态。
+     *
+     * @param taskId 任务 ID
+     * @param msgKey 消息键
+     * @param targetId 目标 ID
+     * @param status 最终状态
+     * @param detailJson 明细载荷
+     * @param errorMessage 错误信息
+     * @return 受影响行数
+     */
+    int updateDispatchResultByTaskIdAndMsgKey(@Param("taskId") Long taskId,
+                                              @Param("msgKey") String msgKey,
+                                              @Param("targetId") String targetId,
+                                              @Param("status") String status,
+                                              @Param("detailJson") String detailJson,
+                                              @Param("errorMessage") String errorMessage);
 }

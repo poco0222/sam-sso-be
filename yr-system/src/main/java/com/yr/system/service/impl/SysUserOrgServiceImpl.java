@@ -6,10 +6,12 @@
 package com.yr.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.yr.common.core.domain.entity.SysOrg;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yr.common.exception.CustomException;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
+import com.yr.system.mapper.SysOrgMapper;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.system.domain.entity.SysUserOrg;
 import com.yr.system.mapper.SysUserOrgMapper;
@@ -29,9 +31,11 @@ import java.util.List;
 public class SysUserOrgServiceImpl extends CustomServiceImpl<SysUserOrgMapper, SysUserOrg> implements ISysUserOrgService {
 
     private final SysUserOrgMapper sysUserOrgMapper;
+    private final SysOrgMapper sysOrgMapper;
 
-    public SysUserOrgServiceImpl(SysUserOrgMapper sysUserOrgMapper) {
+    public SysUserOrgServiceImpl(SysUserOrgMapper sysUserOrgMapper, SysOrgMapper sysOrgMapper) {
         this.sysUserOrgMapper = sysUserOrgMapper;
+        this.sysOrgMapper = sysOrgMapper;
     }
 
     @Override
@@ -102,6 +106,15 @@ public class SysUserOrgServiceImpl extends CustomServiceImpl<SysUserOrgMapper, S
                 .eq(SysUserOrg::getOrgId, orgId)
                 .eq(SysUserOrg::getEnabled, 1);
         return this.count(queryWrapper) > 0;
+    }
+
+    @Override
+    public boolean hasActiveOrgMembership(Long userId, Long orgId) {
+        if (!hasEnabledOrgMembership(userId, orgId)) {
+            return false;
+        }
+        SysOrg sysOrg = sysOrgMapper.selectSysOrgById(orgId);
+        return sysOrg != null && "0".equals(sysOrg.getStatus());
     }
 
     @Override

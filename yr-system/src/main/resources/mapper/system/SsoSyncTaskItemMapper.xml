@@ -62,4 +62,15 @@
         delete from sso_sync_task_item
         where task_id = #{taskId}
     </delete>
+
+    <update id="updateDispatchResultByTaskIdAndMsgKey">
+        update sso_sync_task_item
+        set target_id = #{targetId},
+            status = #{status},
+            detail_json = #{detailJson},
+            error_message = #{errorMessage},
+            update_time = now()
+        where task_id = #{taskId}
+          and msg_key = #{msgKey}
+    </update>
 </mapper>

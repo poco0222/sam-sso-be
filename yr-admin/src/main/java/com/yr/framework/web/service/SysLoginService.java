@@ -230,7 +230,7 @@ public class SysLoginService {
             throw new CustomException("组织ID不能为空");
         }
         LoginUser currentLoginUser = SecurityUtils.getLoginUser();
-        if (!sysUserOrgService.hasEnabledOrgMembership(currentLoginUser.getUserId(), orgId)) {
+        if (!sysUserOrgService.hasActiveOrgMembership(currentLoginUser.getUserId(), orgId)) {
             throw new CustomException("目标组织不属于当前用户或已停用");
         }
         SysUser user = userService.selectUserByUserName(currentLoginUser.getUsername(), orgId);

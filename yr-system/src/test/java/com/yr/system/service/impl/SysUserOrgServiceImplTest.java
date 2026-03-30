@@ -7,6 +7,7 @@ package com.yr.system.service.impl;
 
 import com.yr.common.exception.CustomException;
 import com.yr.system.domain.entity.SysUserOrg;
+import com.yr.system.mapper.SysOrgMapper;
 import com.yr.system.mapper.SysUserOrgMapper;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +29,7 @@ class SysUserOrgServiceImplTest {
      */
     @Test
     void shouldRejectDuplicatedUserOrgRelation() {
-        SysUserOrgServiceImpl service = spy(new SysUserOrgServiceImpl(mock(SysUserOrgMapper.class)));
+        SysUserOrgServiceImpl service = spy(new SysUserOrgServiceImpl(mock(SysUserOrgMapper.class), mock(SysOrgMapper.class)));
         SysUserOrg existingRelation = buildRelation(10L, 20L);
         SysUserOrg command = buildRelation(10L, 20L);
         doReturn(existingRelation).when(service).getOne(any());

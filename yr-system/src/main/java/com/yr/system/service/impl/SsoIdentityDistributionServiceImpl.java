@@ -22,6 +22,8 @@ import com.yr.system.domain.entity.SysUserDept;
 import com.yr.system.domain.entity.SysUserOrg;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
+import com.yr.system.service.support.SsoDistributionDispatchResultRecorder;
+import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -86,17 +88,29 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
     /** JSON 序列化器。 */
     private final ObjectMapper objectMapper;
 
+    /** after-commit 最终态回写器。 */
+    private final SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder;
+
+    /** after-commit 兜底失败记录器。 */
+    private final SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder;
+
     /**
      * @param ssoCurrentIdentitySnapshotLoader 当前主库快照读取器
      * @param mqProducerService MQ 发送服务
      * @param objectMapper JSON 序列化器
+     * @param ssoDistributionDispatchResultRecorder after-commit 最终态回写器
+     * @param ssoSyncTaskFailureRecorder after-commit 失败兜底记录器
      */
     public SsoIdentityDistributionServiceImpl(SsoCurrentIdentitySnapshotLoader ssoCurrentIdentitySnapshotLoader,
                                               MqProducerService mqProducerService,
-                                              ObjectMapper objectMapper) {
+                                              ObjectMapper objectMapper,
+                                              SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder,
+                                              SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder) {
         this.ssoCurrentIdentitySnapshotLoader = ssoCurrentIdentitySnapshotLoader;
         this.mqProducerService = mqProducerService;
         this.objectMapper = objectMapper;
+        this.ssoDistributionDispatchResultRecorder = ssoDistributionDispatchResultRecorder;
+        this.ssoSyncTaskFailureRecorder = ssoSyncTaskFailureRecorder;
     }
 
     /**
@@ -120,8 +134,9 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
         SnapshotIndex snapshotIndex = snapshot == null ? null : buildSnapshotIndex(snapshot);
         if (shouldDeferMqSendUntilAfterCommit()) {
             prepareItemsForAfterCommit(task, itemList, snapshotIndex);
-            registerAfterCommitDispatch(task, itemList);
-            return buildPendingResult(itemList);
+            SsoSyncTaskExecutionResult pendingResult = buildPendingResult(itemList);
+            registerAfterCommitDispatch(task, pendingResult);
+            return pendingResult;
         }
         int successCount = 0;
         int failedCount = 0;
@@ -183,17 +198,44 @@ public class SsoIdentityDistributionServiceImpl implements ISsoIdentityDistribut
      * 在事务提交后执行 MQ 外发，避免 DB rollback 时消息已出队。
      *
      * @param task 当前任务
-     * @param itemList 当前明细
+     * @param executionResult 当前待发送结果
      */
-    private void registerAfterCommitDispatch(SsoSyncTask task, List<SsoSyncTaskItem> itemList) {
+    private void registerAfterCommitDispatch(SsoSyncTask task, SsoSyncTaskExecutionResult executionResult) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                for (SsoSyncTaskItem item : itemList) {
+                int successCount = 0;
+                int failedCount = 0;
+
+                for (SsoSyncTaskItem item : executionResult.getItemList()) {
                     try {
                         sendPreparedItem(task, item);
+                        item.setStatus(ITEM_STATUS_SUCCESS);
+                        item.setErrorMessage(null);
+                        successCount++;
                     } catch (RuntimeException exception) {
+                        item.setStatus(ITEM_STATUS_FAILED);
+                        item.setErrorMessage(normalizeErrorMessage(exception.getMessage()));
+                        failedCount++;
                         LOGGER.error("DISTRIBUTION afterCommit发送失败，taskId={}, msgKey={}", task.getTaskId(), item.getMsgKey(), exception);
+                    }
+                }
+                executionResult.setTotalItemCount(executionResult.getItemList().size());
+                executionResult.setSuccessItemCount(successCount);
+                executionResult.setFailedItemCount(failedCount);
+                executionResult.setStatus(resolveTaskStatus(executionResult.getItemList().size(), successCount, failedCount));
+                executionResult.setResultSummary(buildResultSummary(executionResult.getItemList().size(), successCount, failedCount));
+                task.setStatus(executionResult.getStatus());
+                task.setResultSummary(executionResult.getResultSummary());
+                try {
+                    ssoDistributionDispatchResultRecorder.recordDispatchResult(task, executionResult);
+                } catch (RuntimeException exception) {
+                    LOGGER.error("DISTRIBUTION afterCommit最终状态回写失败，taskId={}, status={}", task.getTaskId(), executionResult.getStatus(), exception);
+                    try {
+                        ssoSyncTaskFailureRecorder.recordDispatchReconciliationFailure(task, executionResult, exception);
+                    } catch (RuntimeException fallbackException) {
+                        LOGGER.error("DISTRIBUTION afterCommit对账失败标记回写失败，taskId={}, status={}", task.getTaskId(), task.getStatus(), fallbackException);
+                        throw fallbackException;
                     }
                 }
             }

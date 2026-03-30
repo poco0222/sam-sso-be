@@ -59,6 +59,15 @@ public interface ISysUserOrgService extends ICustomService<SysUserOrg> {
     boolean hasEnabledOrgMembership(Long userId, Long orgId);
 
     /**
+     * 校验用户是否仍然拥有“关系启用 + 组织启用”的可切换组织归属。
+     *
+     * @param userId 用户 ID
+     * @param orgId 组织 ID
+     * @return true 表示归属关系存在且目标组织处于启用态
+     */
+    boolean hasActiveOrgMembership(Long userId, Long orgId);
+
+    /**
      * 获取当前登录用户所有组织信息
      *
      * @return
