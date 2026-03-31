@@ -24,6 +24,9 @@ class SysUserServiceImplWriteBoundaryContractTest {
     /** SysUserMapper 源码路径。 */
     private static final Path MAPPER_SOURCE_PATH = Path.of("src/main/java/com/yr/system/mapper/SysUserMapper.java");
 
+    /** SysUserMapper XML 路径。 */
+    private static final Path MAPPER_XML_PATH = Path.of("src/main/resources/mapper/system/SysUserMapper.xml");
+
     /**
      * 验证密码重置与状态修改不再直接调用通用 updateUser。
      *
@@ -51,6 +54,34 @@ class SysUserServiceImplWriteBoundaryContractTest {
     }
 
     /**
+     * 验证 profile 更新不再继续复用通用 updateUser SQL。
+     *
+     * @throws IOException 读取源码失败
+     */
+    @Test
+    void shouldUseDedicatedWritePathForProfileUpdate() throws IOException {
+        String serviceSource = Files.readString(SERVICE_SOURCE_PATH);
+        String normalizedMapper = normalizeWhitespace(Files.readString(MAPPER_SOURCE_PATH));
+        String profileUpdateBlock = normalizeWhitespace(extractUpdateBlock(Files.readString(MAPPER_XML_PATH), "updateUserProfile"));
+        String normalizedProfileMethod = normalizeWhitespace(extractMethodBlock(serviceSource, "public int updateUserProfile(SysUser user)"));
+
+        assertThat(normalizedProfileMethod).contains("return sysUserWriteService.updateUserProfile(user);");
+        assertThat(normalizedProfileMethod).doesNotContain("return userMapper.updateUser(user);");
+        assertThat(normalizedMapper).contains("int updateUserProfile(SysUser user);");
+        assertThat(profileUpdateBlock).contains("nick_name = #{nickName}");
+        assertThat(profileUpdateBlock).contains("email = #{email}");
+        assertThat(profileUpdateBlock).contains("phonenumber = #{phonenumber}");
+        assertThat(profileUpdateBlock).contains("sex = #{sex}");
+        assertThat(profileUpdateBlock).contains("login_ip = #{loginIp}");
+        assertThat(profileUpdateBlock).contains("login_date = #{loginDate}");
+        assertThat(profileUpdateBlock).doesNotContain("user_name = #{userName}");
+        assertThat(profileUpdateBlock).doesNotContain("dept_id = #{deptId}");
+        assertThat(profileUpdateBlock).doesNotContain("password = #{password}");
+        assertThat(profileUpdateBlock).doesNotContain("status = #{status}");
+        assertThat(profileUpdateBlock).doesNotContain("remark = #{remark}");
+    }
+
+    /**
      * 归一化空白，减少源码断言对缩进和换行的敏感度。
      *
      * @param source 原始源码
@@ -58,5 +89,44 @@ class SysUserServiceImplWriteBoundaryContractTest {
      */
     private String normalizeWhitespace(String source) {
         return source.replaceAll("\\s+", " ").trim();
+    }
+
+    /**
+     * 从 mapper XML 中提取指定 update 节点，避免对整个文件做误判。
+     *
+     * @param mapperXml 原始 mapper XML
+     * @param updateId update 节点 ID
+     * @return 对应 update 节点源码
+     */
+    private String extractUpdateBlock(String mapperXml, String updateId) {
+        String startToken = "<update id=\"" + updateId + "\"";
+        int startIndex = mapperXml.indexOf(startToken);
+        int endIndex = mapperXml.indexOf("</update>", startIndex);
+        return mapperXml.substring(startIndex, endIndex + "</update>".length());
+    }
+
+    /**
+     * 提取指定方法体源码，避免直接把整行实现写死到断言里。
+     *
+     * @param source 原始源码
+     * @param methodSignature 方法签名
+     * @return 方法体源码
+     */
+    private String extractMethodBlock(String source, String methodSignature) {
+        int signatureIndex = source.indexOf(methodSignature);
+        int blockStart = source.indexOf('{', signatureIndex);
+        int depth = 0;
+        for (int index = blockStart; index < source.length(); index++) {
+            char currentChar = source.charAt(index);
+            if (currentChar == '{') {
+                depth++;
+            } else if (currentChar == '}') {
+                depth--;
+                if (depth == 0) {
+                    return source.substring(signatureIndex, index + 1);
+                }
+            }
+        }
+        throw new IllegalStateException("无法提取方法体: " + methodSignature);
     }
 }

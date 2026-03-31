@@ -105,7 +105,7 @@ public interface ISysUserService {
     public int insertUser(SysUser user);
 
     /**
-     * 修改用户信息
+     * 修改用户基础资料。
      *
      * @param user 用户信息
      * @return 结果
@@ -121,7 +121,7 @@ public interface ISysUserService {
     public int updateUserStatus(SysUser user);
 
     /**
-     * 修改用户基本信息
+     * 修改当前登录用户的自助资料字段。
      *
      * @param user 用户信息
      * @return 结果

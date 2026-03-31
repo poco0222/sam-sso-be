@@ -5,6 +5,9 @@
  */
 package com.yr.system.service.impl;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.List;
@@ -164,6 +168,35 @@ class SsoIdentityImportServiceImplTest {
     }
 
     /**
+     * 验证单条导入失败时 warning 日志会带异常堆栈，便于直接定位根因。
+     */
+    @Test
+    void shouldLogInitImportFailureWithExceptionStack() {
+        SsoIdentityImportServiceImpl service = createService();
+        SysUser failingUser = new SysUser();
+        ListAppender<ILoggingEvent> listAppender = attachLogAppender();
+        try {
+            failingUser.setUserId(1L);
+            failingUser.setUserName("admin");
+            failingUser.setNickName("超级管理员");
+            SsoIdentityImportSnapshot snapshot = new SsoIdentityImportSnapshot();
+            snapshot.setUserList(List.of(failingUser));
+            when(ssoLegacyIdentitySourceService.loadSnapshot()).thenReturn(snapshot);
+            when(sysUserMapper.selectSysUserByUserId(1L)).thenReturn(null);
+            when(sysUserMapper.insertUser(any(SysUser.class))).thenThrow(new RuntimeException("boom"));
+
+            service.execute(buildTask(), null);
+
+            assertThat(listAppender.list)
+                    .filteredOn(event -> event.getFormattedMessage().contains("INIT_IMPORT item failed"))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event.getThrowableProxy()).as("失败日志应保留异常堆栈").isNotNull());
+        } finally {
+            detachLogAppender(listAppender);
+        }
+    }
+
+    /**
      * 构造最小任务对象。
      */
     private SsoSyncTask buildTask() {
@@ -237,5 +270,29 @@ class SsoIdentityImportServiceImplTest {
                 sysUserDeptMapper,
                 new ObjectMapper()
         );
+    }
+
+    /**
+     * 挂接导入服务日志捕获器。
+     *
+     * @return 日志捕获器
+     */
+    private ListAppender<ILoggingEvent> attachLogAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(SsoIdentityImportServiceImpl.class);
+        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        return listAppender;
+    }
+
+    /**
+     * 卸载日志捕获器，避免污染其他测试。
+     *
+     * @param listAppender 日志捕获器
+     */
+    private void detachLogAppender(ListAppender<ILoggingEvent> listAppender) {
+        Logger logger = (Logger) LoggerFactory.getLogger(SsoIdentityImportServiceImpl.class);
+        logger.detachAppender(listAppender);
+        listAppender.stop();
     }
 }

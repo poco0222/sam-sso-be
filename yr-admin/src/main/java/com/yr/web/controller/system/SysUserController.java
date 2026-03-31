@@ -22,6 +22,7 @@ import com.yr.common.utils.poi.ExcelUtil;
 import com.yr.framework.web.service.TokenService;
 import com.yr.web.controller.system.dto.ChangeUserStatusRequest;
 import com.yr.web.controller.system.dto.ResetUserPasswordRequest;
+import com.yr.web.controller.system.dto.UpdateUserRequest;
 import com.yr.system.mapper.SysUserMapper;
 import com.yr.system.service.ISysDeptService;
 import com.yr.system.service.ISysUserService;
@@ -175,7 +176,8 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@Validated @RequestBody SysUser user) {
+    public AjaxResult edit(@Validated @RequestBody UpdateUserRequest request) {
+        SysUser user = buildUpdateUser(request);
         userService.checkUserAllowed(user);
         if (StringUtils.isNotEmpty(user.getPhonenumber())
                 && UserConstants.NOT_UNIQUE.equals(userService.checkPhoneUnique(user))) {
@@ -263,6 +265,26 @@ public class SysUserController extends BaseController {
         SysUser user = new SysUser();
         user.setUserId(request.getUserId());
         user.setStatus(request.getStatus());
+        return user;
+    }
+
+    /**
+     * 构造普通编辑专用用户写入对象，只保留允许下沉的基础资料字段。
+     *
+     * @param request 普通编辑请求
+     * @return 精简后的用户写入对象
+     */
+    private SysUser buildUpdateUser(UpdateUserRequest request) {
+        SysUser user = new SysUser();
+        user.setUserId(request.getUserId());
+        user.setDeptId(request.getDeptId());
+        user.setUserName(request.getUserName());
+        user.setNickName(request.getNickName());
+        user.setEmail(request.getEmail());
+        user.setPhonenumber(request.getPhonenumber());
+        user.setSex(request.getSex());
+        user.setAvatar(request.getAvatar());
+        user.setRemark(request.getRemark());
         return user;
     }
 

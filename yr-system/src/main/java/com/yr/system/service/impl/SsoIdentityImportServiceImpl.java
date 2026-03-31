@@ -149,7 +149,8 @@ public class SsoIdentityImportServiceImpl implements ISsoIdentityImportService {
                         task.getTaskId(),
                         item.getEntityType(),
                         item.getSourceId(),
-                        exception.getMessage()
+                        exception.getMessage(),
+                        exception
                 );
                 item.setStatus(ITEM_STATUS_FAILED);
                 item.setErrorMessage(normalizeErrorMessage(exception.getMessage()));

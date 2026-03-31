@@ -66,6 +66,9 @@ class SysUserControllerPasswordResetContractTest {
         assertThat(userCaptor.getValue().getStatus()).as("密码重置不应透传 status").isNull();
         assertThat(userCaptor.getValue().getEmail()).as("密码重置不应透传 email").isNull();
         assertThat(userCaptor.getValue().getDeptId()).as("密码重置不应透传 deptId").isNull();
+        assertThat(userCaptor.getValue().getLoginIp()).as("密码重置不应透传 loginIp").isNull();
+        assertThat(userCaptor.getValue().getLoginDate()).as("密码重置不应透传 loginDate").isNull();
+        assertThat(userCaptor.getValue().getRemark()).as("密码重置不应透传 remark").isNull();
     }
 
     /**

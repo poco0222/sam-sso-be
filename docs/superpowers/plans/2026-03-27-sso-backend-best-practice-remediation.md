@@ -1,5 +1,9 @@
 # Sam-Sso-Be Backend Best Practice Remediation Plan
 
+> Historical document notice:
+> 本文档记录的是 2026-03-27 当时的整改执行快照，包含部分已经过时的架构/仓库观察，例如 `WebSecurityConfigurerAdapter` 与本地 `sam-sso-be/AGENTS.md` 的引用；它不再作为当前执行入口使用。
+> 当前 canonical handoff（权威交接入口）请以 `/Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be/docs/review_plans/2026-03-31-sso-backend-comprehensive-best-practice-audit-remediation-plan.md` 为准。
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把 `sam-sso-be` 收敛到当前仓库一期边界下可接受的 `Spring Boot 2.7.18 + JDK 17` 官方最佳实践基线，先修 `security`（安全）与 `correctness`（正确性）问题，再收口 `controller/service layering`（控制层/服务层分层）、`transaction semantics`（事务语义）、`configuration hygiene`（配置卫生）和 `module boundary`（模块边界）债务。

@@ -1,9 +1,12 @@
+/**
+ * @file 登录请求体，统一承载标准登录与企业微信授权登录入参
+ * @author PopoY
+ * @date 2026-03-31
+ */
 package com.yr.common.core.domain.model;
 
 /**
- * 用户登录对象
- *
- * @author Youngron
+ * 登录请求体模型。
  */
 public class LoginBody {
     /**
@@ -32,22 +35,40 @@ public class LoginBody {
      */
     private String platform;
 
+    /**
+     * 企业微信 OAuth（授权）state，用于防止重放与 CSRF。
+     */
     private String state;
 
+    /**
+     * 登录后前端期望回跳的 URL（地址）。
+     */
     private String url;
 
+    /**
+     * @return 登录后回跳地址
+     */
     public String getUrl() {
         return url;
     }
 
+    /**
+     * @param url 登录后回跳地址
+     */
     public void setUrl(String url) {
         this.url = url;
     }
 
+    /**
+     * @return 企业微信 OAuth state
+     */
     public String getState() {
         return state;
     }
 
+    /**
+     * @param state 企业微信 OAuth state
+     */
     public void setState(String state) {
         this.state = state;
     }

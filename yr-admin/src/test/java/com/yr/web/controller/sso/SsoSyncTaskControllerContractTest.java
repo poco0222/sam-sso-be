@@ -6,6 +6,8 @@
 package com.yr.web.controller.sso;
 
 import com.yr.common.core.domain.entity.SsoSyncTask;
+import com.yr.common.core.domain.entity.SysUser;
+import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.framework.config.ResourcesConfig;
 import com.yr.framework.config.SecurityConfig;
@@ -13,6 +15,7 @@ import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
 import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
 import com.yr.system.service.ISsoSyncTaskService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
@@ -24,6 +27,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,8 +38,10 @@ import org.springframework.web.filter.CorsFilter;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -90,6 +97,14 @@ class SsoSyncTaskControllerContractTest {
     private ResourcesConfig resourcesConfig;
 
     /**
+     * 每个用例后清理安全上下文，避免操作人串用。
+     */
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    /**
      * 验证同步任务列表接口返回稳定的 rows 结构。
      *
      * @throws Exception MockMvc 调用失败时抛出
@@ -115,18 +130,47 @@ class SsoSyncTaskControllerContractTest {
     void shouldInitImportTask() throws Exception {
         SsoSyncTask task = new SsoSyncTask();
         task.setTaskId(11L);
+        setAuthenticatedUser("phase5-operator");
+        when(ssoSyncTaskService.initImportTask(any(SsoSyncTask.class))).thenReturn(task);
+
+        mockMvc.perform(post("/sso/sync-task/init-import")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(11));
+    }
+
+    /**
+     * 验证初始化导入入口不会透传服务端管理字段。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldNotForwardServerManagedFieldsWhenInitImportingTask() throws Exception {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(11L);
+        org.mockito.ArgumentCaptor<SsoSyncTask> taskCaptor = org.mockito.ArgumentCaptor.forClass(SsoSyncTask.class);
+        setAuthenticatedUser("phase5-operator");
         when(ssoSyncTaskService.initImportTask(any(SsoSyncTask.class))).thenReturn(task);
 
         mockMvc.perform(post("/sso/sync-task/init-import")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "targetClientCode":"sam-mgmt",
-                                  "taskType":"INIT_IMPORT"
+                                  "taskType":"INIT_IMPORT",
+                                  "status":"SUCCESS",
+                                  "batchNo":"INIT-FROM-CLIENT",
+                                  "payloadJson":"{\\"force\\":true}"
                                 }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.taskId").value(11));
+
+        verify(ssoSyncTaskService).initImportTask(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getTaskType()).as("initImport 不应允许客户端自带 taskType").isNull();
+        assertThat(taskCaptor.getValue().getStatus()).as("initImport 不应允许客户端自带 status").isNull();
+        assertThat(taskCaptor.getValue().getBatchNo()).as("initImport 不应允许客户端自带 batchNo").isNull();
+        assertThat(taskCaptor.getValue().getPayloadJson()).as("initImport 不应允许客户端自带 payloadJson").isNull();
     }
 
     /**
@@ -136,6 +180,83 @@ class SsoSyncTaskControllerContractTest {
      */
     @Test
     void shouldCreateDistributionTask() throws Exception {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(21L);
+        setAuthenticatedUser("phase5-operator");
+        when(ssoSyncTaskService.distributionTask(any(SsoSyncTask.class))).thenReturn(task);
+
+        mockMvc.perform(post("/sso/sync-task/distribution")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetClientCode":"sam-mgmt"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(21));
+    }
+
+    /**
+     * 验证分发任务入口不会透传服务端管理字段。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldNotForwardServerManagedFieldsWhenCreatingDistributionTask() throws Exception {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(21L);
+        org.mockito.ArgumentCaptor<SsoSyncTask> taskCaptor = org.mockito.ArgumentCaptor.forClass(SsoSyncTask.class);
+        setAuthenticatedUser("phase5-operator");
+        when(ssoSyncTaskService.distributionTask(any(SsoSyncTask.class))).thenReturn(task);
+
+        mockMvc.perform(post("/sso/sync-task/distribution")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetClientCode":"sam-mgmt",
+                                  "taskType":"DISTRIBUTION",
+                                  "status":"SUCCESS",
+                                  "batchNo":"DIST-FROM-CLIENT",
+                                  "payloadJson":"{\\"force\\":true}"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(21));
+
+        verify(ssoSyncTaskService).distributionTask(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getTargetClientCode()).isEqualTo("sam-mgmt");
+        assertThat(taskCaptor.getValue().getTaskType()).as("distribution 不应允许客户端自带 taskType").isNull();
+        assertThat(taskCaptor.getValue().getStatus()).as("distribution 不应允许客户端自带 status").isNull();
+        assertThat(taskCaptor.getValue().getBatchNo()).as("distribution 不应允许客户端自带 batchNo").isNull();
+        assertThat(taskCaptor.getValue().getPayloadJson()).as("distribution 不应允许客户端自带 payloadJson").isNull();
+    }
+
+    /**
+     * 验证分发任务缺少目标客户端编码时必须在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankTargetClientCodeWhenCreatingDistributionTask() throws Exception {
+        mockMvc.perform(post("/sso/sync-task/distribution")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "targetClientCode":""
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("targetClientCode不能为空"));
+    }
+
+    /**
+     * 验证创建同步任务在缺少操作人上下文时会 fail-fast，而不是静默写入空 createBy。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldFailFastWhenOperatorContextMissingForDistributionTask() throws Exception {
         SsoSyncTask task = new SsoSyncTask();
         task.setTaskId(21L);
         when(ssoSyncTaskService.distributionTask(any(SsoSyncTask.class))).thenReturn(task);
@@ -148,7 +269,8 @@ class SsoSyncTaskControllerContractTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.taskId").value(21));
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.msg").value("获取用户账户异常"));
     }
 
     /**
@@ -240,5 +362,18 @@ class SsoSyncTaskControllerContractTest {
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("构造 SsoSyncTaskItem.messageLog 测试视图失败", exception);
         }
+    }
+
+    /**
+     * 写入最小登录态，让控制器能解析当前操作人。
+     *
+     * @param username 当前用户名
+     */
+    private void setAuthenticatedUser(String username) {
+        SysUser currentUser = new SysUser();
+        currentUser.setUserId(7L);
+        currentUser.setUserName(username);
+        LoginUser loginUser = new LoginUser(currentUser, java.util.Collections.emptySet());
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken(loginUser, null));
     }
 }

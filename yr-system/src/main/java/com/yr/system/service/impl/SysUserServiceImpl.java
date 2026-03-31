@@ -265,14 +265,14 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     /**
-     * 修改用户基本信息
+     * 修改当前登录用户的自助资料字段。
      *
      * @param user 用户信息
      * @return 结果
      */
     @Override
     public int updateUserProfile(SysUser user) {
-        return userMapper.updateUser(user);
+        return sysUserWriteService.updateUserProfile(user);
     }
 
     /**

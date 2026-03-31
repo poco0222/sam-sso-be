@@ -18,8 +18,10 @@ import com.yr.common.utils.ServletUtils;
 import com.yr.common.utils.StringUtils;
 import com.yr.common.utils.file.FileUploadUtils;
 import com.yr.framework.web.service.TokenService;
+import com.yr.web.controller.system.dto.UpdateProfileRequest;
 import com.yr.system.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,25 +59,24 @@ public class SysProfileController extends BaseController {
      */
     @Log(title = "个人信息", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult updateProfile(@RequestBody SysUser user) {
+    public AjaxResult updateProfile(@Validated @RequestBody UpdateProfileRequest request) {
+        LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
+        SysUser user = buildProfileUpdateUser(loginUser, request);
         if (StringUtils.isNotEmpty(user.getPhonenumber())
                 && UserConstants.NOT_UNIQUE.equals(userService.checkPhoneUnique(user))) {
-            return AjaxResult.error("修改用户'" + user.getUserName() + "'失败，手机号码已存在");
+            return AjaxResult.error("修改用户'" + loginUser.getUsername() + "'失败，手机号码已存在");
         }
         if (StringUtils.isNotEmpty(user.getEmail())
                 && UserConstants.NOT_UNIQUE.equals(userService.checkEmailUnique(user))) {
-            return AjaxResult.error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+            return AjaxResult.error("修改用户'" + loginUser.getUsername() + "'失败，邮箱账号已存在");
         }
-        LoginUser loginUser = tokenService.getLoginUser(ServletUtils.getRequest());
         SysUser sysUser = loginUser.getUser();
-        user.setUserId(sysUser.getUserId());
-        user.setPassword(null);
         if (userService.updateUserProfile(user) > 0) {
             // 更新缓存用户信息
-            loginUser.getUser().setNickName(user.getNickName());
-            loginUser.getUser().setPhonenumber(user.getPhonenumber());
-            loginUser.getUser().setEmail(user.getEmail());
-            loginUser.getUser().setSex(user.getSex());
+            sysUser.setNickName(user.getNickName());
+            sysUser.setPhonenumber(user.getPhonenumber());
+            sysUser.setEmail(user.getEmail());
+            sysUser.setSex(user.getSex());
             tokenService.setLoginUser(loginUser);
             return AjaxResult.success();
         }
@@ -132,5 +133,22 @@ public class SysProfileController extends BaseController {
             }
         }
         return AjaxResult.error("上传图片异常，请联系管理员");
+    }
+
+    /**
+     * 构造个人资料写入对象，只保留允许自助修改的资料字段。
+     *
+     * @param loginUser 当前登录用户
+     * @param request 个人资料更新请求
+     * @return 精简后的用户写入对象
+     */
+    private SysUser buildProfileUpdateUser(LoginUser loginUser, UpdateProfileRequest request) {
+        SysUser user = new SysUser();
+        user.setUserId(loginUser.getUserId());
+        user.setNickName(request.getNickName());
+        user.setPhonenumber(request.getPhonenumber());
+        user.setEmail(request.getEmail());
+        user.setSex(request.getSex());
+        return user;
     }
 }

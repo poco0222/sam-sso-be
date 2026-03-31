@@ -19,6 +19,7 @@ import com.yr.system.service.ISsoClientService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
@@ -198,6 +199,25 @@ class SsoClientControllerContractTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
+    }
+
+    /**
+     * 验证修改客户端状态时缺少 status 必须在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankStatusWhenChangingClientStatus() throws Exception {
+        mockMvc.perform(put("/sso/client/7/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status":""
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value(containsString("status不能为空")));
     }
 
     /**

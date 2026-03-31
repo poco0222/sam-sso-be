@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.env.Environment;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -59,14 +60,23 @@ public class SysLoginService {
     /** 企业微信 access_token 的缓存键，避免每次登录都直连上游。 */
     private static final String WXWORK_ACCESS_TOKEN_CACHE_KEY = "wxwork:access_token";
 
+    /** 企业微信 OAuth state 的缓存键前缀。 */
+    private static final String WXWORK_OAUTH_STATE_CACHE_KEY_PREFIX = "wxwork:oauth_state:";
+
     /** access_token 提前 5 分钟刷新，避免边界时刻拿到即将过期的凭证。 */
     private static final int WXWORK_ACCESS_TOKEN_BUFFER_SECONDS = 300;
+
+    /** 企业微信 OAuth state 使用短 TTL，降低重放窗口。 */
+    private static final int WXWORK_OAUTH_STATE_TTL_SECONDS = 300;
 
     /** 企业微信用户不存在时返回的业务码。 */
     private static final int WXWORK_USER_NOT_FOUND_CODE = 40001;
 
     /** 企业微信授权码无效时返回的业务码。 */
     private static final int WXWORK_INVALID_CODE_CODE = 40002;
+
+    /** 企业微信 OAuth state 无效时返回的业务码。 */
+    private static final int WXWORK_INVALID_STATE_CODE = 40003;
 
     /** 获取企业微信 access_token 的官方接口。 */
     private static final String WXWORK_ACCESS_TOKEN_ENDPOINT = "https://qyapi.weixin.qq.com/cgi-bin/gettoken";
@@ -83,6 +93,9 @@ public class SysLoginService {
     /** 登录认证服务异常时的受控提示。 */
     private static final String LOGIN_SERVICE_UNAVAILABLE_MESSAGE = "登录服务暂不可用，请稍后再试";
 
+    /** 企业微信 OAuth state 无效时的受控提示。 */
+    private static final String INVALID_WXWORK_STATE_MESSAGE = "授权状态无效或已过期";
+
     /** 服务日志。 */
     private static final Logger LOGGER = LoggerFactory.getLogger(SysLoginService.class);
 
@@ -97,6 +110,10 @@ public class SysLoginService {
     /** Redis 缓存，用于登录错误次数与企业微信 access_token 缓存。 */
     @Autowired
     private RedisCache redisCache;
+
+    /** StringRedisTemplate（字符串 Redis 模板），用于原子消费企业微信 OAuth state。 */
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     /** 用户服务，用于查询系统用户。 */
     @Autowired
@@ -256,9 +273,11 @@ public class SysLoginService {
      * 基于企业微信授权码登录，并复用现有 token 签发与登录记录链路。
      *
      * @param code 企业微信授权码
+     * @param state 企业微信 OAuth state
      * @return 登录成功后的 token
      */
-    public String loginByWxworkCode(String code) {
+    public String loginByWxworkCode(String code, String state) {
+        validateAndConsumeWxworkOauthState(state);
         if (StringUtils.isBlank(code)) {
             throw new CustomException("授权码无效或已过期", WXWORK_INVALID_CODE_CODE);
         }
@@ -286,6 +305,14 @@ public class SysLoginService {
         String corpId = requireWxworkProperty("wxwork.corp-id", "wxwork.corpId", "企业微信 corpId");
         String agentId = requireWxworkProperty("wxwork.agent-id", "wxwork.agentId", "企业微信 agentId");
         String redirectUri = requireWxworkProperty("wxwork.redirect-uri", "wxwork.redirectUri", "企业微信 redirectUri");
+        String state = createWxworkOauthState();
+
+        stringRedisTemplate.opsForValue().set(
+                buildWxworkOauthStateCacheKey(state),
+                state,
+                WXWORK_OAUTH_STATE_TTL_SECONDS,
+                TimeUnit.SECONDS
+        );
 
         // 预登录地址由后端统一生成，避免前端散落企业微信授权参数拼装细节。
         String authorizeUrl = UriComponentsBuilder.fromHttpUrl(WXWORK_AUTHORIZE_ENDPOINT)
@@ -294,7 +321,7 @@ public class SysLoginService {
                 .queryParam("response_type", "code")
                 .queryParam("scope", "snsapi_privateinfo")
                 .queryParam("agentid", agentId)
-                .queryParam("state", UUID.randomUUID().toString().replace("-", ""))
+                .queryParam("state", state)
                 .build()
                 .encode()
                 .toUriString();
@@ -414,9 +441,59 @@ public class SysLoginService {
             }
             return objectMapper.readTree(responseBody);
         } catch (RestClientException | IOException ex) {
-            LOGGER.error("{}失败，请求地址：{}", scene, requestUrl, ex);
+            LOGGER.error("{}失败，请求地址：{}", scene, sanitizeWxworkRequestUrl(requestUrl), ex);
             throw new CustomException(scene + "失败", ex);
         }
+    }
+
+    /**
+     * 校验并消费企业微信 OAuth state，避免授权码登录被重放。
+     *
+     * @param state 企业微信 OAuth state
+     */
+    private void validateAndConsumeWxworkOauthState(String state) {
+        if (StringUtils.isBlank(state)) {
+            throw new CustomException(INVALID_WXWORK_STATE_MESSAGE, WXWORK_INVALID_STATE_CODE);
+        }
+
+        String stateCacheKey = buildWxworkOauthStateCacheKey(state);
+        // 使用 Redis 原子 getAndDelete，避免同一个 state 在并发回调中被重复消费。
+        String cachedState = stringRedisTemplate.opsForValue().getAndDelete(stateCacheKey);
+        if (StringUtils.isBlank(cachedState) || !state.equals(cachedState)) {
+            throw new CustomException(INVALID_WXWORK_STATE_MESSAGE, WXWORK_INVALID_STATE_CODE);
+        }
+    }
+
+    /**
+     * 生成企业微信 OAuth state。
+     *
+     * @return 新的 OAuth state
+     */
+    private String createWxworkOauthState() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 构建企业微信 OAuth state 的缓存键。
+     *
+     * @param state 企业微信 OAuth state
+     * @return state 对应的 Redis 键
+     */
+    private String buildWxworkOauthStateCacheKey(String state) {
+        return WXWORK_OAUTH_STATE_CACHE_KEY_PREFIX + state;
+    }
+
+    /**
+     * 脱敏企业微信请求 URL，避免日志泄露凭证类参数。
+     *
+     * @param requestUrl 原始请求地址
+     * @return 脱敏后的请求地址
+     */
+    private String sanitizeWxworkRequestUrl(String requestUrl) {
+        return requestUrl
+                .replaceAll("(?i)(corpsecret=)[^&]*", "$1[REDACTED]")
+                .replaceAll("(?i)(code=)[^&]*", "$1[REDACTED]")
+                .replaceAll("(?i)(access_token=)[^&]*", "$1[REDACTED]");
     }
 
     /**

@@ -40,7 +40,7 @@ public class WxworkAuthController {
     }
 
     /**
-     * 使用企业微信授权码登录，并返回一期统一 token 字段。
+     * 使用企业微信授权码与 state 登录，并返回一期统一 token 字段。
      *
      * @param loginBody 企业微信登录请求体
      * @return 登录结果
@@ -48,7 +48,7 @@ public class WxworkAuthController {
     @PostMapping("/login")
     public AjaxResult login(@RequestBody LoginBody loginBody) {
         AjaxResult ajaxResult = AjaxResult.success("登录成功");
-        ajaxResult.put(Constants.TOKEN, loginService.loginByWxworkCode(loginBody.getCode()));
+        ajaxResult.put(Constants.TOKEN, loginService.loginByWxworkCode(loginBody.getCode(), loginBody.getState()));
         return ajaxResult;
     }
 }

@@ -1,3 +1,6 @@
+# production profile（生产配置）安全基线
+# author: PopoY
+# date: 2026-03-31
 # 项目相关配置
 yr:
   # 名称
@@ -7,9 +10,9 @@ yr:
   # 版权年份
   copyrightYear: 2021
   # 实例演示开关
-  demoEnabled: true
+  demoEnabled: ${YR_DEMO_ENABLED:false}
   # 文件路径 示例（ Windows配置C:/yr/upload，Linux配置 /home/yr/upload）
-  profile: D:/ruoyi/uploadPath
+  profile: ${YR_PROFILE:}
   # 获取ip地址开关
   addressEnabled: false
   # 一期阶段通过应用配置固定控制验证码开关，避免依赖系统参数模块
@@ -58,7 +61,7 @@ logging:
     org.springframework: ${LOGGING_LEVEL_SPRING_FRAMEWORK:warn}
   file:
     # 日志文件输出地址
-    path: ${LOGGING_FILE_PATH:C:/yr/logs}
+    path: ${LOGGING_FILE_PATH:}
   # 指定配置文件
   config: classpath:logback-spring.xml
 
@@ -161,7 +164,7 @@ spring:
   devtools:
     restart:
       # 热部署开关
-      enabled: true
+      enabled: false
   # redis 配置
   redis:
     # 地址
@@ -270,7 +273,7 @@ file:
   # 客户端类型: default, ftp
   clientType: ${FILE_CLIENT_TYPE:default}
   # 固定路径。如果使用了ftp服务，需要把这个值配置为空
-  constantPath: ${FILE_CONSTANT_PATH:D:/yr/uploadPath}
+  constantPath: ${FILE_CONSTANT_PATH:}
   # ftp客户端配置，如果使用了ftp服务需要配置这里
   ftp:
     host: ${FILE_FTP_HOST:localhost}

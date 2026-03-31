@@ -78,6 +78,14 @@ public interface SysUserMapper {
     public int updateUserStatus(SysUser user);
 
     /**
+     * 修改用户自助资料字段。
+     *
+     * @param user 用户资料信息
+     * @return 结果
+     */
+    public int updateUserProfile(SysUser user);
+
+    /**
      * 修改用户头像
      *
      * @param userName 用户名

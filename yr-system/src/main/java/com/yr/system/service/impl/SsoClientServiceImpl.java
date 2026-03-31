@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -25,6 +26,15 @@ import java.util.UUID;
  */
 @Service
 public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, SsoClient> implements ISsoClientService {
+
+    /** 允许的客户端状态。 */
+    private static final Set<String> ALLOWED_CLIENT_STATUS = Set.of("0", "1");
+
+    /** 允许的客户端开关值。 */
+    private static final Set<String> ALLOWED_SWITCH_VALUE = Set.of("Y", "N");
+
+    /** 允许的回调地址协议。 */
+    private static final Set<String> ALLOWED_REDIRECT_URI_SCHEME = Set.of("http", "https");
 
     /**
      * 查询客户端列表。
@@ -99,7 +109,9 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
         }
         String clientSecret = generateClientSecret();
         ssoClient.setClientSecret(SecurityUtils.encryptPassword(clientSecret));
-        this.updateById(ssoClient);
+        if (!this.updateById(ssoClient)) {
+            throw new CustomException("轮换客户端密钥失败");
+        }
         return clientSecret;
     }
 
@@ -115,6 +127,7 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
         if (clientId == null) {
             throw new CustomException("客户端ID不能为空");
         }
+        validateClientStatus(status);
         SsoClient ssoClient = new SsoClient();
         ssoClient.setClientId(clientId);
         ssoClient.setStatus(status);
@@ -152,11 +165,15 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
         if (StringUtils.isBlank(ssoClient.getStatus())) {
             throw new CustomException("status不能为空");
         }
+        validateClientStatus(ssoClient.getStatus());
+        validateSwitchValue("allowPasswordLogin", ssoClient.getAllowPasswordLogin());
+        validateSwitchValue("allowWxworkLogin", ssoClient.getAllowWxworkLogin());
+        validateSwitchValue("syncEnabled", ssoClient.getSyncEnabled());
         validateRedirectUris(ssoClient.getRedirectUris());
     }
 
     /**
-     * 对回调地址做最小合法性校验：只要求每个条目都能解析出 scheme。
+     * 对回调地址做受控校验：必须是可解析且协议受支持的 Web 回调地址。
      *
      * @param redirectUris 回调地址列表
      */
@@ -169,10 +186,43 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
             if (StringUtils.isBlank(candidate)) {
                 continue;
             }
-            URI uri = URI.create(candidate);
-            if (StringUtils.isBlank(uri.getScheme())) {
+            try {
+                URI uri = URI.create(candidate);
+                if (StringUtils.isBlank(uri.getScheme()) || !ALLOWED_REDIRECT_URI_SCHEME.contains(uri.getScheme().toLowerCase())) {
+                    throw new CustomException("redirectUris中存在非法地址");
+                }
+            } catch (IllegalArgumentException exception) {
                 throw new CustomException("redirectUris中存在非法地址");
             }
+        }
+    }
+
+    /**
+     * 校验客户端状态只允许为 0/1。
+     *
+     * @param status 客户端状态
+     */
+    private void validateClientStatus(String status) {
+        if (StringUtils.isBlank(status)) {
+            throw new CustomException("status不能为空");
+        }
+        if (!ALLOWED_CLIENT_STATUS.contains(status)) {
+            throw new CustomException("status只允许为0或1");
+        }
+    }
+
+    /**
+     * 校验客户端开关字段只允许为 Y/N；空值继续沿用现有默认值/跳过更新语义。
+     *
+     * @param fieldName 字段名
+     * @param fieldValue 字段值
+     */
+    private void validateSwitchValue(String fieldName, String fieldValue) {
+        if (StringUtils.isBlank(fieldValue)) {
+            return;
+        }
+        if (!ALLOWED_SWITCH_VALUE.contains(fieldValue)) {
+            throw new CustomException(fieldName + "只允许为Y或N");
         }
     }
 }

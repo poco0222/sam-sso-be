@@ -63,6 +63,9 @@ class SysUserControllerChangeStatusContractTest {
         assertThat(userCaptor.getValue().getEmail()).as("状态修改不应透传 email").isNull();
         assertThat(userCaptor.getValue().getDeptId()).as("状态修改不应透传 deptId").isNull();
         assertThat(userCaptor.getValue().getRemark()).as("状态修改不应透传 remark").isNull();
+        assertThat(userCaptor.getValue().getPassword()).as("状态修改不应透传 password").isNull();
+        assertThat(userCaptor.getValue().getLoginIp()).as("状态修改不应透传 loginIp").isNull();
+        assertThat(userCaptor.getValue().getLoginDate()).as("状态修改不应透传 loginDate").isNull();
     }
 
     /**

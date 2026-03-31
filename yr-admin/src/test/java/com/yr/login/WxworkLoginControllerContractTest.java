@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -54,13 +55,27 @@ class WxworkLoginControllerContractTest {
      */
     @Test
     void shouldReturnTokenWhenWxworkLoginSucceeds() throws Exception {
-        when(loginService.loginByWxworkCode("wx-code-123")).thenReturn("token-123");
+        when(loginService.loginByWxworkCode("wx-code-123", "state-123")).thenReturn("token-123");
 
         mockMvc.perform(post("/auth/wxwork/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"wx-code-123\"}"))
+                        .content("{\"code\":\"wx-code-123\",\"state\":\"state-123\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("token-123"));
+    }
+
+    /**
+     * 验证预登录接口会返回 authorizeUrl，避免前端自行拼企业微信授权参数。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldReturnAuthorizeUrlWhenWxworkPreLoginSucceeds() throws Exception {
+        when(loginService.buildWxworkPreLoginUrl()).thenReturn("https://open.weixin.qq.com/connect/oauth2/authorize?state=state-123#wechat_redirect");
+
+        mockMvc.perform(get("/auth/wxwork/pre-login"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authorizeUrl").value("https://open.weixin.qq.com/connect/oauth2/authorize?state=state-123#wechat_redirect"));
     }
 
     /**

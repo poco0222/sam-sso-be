@@ -82,4 +82,19 @@ public class SysUserWriteService {
 
         return userMapper.updateUser(user);
     }
+
+    /**
+     * 修改当前登录用户的自助资料字段。
+     *
+     * @param user 用户信息
+     * @return 影响行数
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int updateUserProfile(SysUser user) {
+        if (user.getUserId() == null) {
+            throw new CustomException("用户ID不能为空");
+        }
+
+        return userMapper.updateUserProfile(user);
+    }
 }

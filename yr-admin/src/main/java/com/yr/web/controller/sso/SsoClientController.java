@@ -15,6 +15,7 @@ import com.yr.common.utils.SecurityUtils;
 import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.service.ISsoClientService;
 import com.yr.web.controller.sso.dto.SsoClientCreateRequest;
+import com.yr.web.controller.sso.dto.SsoClientStatusUpdateRequest;
 import com.yr.web.controller.sso.dto.SsoClientUpdateRequest;
 import com.yr.web.controller.sso.dto.SsoClientView;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -122,14 +123,14 @@ public class SsoClientController extends BaseController {
      * 修改客户端状态。
      *
      * @param clientId 客户端ID
-     * @param ssoClient 请求体中的状态信息
+     * @param request 请求体中的状态信息
      * @return 操作结果
      */
     @PreAuthorize("@ss.hasPermi('sso:client:edit')")
     @Log(title = "客户端管理", businessType = BusinessType.UPDATE)
     @PutMapping("/{clientId}/status")
-    public AjaxResult changeStatus(@PathVariable Long clientId, @RequestBody SsoClient ssoClient) {
-        return toAjax(ssoClientService.changeStatus(clientId, ssoClient.getStatus()));
+    public AjaxResult changeStatus(@PathVariable Long clientId, @Validated @RequestBody SsoClientStatusUpdateRequest request) {
+        return toAjax(ssoClientService.changeStatus(clientId, request.getStatus()));
     }
 
     /**
