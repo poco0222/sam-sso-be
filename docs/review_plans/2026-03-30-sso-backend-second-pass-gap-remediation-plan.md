@@ -1,5 +1,9 @@
 # SSO Backend Second-Pass Gap Remediation Plan
 
+> Historical closure snapshot only: superseded on 2026-03-30 by `docs/review_plans/2026-03-30-sso-backend-third-pass-fresh-review-remediation-plan.md`.
+>
+> This document preserves the second-pass closure result. For any new execution turn, use the third-pass fresh review plan as the canonical entrypoint.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 收口 `sam-sso-be` 在完成 2026-03-30 tail-closure（收尾闭环）整改后，经第二次复核仍然存在的剩余缺口，重点修正 validation（参数校验）只改了 body code（响应体业务码）但未改 transport-level HTTP status（传输层 HTTP 状态码）、`MethodArgumentNotValidException` 对 class-level validation（类级校验）缺少稳健兜底、以及 `DISTRIBUTION` after-commit（提交后回调）结果回写失败时仍然缺少可恢复的闭环标记。

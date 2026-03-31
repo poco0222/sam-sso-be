@@ -87,8 +87,9 @@ mvn -pl yr-system test
 ## 说明
 
 - 数据库脚本本次未作为模板收敛依据，需要后续按新项目实际情况自行整理
-- `SSO` backend 最新收口快照见 `docs/review_plans/2026-03-30-sso-backend-second-pass-gap-remediation-plan.md`
-- 上述 second-pass plan 的 `Task 1-4` 已于 `2026-03-30` 完成；如需继续处理新问题，应先基于该文档结果做 fresh review（重新复核），不要再从 `Task 1` 重跑
+- `SSO` backend 当前最新执行入口见 `docs/review_plans/2026-03-30-sso-backend-third-pass-fresh-review-remediation-plan.md`
+- 上述 third-pass fresh review plan 是当前 canonical entrypoint（权威执行入口）；新开对话时应从该文档的 `Task 1` 顺序执行
+- `docs/review_plans/2026-03-30-sso-backend-second-pass-gap-remediation-plan.md` 仅保留上一轮最新收口快照，不再作为当前执行入口
 - `docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md` 仅保留上一轮收口快照，不再作为当前执行入口
 - `docs/review_plans/2026-03-27-sso-backend-best-practice-audit-remediation-overview.md` 仅保留历史快照，不再作为当前执行入口
 - `yr-system` Phase 0 验收记录见 `docs/review_plans/2026-03-16-yr-system-phase-0-baseline.md`
