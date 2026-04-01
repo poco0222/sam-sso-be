@@ -62,6 +62,16 @@
   - `SsoSyncTaskServiceImpl` 失败状态在事务回滚后无法持久化
   - 全局异常与登录链路直接把内部异常信息返回给前端
 
+-### Phase 0 Gate Repair Status（阶段 0 门修复状态）
+
+- Backend contract gate（后端契约门）命令使用了 `JAVA_HOME=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home mvn -pl yr-admin,yr-framework,yr-system -am -Dtest=... test`，覆盖了 `yr-admin/yr-framework/yr-system` 的 contract 级别测试，输出摘要 `Tests run（测试总数）: 43, Failures（失败）: 0, Errors（错误）: 0, Skipped（跳过）: 0`，表明基础 contract 在当前 gate 下已通过。
+- 在 contract 过程中发现 `SysOrgStatusUpdateRequest（组织状态更新请求）` 的空 status 首次仍然触发 `allowed-value message（允许值提示）`，说明 allowed-value 校验在空值也会跑；修复策略是保留 `@NotBlank（非空校验注解）` 以拦截空字符串，同时把 allowed-value 校验下沉到只在 status 非空时才走的 `@AssertTrue（布尔一致性校验）`，这样 gate 仅在合法值上验证业务允许的状态集合。
+
+### Phase 3 Smoke Test Blocker（阶段 3 烟雾测试阻塞）
+
+- `SsoInitImportRehearsalSmokeTest（初始化导入演练烟雾测试）` 与 `SsoDistributionMqSmokeTest（MQ 分发烟雾测试）` 在 Spring context（Spring 上下文）启动阶段均失败，原因在于当前 `SecurityConfig.authenticationManager（认证管理器）` 的依赖链需要 Spring Security（Spring 安全框架）提供的 `HttpSecurity bean（HttpSecurity 实例）`，但新配置里并未显式注入该 bean，导致 `NoSuchBeanDefinitionException`，Spring context 无法走到数据库/消息队列（DB/MQ）验证阶段。
+- 两个 smoke test 的复现命令保持独立：`mvn -pl yr-admin -am -Dtest=SsoInitImportRehearsalSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -DrunInitImportRehearsal=true test` 与 `mvn -pl yr-admin -am -Dtest=SsoDistributionMqSmokeTest -Dsurefire.failIfNoSpecifiedTests=false -DrunDistributionSmoke=true test`，上述命令均在 Spring context 初始化前 fail，说明当前 blocker 仍在 SecurityConfig 层而非 downstream DB/MQ 链路。
+
 ## Findings Summary
 
 ### P0: Must Fix Immediately
