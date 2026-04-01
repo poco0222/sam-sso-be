@@ -167,6 +167,8 @@ class SsoSyncTaskControllerContractTest {
                 .andExpect(jsonPath("$.taskId").value(11));
 
         verify(ssoSyncTaskService).initImportTask(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getTargetClientCode()).as("initImport 不应允许客户端自带 targetClientCode").isNull();
+        assertThat(taskCaptor.getValue().getSourceBatchNo()).as("initImport 不应允许客户端自带 sourceBatchNo").isNull();
         assertThat(taskCaptor.getValue().getTaskType()).as("initImport 不应允许客户端自带 taskType").isNull();
         assertThat(taskCaptor.getValue().getStatus()).as("initImport 不应允许客户端自带 status").isNull();
         assertThat(taskCaptor.getValue().getBatchNo()).as("initImport 不应允许客户端自带 batchNo").isNull();

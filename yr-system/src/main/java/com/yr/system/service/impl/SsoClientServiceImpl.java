@@ -6,6 +6,7 @@
 package com.yr.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.exception.CustomException;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
@@ -55,6 +56,39 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
                 .eq(status != null && !status.isBlank(), SsoClient::getStatus, status)
                 .orderByAsc(SsoClient::getClientId);
         return this.list(queryWrapper);
+    }
+
+    /**
+     * 查询分发任务可选客户端。
+     *
+     * @return 启用且开启同步的客户端列表
+     */
+    @Override
+    public List<SsoClient> selectDistributionClientOptions() {
+        QueryWrapper<SsoClient> queryWrapper = new QueryWrapper<SsoClient>()
+                .select("client_code", "client_name")
+                .eq("status", "0")
+                .eq("sync_enabled", "Y")
+                .orderByAsc("client_id");
+        return this.list(queryWrapper);
+    }
+
+    /**
+     * 按客户端编码查询客户端。
+     *
+     * @param clientCode 客户端编码
+     * @return 客户端；不存在时返回 null
+     */
+    @Override
+    public SsoClient selectSsoClientByCode(String clientCode) {
+        if (StringUtils.isBlank(clientCode)) {
+            return null;
+        }
+        QueryWrapper<SsoClient> queryWrapper = new QueryWrapper<SsoClient>()
+                .select("client_id", "client_code", "status", "sync_enabled")
+                .eq("client_code", clientCode.trim())
+                .last("limit 1");
+        return this.getOne(queryWrapper);
     }
 
     /**

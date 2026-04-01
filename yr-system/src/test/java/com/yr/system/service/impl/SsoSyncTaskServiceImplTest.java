@@ -9,11 +9,13 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.yr.common.core.domain.MqMessageLog;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
+import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.exception.CustomException;
 import com.yr.common.mapper.MqMessageLogMapper;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.mapper.SsoSyncTaskMapper;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -35,6 +37,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -193,9 +196,12 @@ class SsoSyncTaskServiceImplTest {
         ISsoIdentityDistributionService ssoIdentityDistributionService = mock(ISsoIdentityDistributionService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
         SsoSyncTaskExecutionResult executionResult = buildExecutionResult("SUCCESS", 2, 2, 0);
         ArgumentCaptor<SsoSyncTask> persistedTaskCaptor = ArgumentCaptor.forClass(SsoSyncTask.class);
+        SsoClient ssoClient = buildDispatchableClient();
 
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
         ReflectionTestUtils.setField(service, "ssoIdentityDistributionService", ssoIdentityDistributionService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
@@ -205,6 +211,7 @@ class SsoSyncTaskServiceImplTest {
             task.setTaskId(21L);
             return null;
         }).when(ssoSyncTaskFailureRecorder).persistNewTask(any(SsoSyncTask.class));
+        when(ssoClientService.selectSsoClientByCode("sam-mgmt")).thenReturn(ssoClient);
         when(ssoIdentityDistributionService.execute(any(SsoSyncTask.class), eq(null))).thenReturn(executionResult);
 
         SsoSyncTask command = new SsoSyncTask();
@@ -224,6 +231,73 @@ class SsoSyncTaskServiceImplTest {
         assertThat(result.getItemList()).hasSize(2);
         verify(ssoIdentityDistributionService).execute(any(SsoSyncTask.class), eq(null));
         verify(ssoSyncTaskItemService).replaceTaskItems(eq(21L), eq(executionResult.getItemList()));
+    }
+
+    /**
+     * 验证目标客户端不存在时不会创建分发任务。
+     */
+    @Test
+    void distributionTaskShouldRejectMissingTargetClient() {
+        SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        SsoSyncTask command = new SsoSyncTask();
+
+        command.setTargetClientCode("sam-mgmt");
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        when(ssoClientService.selectSsoClientByCode("sam-mgmt")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.distributionTask(command))
+                .isInstanceOf(CustomException.class)
+                .hasMessage("DISTRIBUTION 目标客户端不存在");
+        verify(ssoSyncTaskFailureRecorder, never()).persistNewTask(any(SsoSyncTask.class));
+    }
+
+    /**
+     * 验证停用客户端不会进入分发执行链路。
+     */
+    @Test
+    void distributionTaskShouldRejectDisabledTargetClient() {
+        SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        SsoSyncTask command = new SsoSyncTask();
+        SsoClient ssoClient = buildDispatchableClient();
+
+        command.setTargetClientCode("sam-mgmt");
+        ssoClient.setStatus("1");
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        when(ssoClientService.selectSsoClientByCode("sam-mgmt")).thenReturn(ssoClient);
+
+        assertThatThrownBy(() -> service.distributionTask(command))
+                .isInstanceOf(CustomException.class)
+                .hasMessage("DISTRIBUTION 目标客户端已停用");
+        verify(ssoSyncTaskFailureRecorder, never()).persistNewTask(any(SsoSyncTask.class));
+    }
+
+    /**
+     * 验证未启用同步的客户端不会进入分发执行链路。
+     */
+    @Test
+    void distributionTaskShouldRejectTargetClientWithoutSyncEnabled() {
+        SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
+        SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        SsoSyncTask command = new SsoSyncTask();
+        SsoClient ssoClient = buildDispatchableClient();
+
+        command.setTargetClientCode("sam-mgmt");
+        ssoClient.setSyncEnabled("N");
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
+        ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        when(ssoClientService.selectSsoClientByCode("sam-mgmt")).thenReturn(ssoClient);
+
+        assertThatThrownBy(() -> service.distributionTask(command))
+                .isInstanceOf(CustomException.class)
+                .hasMessage("DISTRIBUTION 目标客户端未启用同步");
+        verify(ssoSyncTaskFailureRecorder, never()).persistNewTask(any(SsoSyncTask.class));
     }
 
     /**
@@ -375,5 +449,19 @@ class SsoSyncTaskServiceImplTest {
         item.setSourceId(sourceId);
         item.setStatus(status);
         return item;
+    }
+
+    /**
+     * 构造最小可分发客户端，供分发校验测试复用。
+     *
+     * @return 最小可分发客户端
+     */
+    private SsoClient buildDispatchableClient() {
+        SsoClient ssoClient = new SsoClient();
+        ssoClient.setClientCode("sam-mgmt");
+        ssoClient.setClientName("SAM 管理后台");
+        ssoClient.setStatus("0");
+        ssoClient.setSyncEnabled("Y");
+        return ssoClient;
     }
 }

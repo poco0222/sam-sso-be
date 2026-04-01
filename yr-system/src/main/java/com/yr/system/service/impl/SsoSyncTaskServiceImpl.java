@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yr.common.core.domain.MqMessageLog;
+import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.common.core.domain.model.SsoSyncTaskMessageLogView;
@@ -20,6 +21,7 @@ import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
 import com.yr.system.domain.dto.SsoDistributionMessagePayload;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.mapper.SsoSyncTaskMapper;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskService;
@@ -66,6 +68,10 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
     /** MQ 履历查询 Mapper；在未启用 MQ 模块时允许为空。 */
     @Autowired(required = false)
     private MqMessageLogMapper mqMessageLogMapper;
+
+    /** 客户端服务；用于分发前校验目标客户端是否合法。 */
+    @Autowired
+    private ISsoClientService ssoClientService;
 
     /** 失败状态独立事务记录器。 */
     @Autowired
@@ -132,6 +138,7 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         if (newTask.getTargetClientCode() == null || newTask.getTargetClientCode().isBlank()) {
             throw new CustomException("DISTRIBUTION 目标客户端编码不能为空");
         }
+        validateDistributionTargetClient(newTask.getTargetClientCode());
         String batchSeed = UUID.randomUUID().toString().replace("-", "");
         newTask.setTaskType(SsoSyncTask.TASK_TYPE_DISTRIBUTION);
         if (newTask.getTriggerType() == null || newTask.getTriggerType().isBlank()) {
@@ -149,6 +156,24 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         newTask.setPayloadJson(buildDistributionPayload());
         ssoSyncTaskFailureRecorder.persistNewTask(newTask);
         return executeTask(newTask, null, newTask.getTaskType());
+    }
+
+    /**
+     * 校验分发目标客户端是否存在、启用且开启同步。
+     *
+     * @param targetClientCode 目标客户端编码
+     */
+    private void validateDistributionTargetClient(String targetClientCode) {
+        SsoClient targetClient = ssoClientService.selectSsoClientByCode(targetClientCode);
+        if (targetClient == null) {
+            throw new CustomException("DISTRIBUTION 目标客户端不存在");
+        }
+        if (!"0".equals(targetClient.getStatus())) {
+            throw new CustomException("DISTRIBUTION 目标客户端已停用");
+        }
+        if (!"Y".equals(targetClient.getSyncEnabled())) {
+            throw new CustomException("DISTRIBUTION 目标客户端未启用同步");
+        }
     }
 
     /**

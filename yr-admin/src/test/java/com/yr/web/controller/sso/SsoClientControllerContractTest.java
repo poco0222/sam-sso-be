@@ -127,6 +127,31 @@ class SsoClientControllerContractTest {
     }
 
     /**
+     * 验证分发任务下拉选项接口只返回最小可展示字段。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldListDistributionClientOptions() throws Exception {
+        SsoClient ssoClient = new SsoClient();
+        ssoClient.setClientId(7L);
+        ssoClient.setClientCode("sam-mgmt");
+        ssoClient.setClientName("SAM 管理后台");
+        ssoClient.setClientSecret("phase1-secret");
+        ssoClient.setStatus("0");
+        ssoClient.setSyncEnabled("Y");
+        when(ssoClientService.selectDistributionClientOptions()).thenReturn(List.of(ssoClient));
+
+        mockMvc.perform(get("/sso/client/options"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].clientCode").value("sam-mgmt"))
+                .andExpect(jsonPath("$.data[0].clientName").value("SAM 管理后台"))
+                .andExpect(jsonPath("$.data[0].clientSecret").doesNotExist())
+                .andExpect(jsonPath("$.data[0].status").doesNotExist())
+                .andExpect(jsonPath("$.data[0].syncEnabled").doesNotExist());
+    }
+
+    /**
      * 验证客户端新增接口在成功时返回 200。
      *
      * @throws Exception MockMvc 调用失败时抛出

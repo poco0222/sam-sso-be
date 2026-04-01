@@ -25,6 +25,21 @@ public interface ISsoClientService extends ICustomService<SsoClient> {
     List<SsoClient> selectSsoClientList(SsoClient query);
 
     /**
+     * 查询分发任务可选客户端，只返回启用且开启同步的客户端。
+     *
+     * @return 分发任务可选客户端列表
+     */
+    List<SsoClient> selectDistributionClientOptions();
+
+    /**
+     * 按客户端编码查询客户端。
+     *
+     * @param clientCode 客户端编码
+     * @return 客户端；不存在时返回 null
+     */
+    SsoClient selectSsoClientByCode(String clientCode);
+
+    /**
      * 新增客户端。
      *
      * @param ssoClient 客户端信息

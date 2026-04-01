@@ -15,6 +15,7 @@ import com.yr.common.utils.SecurityUtils;
 import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.service.ISsoClientService;
 import com.yr.web.controller.sso.dto.SsoClientCreateRequest;
+import com.yr.web.controller.sso.dto.SsoClientOptionView;
 import com.yr.web.controller.sso.dto.SsoClientStatusUpdateRequest;
 import com.yr.web.controller.sso.dto.SsoClientUpdateRequest;
 import com.yr.web.controller.sso.dto.SsoClientView;
@@ -67,6 +68,22 @@ public class SsoClientController extends BaseController {
             viewList.add(toView(ssoClient));
         }
         return getDataTable(viewList, total);
+    }
+
+    /**
+     * 查询分发任务客户端下拉选项。
+     *
+     * @return 客户端选项列表
+     */
+    @PreAuthorize("@ss.hasAnyPermi('sso:client:list,sso:sync-task:add')")
+    @GetMapping("/options")
+    public AjaxResult options() {
+        List<SsoClient> list = ssoClientService.selectDistributionClientOptions();
+        List<SsoClientOptionView> viewList = new ArrayList<>(list.size());
+        for (SsoClient ssoClient : list) {
+            viewList.add(toOptionView(ssoClient));
+        }
+        return AjaxResult.success(viewList);
     }
 
     /**
@@ -199,6 +216,19 @@ public class SsoClientController extends BaseController {
         view.setCreateTime(ssoClient.getCreateTime());
         view.setUpdateBy(ssoClient.getUpdateBy());
         view.setUpdateTime(ssoClient.getUpdateTime());
+        return view;
+    }
+
+    /**
+     * 把 entity 映射为分发任务下拉选项视图。
+     *
+     * @param ssoClient 领域对象
+     * @return 下拉选项视图
+     */
+    private SsoClientOptionView toOptionView(SsoClient ssoClient) {
+        SsoClientOptionView view = new SsoClientOptionView();
+        view.setClientCode(ssoClient.getClientCode());
+        view.setClientName(ssoClient.getClientName());
         return view;
     }
 }
