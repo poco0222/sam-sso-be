@@ -14,6 +14,7 @@ import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.common.core.domain.entity.SysDept;
 import com.yr.common.core.domain.entity.SysOrg;
 import com.yr.common.core.domain.entity.SysUser;
+import com.yr.common.core.domain.model.LoginUser;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoIdentityImportSnapshot;
 import com.yr.system.domain.entity.SysUserDept;
@@ -29,7 +30,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -69,6 +73,14 @@ class SsoIdentityImportServiceImplTest {
     /** 用户部门写入 Mapper。 */
     @Mock
     private SysUserDeptMapper sysUserDeptMapper;
+
+    /**
+     * 清理测试遗留的安全上下文，避免污染其它用例。
+     */
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     /**
      * 验证完整快照导入成功时会生成 success item 并执行五类 upsert。
@@ -122,6 +134,39 @@ class SsoIdentityImportServiceImplTest {
         SsoSyncTask task = buildTask();
 
         task.setCreateBy("9527");
+        when(ssoLegacyIdentitySourceService.loadSnapshot()).thenReturn(buildSnapshot());
+        when(sysOrgMapper.selectSysOrgById(101L)).thenReturn(null);
+        when(sysDeptMapper.selectSysDeptByDeptId(201L)).thenReturn(null);
+        when(sysUserMapper.selectSysUserByUserId(301L)).thenReturn(null);
+        SysUserOrg persistedUserOrg = new SysUserOrg();
+        persistedUserOrg.setId(401L);
+        persistedUserOrg.setUserId(301L);
+        persistedUserOrg.setOrgId(101L);
+        SysUserDept persistedUserDept = new SysUserDept();
+        persistedUserDept.setId(501L);
+        persistedUserDept.setUserId(301L);
+        persistedUserDept.setDeptId(201L);
+        when(sysUserOrgMapper.selectOne(any())).thenReturn(null, persistedUserOrg);
+        when(sysUserDeptMapper.selectOne(any())).thenReturn(null, persistedUserDept);
+        when(sysUserOrgMapper.insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class))).thenReturn(1);
+        when(sysUserDeptMapper.insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class))).thenReturn(1);
+
+        service.execute(task, null);
+
+        verify(sysUserOrgMapper).insertInitImport(anyLong(), anyLong(), any(), any(), eq(9527L), any(Date.class));
+        verify(sysUserDeptMapper).insertInitImport(anyLong(), anyLong(), any(), any(), eq(9527L), any(Date.class));
+    }
+
+    /**
+     * 验证真实 controller flow 下 createBy 为用户名时，会继续回退到安全上下文里的真实用户 ID。
+     */
+    @Test
+    void shouldUseAuthenticatedUserIdWhenCreateByIsUsernameForRelationAuditFields() {
+        SsoIdentityImportServiceImpl service = createService();
+        SsoSyncTask task = buildTask();
+
+        task.setCreateBy("operator-name");
+        installAuthenticatedUser(9527L, "operator-name");
         when(ssoLegacyIdentitySourceService.loadSnapshot()).thenReturn(buildSnapshot());
         when(sysOrgMapper.selectSysOrgById(101L)).thenReturn(null);
         when(sysDeptMapper.selectSysDeptByDeptId(201L)).thenReturn(null);
@@ -327,5 +372,19 @@ class SsoIdentityImportServiceImplTest {
         Logger logger = (Logger) LoggerFactory.getLogger(SsoIdentityImportServiceImpl.class);
         logger.detachAppender(listAppender);
         listAppender.stop();
+    }
+
+    /**
+     * 安装最小认证上下文，供审计字段回退逻辑读取真实用户 ID。
+     *
+     * @param userId 认证用户 ID
+     * @param username 认证用户名
+     */
+    private void installAuthenticatedUser(Long userId, String username) {
+        SysUser currentUser = new SysUser();
+        currentUser.setUserId(userId);
+        currentUser.setUserName(username);
+        LoginUser loginUser = new LoginUser(currentUser, Collections.emptySet());
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken(loginUser, null));
     }
 }

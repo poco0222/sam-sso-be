@@ -130,7 +130,7 @@ class SysLoginControllerContractTest {
 
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"code\":\"1234\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("token-123"));
     }
@@ -144,7 +144,7 @@ class SysLoginControllerContractTest {
     void shouldRejectBlankUsernameAtControllerLevel() throws Exception {
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                        .content("{\"username\":\"\",\"password\":\"cipher\",\"code\":\"1234\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.msg").value(containsString("username不能为空")));
@@ -159,10 +159,42 @@ class SysLoginControllerContractTest {
     void shouldRejectBlankPasswordAtControllerLevel() throws Exception {
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"\",\"platform\":\"mgmt\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"\",\"code\":\"1234\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.msg").value(containsString("password不能为空")));
+    }
+
+    /**
+     * 验证标准登录在非 desktop 平台缺少验证码时，会在 controller 层直接返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankCaptchaCodeAtControllerLevelForNonDesktopLogin() throws Exception {
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"code\":\"\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value(containsString("code不能为空")));
+    }
+
+    /**
+     * 验证 desktop 平台仍允许跳过验证码校验，避免误伤既有桌面端旁路。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldAllowBlankCaptchaCodeForDesktopLogin() throws Exception {
+        when(loginService.login(eq("admin"), anyString(), any(), any(), eq("desktop")))
+                .thenReturn("desktop-token");
+
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"desktop\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("desktop-token"));
     }
 
     /**
@@ -177,7 +209,7 @@ class SysLoginControllerContractTest {
 
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"code\":\"1234\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(500))
                 .andExpect(jsonPath("$.msg").value("系统繁忙，请稍后再试"))
@@ -196,7 +228,7 @@ class SysLoginControllerContractTest {
 
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                        .content("{\"username\":\"admin\",\"password\":\"cipher\",\"code\":\"1234\",\"uuid\":\"uuid-1\",\"platform\":\"mgmt\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(500))
                 .andExpect(jsonPath("$.msg").value("账号密码错误，请重新登录"));

@@ -187,7 +187,17 @@ public class SysDeptServiceImpl implements ISysDeptService {
     @Override
     public String checkDeptCodeUnique(SysDept dept) {
         Long deptId = StringUtils.isNull(dept.getDeptId()) ? -1L : dept.getDeptId();
-        SysDept info = deptMapper.checkDeptCodeUnique(dept.getDeptCode(), dept.getParentId(), dept.getOrgId());
+        Long orgId = dept.getOrgId();
+
+        // 新增部门时如果请求未携带 orgId，需要回退到父部门真值，避免查重范围被 null 绕空。
+        if (orgId == null && dept.getParentId() != null) {
+            SysDept parentDept = deptMapper.selectDeptById(dept.getParentId());
+            if (parentDept != null) {
+                orgId = parentDept.getOrgId();
+                dept.setOrgId(orgId);
+            }
+        }
+        SysDept info = deptMapper.checkDeptCodeUnique(dept.getDeptCode(), dept.getParentId(), orgId);
         if (StringUtils.isNotNull(info) && info.getDeptId().longValue() != deptId.longValue()) {
             return UserConstants.NOT_UNIQUE;
         }

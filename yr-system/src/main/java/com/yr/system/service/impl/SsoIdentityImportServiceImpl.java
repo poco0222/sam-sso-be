@@ -14,6 +14,7 @@ import com.yr.common.core.domain.entity.SysDept;
 import com.yr.common.core.domain.entity.SysOrg;
 import com.yr.common.core.domain.entity.SysUser;
 import com.yr.common.exception.CustomException;
+import com.yr.common.utils.SecurityUtils;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoIdentityImportSnapshot;
 import com.yr.system.domain.entity.SysUserDept;
@@ -471,15 +472,23 @@ public class SsoIdentityImportServiceImpl implements ISsoIdentityImportService {
     private String resolveOperatorUserId(SsoSyncTask task) {
         String createBy = task == null ? null : task.getCreateBy();
 
-        if (createBy == null || createBy.isBlank()) {
-            return DEFAULT_OPERATOR_USER_ID;
+        if (createBy != null && !createBy.isBlank()) {
+            try {
+                Long.parseLong(createBy);
+                return createBy;
+            } catch (NumberFormatException exception) {
+                // controller flow 下 createBy 是 username，这里继续回退到安全上下文读取真实用户 ID。
+            }
         }
         try {
-            Long.parseLong(createBy);
-            return createBy;
-        } catch (NumberFormatException exception) {
-            return DEFAULT_OPERATOR_USER_ID;
+            Long currentUserId = SecurityUtils.getUserId();
+            if (currentUserId != null) {
+                return String.valueOf(currentUserId);
+            }
+        } catch (CustomException exception) {
+            log.debug("INIT_IMPORT 未获取到安全上下文用户ID，回退默认操作人，reason={}", exception.getMessage());
         }
+        return DEFAULT_OPERATOR_USER_ID;
     }
 
     /**

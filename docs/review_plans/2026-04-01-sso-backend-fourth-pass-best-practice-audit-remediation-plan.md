@@ -4,7 +4,7 @@
 
 **Goal:** 基于 2026-04-01 的 live audit（实时审计）结果，把 `sam-sso-be` 剩余的 architecture residue（架构残余问题）与 code-level write-boundary/input-contract gap（代码级写入边界与输入契约缺口）收敛到可持续维护的状态，并为新对话执行提供最新 canonical handoff（权威交接入口）。
 
-**Architecture:** 当前 `JDK 17 + Spring Boot 2.7.18` 多模块基线已经基本站稳，`SecurityFilterChain`（安全过滤链）、JWT（令牌）、Redis（缓存）、Liquibase（数据库变更管理）、RocketMQ（消息队列）与全量测试都可工作。与 2026-03-31 相比，整体已经不再是“架构没搭好”的问题；截至 `2026-04-01 09:45 CST`，`Task 1` 到 `Task 6` 已全部完成，本文计划范围内的 architecture/code-level open items（架构级/代码级开放项）已清零。
+**Architecture:** 当前 `JDK 17 + Spring Boot 2.7.18` 多模块基线已经基本站稳，`SecurityFilterChain`（安全过滤链）、JWT（令牌）、Redis（缓存）、Liquibase（数据库变更管理）、RocketMQ（消息队列）与主要定向测试都可工作。与 2026-03-31 相比，整体已经不再是“架构没搭好”的问题；截至 `2026-04-01 10:15 CST`，本文计划范围内重新打开的 `Task 4/5/6` 残余 code-level open items（代码级开放项）已再次关闭，但当前工作树仍存在计划外 `application*.yml` 配置漂移，导致全量 `mvn test` 不能直接作为 merge baseline（合并基线）。
 
 **Tech Stack:** Java 17, Spring Boot 2.7.18, Spring MVC, Spring Security, Spring Validation, Spring Data Redis, Jackson, MyBatis-Plus, Liquibase, RocketMQ, Quartz, JUnit 5, MockMvc, Mockito, AssertJ
 
@@ -15,7 +15,7 @@
 - backend root（后端根目录）：`/Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be`
 - wrapper root（包装层根目录）：`/Users/PopoY/workingFiles/Projects/SAM/sso`
 - 本文档是 2026-04-01 的最新 comprehensive backend audit（综合后端审计）与 remediation plan（整改计划），用于替代 2026-03-31 文档作为新的 canonical entrypoint（权威执行入口）。
-- 本文档最初以 docs-first（文档先行）方式产出；截至 `2026-04-01 09:45 CST`，`Task 1` 到 `Task 6` 已在同仓库内按顺序执行完成；后续新对话若继续此仓库，默认应复用本文 execution status（执行状态）作为 handoff（交接）真值，并先进入 merge/finalization（合并/收尾）决策，而不是重新回到整改实施阶段。
+- 本文档最初以 docs-first（文档先行）方式产出；截至 `2026-04-01 10:15 CST`，`Task 1` 到 `Task 6` 的计划内整改已经全部落地，但后续新对话若继续此仓库，需先区分“计划内代码整改已完成”与“当前工作树还有计划外 profile config（环境配置）漂移未收口”，不要直接把当前状态当成可无条件 merge 的 clean baseline（干净基线）。
 - 由于本轮已重新 live revalidate（实时复核）代码与测试，以下旧结论默认不再单独展开，除非本计划某个 task 明确重新打开：
   - 2026-03-31 已完成的 `SysUser` / `SysProfile` / `SsoClient` / `SsoSyncTask` DTO 收口
   - 企业微信 `OAuth state`（授权状态参数）闭环与 URL 脱敏
@@ -47,7 +47,7 @@ mvn test
 
 - 结论 1：当前 backend architecture（后端架构）已经基本合格，不需要再泛化成“大范围架构重构”；后续预算应优先投入到具体 code path（代码路径）与输入/写入边界。
 - 结论 2：2026-03-31 已整改的认证与控制台主链路大部分仍保持关闭状态，本轮没有复现新的 `OAuth/token/permission`（授权/令牌/权限）高风险洞。
-- 结论 3：审计基线时共有 1 个 architecture-level security residue（架构级安全残留）和 5 个 code-level implementation gap（代码级实现缺口）；`Task 1` 到 `Task 6` 完成后，当前计划范围内的 open items（开放项）已全部关闭，并经过定向验证与全量 `mvn test` 双重确认。
+- 结论 3：审计基线时共有 1 个 architecture-level security residue（架构级安全残留）和 5 个 code-level implementation gap（代码级实现缺口）；`Task 1` 到 `Task 6` 完成后，计划范围内的 open items（开放项）已全部关闭，并在 `2026-04-01 10:14 CST` 再次通过定向验证确认。当前唯一未收口的是计划外 profile config（环境配置）漂移导致的全量 `mvn test` 失败，它不属于本轮代码整改的回归。
 
 ## Closed Or Downgraded Findings
 
@@ -56,24 +56,69 @@ mvn test
 - 已关闭：`SysOrg changeStatus` 不再接收完整 `SysOrg entity（实体）`，也不再委托到通用 `updateSysOrg`。当前 `yr-admin/src/main/java/com/yr/web/controller/system/SysOrgController.java:78-209` 已切换到最小 DTO + 精简写入对象，`yr-system/src/main/java/com/yr/system/service/impl/SysOrgServiceImpl.java:203-224` 已改走专用 `updateOrgStatus`，`yr-system/src/main/resources/mapper/system/SysOrgMapper.xml:144-169` 已把状态更新与通用编辑 SQL 分离，并由 `yr-admin/src/test/java/com/yr/web/controller/system/SysOrgControllerContractTest.java:109-203`、`yr-system/src/test/java/com/yr/system/service/impl/SysOrgServiceImplSafetyTest.java:35-63` 锁定。
 - 已关闭：`SysUserOrg add/changeEnabled` 不再透传完整 `SysUserOrg entity（实体）`。当前 `yr-admin/src/main/java/com/yr/web/controller/system/SysUserOrgController.java` 已切换到 `AddUserOrgRequest` / `ChangeUserOrgEnabledRequest`，`yr-system/src/main/java/com/yr/system/service/impl/SysUserOrgServiceImpl.java` 已统一兜底 `enabled/isDefault` 并校验 `enabled` 允许值，且由 `yr-admin/src/test/java/com/yr/web/controller/system/SysUserOrgControllerContractTest.java`、`yr-system/src/test/java/com/yr/system/service/impl/SysUserOrgServiceImplTest.java`、`yr-system/src/test/java/com/yr/system/service/impl/SysUserOrgServiceImplTransactionTest.java` 锁定新增、启停与事务边界。
 - 已关闭：`SysDept add` 不再信任客户端自带 `orgId`。当前 `yr-admin/src/main/java/com/yr/web/controller/system/SysDeptController.java` 已移除 controller 层的登录组织回填，`yr-system/src/main/java/com/yr/system/service/impl/SysDeptServiceImpl.java` 会无条件以父部门 `orgId` 覆盖请求值，并由 `yr-admin/src/test/java/com/yr/web/controller/system/SysDeptControllerContractTest.java`、`yr-system/src/test/java/com/yr/system/service/impl/SysDeptServiceImplSafetyTest.java`、`yr-system/src/test/java/com/yr/system/service/impl/TreeParentValidationContractTest.java` 锁定。
+- 已关闭：`SysDept` 的部门编码唯一性校验也已补齐父部门 `orgId` 真值推导。当前 `yr-system/src/main/java/com/yr/system/service/impl/SysDeptServiceImpl.java` 在 `checkDeptCodeUnique` 中会在请求未携带 `orgId` 时回退读取父部门组织，`yr-system/src/test/java/com/yr/system/service/impl/SysDeptServiceImplSafetyTest.java` 已新增 safety contract（安全契约）锁定这一点，避免重复编码因 `orgId = null` 被绕空。
 - 已关闭：`GlobalExceptionHandler` 不再把未知异常或授权类异常的 raw message（原始消息）直接打进日志。当前 `yr-framework/src/main/java/com/yr/framework/web/exception/GlobalExceptionHandler.java:64-91` 已切换为固定模板日志，并由 `yr-framework/src/test/java/com/yr/framework/web/exception/GlobalExceptionHandlerContractTest.java:53-74` 锁定未知异常响应脱敏与日志不再原样回显敏感文本。
-- 已关闭：`/login` 与 `/auth/wxwork/login` 已补齐 controller-level Bean Validation（控制器层参数校验）。当前 `yr-common/src/main/java/com/yr/common/core/domain/model/LoginBody.java:13-63` 已用 validation groups（校验分组）区分普通登录与企业微信登录，`yr-admin/src/main/java/com/yr/web/controller/system/SysLoginController.java:58-69` 与 `yr-admin/src/main/java/com/yr/web/controller/auth/WxworkAuthController.java:49-53` 已接入 `@Validated`，并由 `yr-admin/src/test/java/com/yr/login/SysLoginControllerContractTest.java:138-166`、`yr-admin/src/test/java/com/yr/login/WxworkLoginControllerContractTest.java:83-110` 锁定空字段 `400 Bad Request` 契约。
+- 已关闭：`/login` 与 `/auth/wxwork/login` 已补齐 controller-level Bean Validation（控制器层参数校验）。当前 `yr-common/src/main/java/com/yr/common/core/domain/model/LoginBody.java` 已用 validation groups（校验分组）区分普通登录与企业微信登录，并额外对非 `desktop` 平台的标准登录补了条件验证码校验；`yr-admin/src/main/java/com/yr/web/controller/system/SysLoginController.java` 与 `yr-admin/src/main/java/com/yr/web/controller/auth/WxworkAuthController.java` 已接入 `@Validated`，并由 `yr-admin/src/test/java/com/yr/login/SysLoginControllerContractTest.java`、`yr-admin/src/test/java/com/yr/login/WxworkLoginControllerContractTest.java` 锁定空字段 `400 Bad Request` 契约。
+- 已关闭：`SysLoginService.validateCaptcha` 已补空 `code` 的 service-level guard（服务层守卫），避免任何非 MVC（模型视图控制器）入口把缺失验证码打成 `NullPointerException`（空指针异常）或 `500`。
 - 已关闭：`SysLoginService` 已为 WeCom（企业微信）HTTP 调用补上显式 timeout（超时）并复用单个客户端构造方式。当前 `yr-admin/src/main/java/com/yr/framework/web/service/SysLoginService.java:101-151`、`yr-admin/src/main/java/com/yr/framework/web/service/SysLoginService.java:447-457` 已统一 5 秒 connect/read timeout 和懒加载单例 `RestTemplate`，并由 `yr-admin/src/test/java/com/yr/framework/web/service/SysLoginServiceWxworkStateContractTest.java:189-216` 锁定两次调用只构造一次客户端。
 - 已关闭：`SsoClient.toString()` 不再包含 `clientSecret`。当前 `yr-common/src/main/java/com/yr/common/core/domain/entity/SsoClient.java:19-36` 已通过 `@ToString(exclude = "clientSecret")` 收口敏感字段输出，并由 `yr-system/src/test/java/com/yr/system/service/impl/SsoClientServiceImplValidationContractTest.java:25-35` 锁定实体调试输出不再回显密钥。
 - 已关闭：`retryTask` 只允许失败态任务重试，并补上状态条件更新防止并发重复翻转。当前 `yr-system/src/main/java/com/yr/system/service/impl/SsoSyncTaskServiceImpl.java:162-187` 已显式拒绝非 `FAILED` 状态，并通过 `status = FAILED` 条件更新切回 `RUNNING`，由 `yr-system/src/test/java/com/yr/system/service/impl/SsoSyncTaskRetrySafetyTest.java:27-58`、`yr-system/src/test/java/com/yr/system/service/impl/SsoSyncTaskServiceImplTest.java` 与 `yr-system/src/test/java/com/yr/system/service/impl/SsoSyncTaskFailurePersistenceTest.java` 一并锁定失败态、并发漂移与失败持久化语义。
-- 已关闭：初始化导入关系表的 `operatorUserId` 已优先解析 `task.getCreateBy()` 的真实数字 ID，解析失败时才 fallback（回退）到兼容默认值。当前 `yr-system/src/main/java/com/yr/system/service/impl/SsoIdentityImportServiceImpl.java:75-76`、`yr-system/src/main/java/com/yr/system/service/impl/SsoIdentityImportServiceImpl.java:471-492` 已切换到“数字优先、非数字回退”的逻辑，并由 `yr-system/src/test/java/com/yr/system/service/impl/SsoIdentityImportServiceImplTest.java:116-145` 锁定关系表审计字段会使用 `createBy=9527`。
+- 已关闭：初始化导入关系表的 `operatorUserId` 已优先解析 `task.getCreateBy()` 的真实数字 ID，解析失败时会继续回退到 `SecurityContext`（安全上下文）里的真实用户 ID，最后才 fallback（回退）到兼容默认值。当前 `yr-system/src/main/java/com/yr/system/service/impl/SsoIdentityImportServiceImpl.java` 已切换到“数字优先、安全上下文次之、默认值兜底”的逻辑，并由 `yr-system/src/test/java/com/yr/system/service/impl/SsoIdentityImportServiceImplTest.java` 同时锁定 `createBy=9527` 和真实 controller flow（控制器链路）里的用户名场景。
 - 不采纳为 open finding（开放问题）：`yr-common` 中的 `spring-security-core` / `spring-security-crypto` 当前并非单纯依赖泄露，因为 `LoginUser` 与 `SecurityUtils` 仍直接依赖 Spring Security API；若要清理，需要先调整公共模型与工具类归属，不能把它当作单步可删项。
 
 ## Current Findings
 
-- 当前按本文计划范围复核后，open findings（开放问题）已清零；后续若继续推进，默认进入 merge/finalization（合并/收尾）或下一轮增量 audit（增量审计）阶段。
+- 当前按本文计划范围复核后，open findings（开放问题）已清零。
+- 当前工作树仍有计划外 config drift（配置漂移）：
+  - `yr-admin/src/main/resources/application.yml`
+  - `yr-admin/src/main/resources/application-dev.yml`
+  - `yr-admin/src/main/resources/application-local.yml`
+  - `yr-admin/src/main/resources/application-prod.yml`
+- 这些配置变更会导致全量 `mvn test` 在 `yr-admin` 模块额外失败 3 条 profile contract（环境配置契约）测试，因此后续若继续推进，不能直接进入 merge/finalization（合并/收尾）；应先决定是继续完成这组配置治理，还是把它们从当前工作树剥离。
 
 ## Test Gaps
 
 - 本轮计划范围内的 test gap（测试缺口）已关闭：
   - `SysOrg` / `SysUserOrg` / `SysDept` / `SysLogin` / `WxworkLogin` / `GlobalExceptionHandler` 都已有 dedicated contract tests（专用契约测试）
   - `SsoClient` / `SsoSyncTask` / `SsoIdentityImport` 也已补齐对应的 safety/traceability 契约测试
-  - 全量 `mvn test` 已通过，当前没有留在本文计划范围内的已知测试空白
+  - 定向验证已通过，当前没有留在本文计划范围内的已知测试空白
+  - 但全量 `mvn test` 仍受计划外 profile config drift（环境配置漂移）影响，不能把这 3 条失败误判成本文整改回归
+
+## Execution Addendum (2026-04-01 10:15 CST)
+
+- 本轮 post-review remediation（复核后整改）重新打开并关闭了 3 条 residual gap（残余缺口）：
+  - `SysDeptServiceImpl.checkDeptCodeUnique` 在请求未带 `orgId` 时，会先回退读取父部门 `orgId` 再查重，避免同组织重复 `deptCode` 因 `orgId = null` 被绕空
+  - `LoginBody` 对普通登录新增“非 `desktop` 平台必须带 `code`”的条件校验，同时 `SysLoginService.validateCaptcha` 补充空 `code` 兜底，形成 controller/service 双层防线
+  - `SsoIdentityImportServiceImpl.resolveOperatorUserId` 对真实 controller flow（`createBy = username`）新增 `SecurityContext` 回退，关系表审计字段不再固定落到默认操作人 `1`
+- 定向验证命令：
+
+```bash
+cd /Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be
+JAVA_HOME=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home \
+PATH=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home/bin:$PATH \
+mvn -pl yr-admin,yr-system -am -Dtest=SysLoginControllerContractTest,SysDeptServiceImplSafetyTest,SsoIdentityImportServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+- 定向验证结果：
+  - `BUILD SUCCESS`
+  - `Tests run: 19, Failures: 0, Errors: 0, Skipped: 0`
+- 全量验证命令：
+
+```bash
+cd /Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be
+JAVA_HOME=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home \
+PATH=/Users/PopoY/Library/Java/JavaVirtualMachines/ms-17.0.18/Contents/Home/bin:$PATH \
+mvn test
+```
+
+- 全量验证结果：
+  - `BUILD FAILURE`
+  - `Tests run: 96, Failures: 3, Errors: 0, Skipped: 5`
+  - 当前失败项全部位于计划外 profile/config contract（环境配置契约），分别是：
+    - `ProdProfileSafetyContractTest.shouldDisableDemoModeByDefaultInProdProfile`
+    - `ProdProfileSafetyContractTest.shouldDisableDevtoolsRestartInProdProfile`
+    - `SsoInitImportLocalProfileDatasourceContractTest.shouldUseLocalSamAsReadonlySourceAndLocalSamEmptyAsTarget`
+  - live evidence（实时证据）显示 `application.yml` / `application-dev.yml` / `application-local.yml` / `application-prod.yml` 目前都存在未提交本地改动，因此这 3 条失败不应回灌到本文计划内代码整改结论。
 
 ## Execution Order
 
@@ -541,9 +586,9 @@ Expected:
 - `SysOrg` / `SysUserOrg` / `SysDept` 的写入边界全部变成“最小 DTO + 专用 service/path”
 - 登录入口与未知异常日志达到更符合 Spring 官方 best practice 的契约
 - `SsoClient` / `SsoSyncTask` / `SsoIdentityImport` 的低优先级卫生项完成
-- `mvn test` 全量通过
+- 计划范围内的定向验证通过；若要作为 merge baseline（合并基线），还需要先处理当前工作树里的 profile config drift（环境配置漂移），再恢复 `mvn test` 全量通过
 - README 的 canonical handoff 与最新 plan 保持一致
 
 ## Recommended Continuation Prompt
 
-请以 `/Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be` 为 `cwd`，汇总当前本地改动并准备进入 merge/finalization（合并/收尾）阶段：先基于 `docs/review_plans/2026-04-01-sso-backend-fourth-pass-best-practice-audit-remediation-plan.md` 确认 `Task 1` 到 `Task 6` 都已完成，再整理验证结果、README/plan handoff（交接）一致性，以及是否要执行 `git add/commit/push` 或继续做下一轮增量 audit（审计）。
+请以 `/Users/PopoY/workingFiles/Projects/SAM/sso/sam-sso-be` 为 `cwd`，先基于 `docs/review_plans/2026-04-01-sso-backend-fourth-pass-best-practice-audit-remediation-plan.md` 确认计划内 `Task 1` 到 `Task 6` 已全部完成，再处理当前工作树里的 `application.yml` / `application-dev.yml` / `application-local.yml` / `application-prod.yml` 配置漂移：要么继续把 profile config（环境配置）治理收口到通过 `ProdProfileSafetyContractTest` 与 `SsoInitImportLocalProfileDatasourceContractTest`，要么把这组计划外改动与当前代码整改分离；完成后再重新运行 `mvn test`、整理 README/plan handoff（交接）一致性，并决定是否进入 `git add/commit/push` 或下一轮增量 audit（审计）。

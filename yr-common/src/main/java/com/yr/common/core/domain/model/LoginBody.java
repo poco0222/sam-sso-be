@@ -5,6 +5,11 @@
  */
 package com.yr.common.core.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.yr.common.enums.PlatformType;
+import com.yr.common.utils.StringUtils;
+
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.NotBlank;
 
 /**
@@ -133,5 +138,19 @@ public class LoginBody {
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    /**
+     * 标准登录只有在非 desktop 平台时才强制要求验证码，避免管理端缺失 code 继续下沉到服务层。
+     *
+     * @return true 表示当前平台已满足验证码契约
+     */
+    @JsonIgnore
+    @AssertTrue(message = "code不能为空", groups = PasswordLoginValidation.class)
+    public boolean isPasswordLoginCaptchaSatisfied() {
+        if (PlatformType.DESKTOP.getName().equalsIgnoreCase(platform)) {
+            return true;
+        }
+        return StringUtils.isNotBlank(code);
     }
 }

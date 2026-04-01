@@ -356,6 +356,12 @@ public class SysLoginService {
             );
             throw new CaptchaExpireException();
         }
+        if (StringUtils.isBlank(code)) {
+            AsyncManager.me().execute(
+                    AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error"))
+            );
+            throw new CaptchaException();
+        }
         if (!code.equalsIgnoreCase(captcha)) {
             AsyncManager.me().execute(
                     AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error"))

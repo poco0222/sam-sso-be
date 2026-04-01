@@ -13,6 +13,7 @@ import com.yr.system.mapper.SysUserDeptMapper;
 import com.yr.system.service.ISysDeptService;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -77,5 +78,33 @@ class SysDeptServiceImplSafetyTest {
         verify(deptMapper).insertDept(argThat(dept ->
                 Long.valueOf(20L).equals(dept.getOrgId())
                         && "0,88".equals(dept.getAncestors())));
+    }
+
+    /**
+     * 验证部门编码唯一性校验在请求未携带 orgId 时，仍会以父部门 orgId 作为查重真值。
+     */
+    @Test
+    void shouldDeriveOrgIdFromParentDeptWhenCheckingDeptCodeUniqueness() {
+        SysDeptMapper deptMapper = mock(SysDeptMapper.class);
+        SysUserDeptMapper sysUserDeptMapper = mock(SysUserDeptMapper.class);
+        ISysDeptService selfProxy = mock(ISysDeptService.class);
+        SysDeptServiceImpl service = new SysDeptServiceImpl(deptMapper, sysUserDeptMapper, selfProxy);
+        SysDept parentDept = new SysDept();
+        SysDept duplicatedDept = new SysDept();
+        SysDept command = new SysDept();
+        parentDept.setDeptId(88L);
+        parentDept.setOrgId(20L);
+        duplicatedDept.setDeptId(99L);
+        command.setParentId(88L);
+        command.setDeptCode("DEPT-01");
+
+        when(deptMapper.selectDeptById(88L)).thenReturn(parentDept);
+        when(deptMapper.checkDeptCodeUnique("DEPT-01", 88L, 20L)).thenReturn(duplicatedDept);
+
+        String result = service.checkDeptCodeUnique(command);
+
+        verify(deptMapper).selectDeptById(88L);
+        verify(deptMapper).checkDeptCodeUnique("DEPT-01", 88L, 20L);
+        assertThat(result).isEqualTo(UserConstants.NOT_UNIQUE);
     }
 }
