@@ -188,7 +188,9 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
             }
             try {
                 URI uri = URI.create(candidate);
-                if (StringUtils.isBlank(uri.getScheme()) || !ALLOWED_REDIRECT_URI_SCHEME.contains(uri.getScheme().toLowerCase())) {
+                if (StringUtils.isBlank(uri.getScheme())
+                        || !ALLOWED_REDIRECT_URI_SCHEME.contains(uri.getScheme().toLowerCase())
+                        || StringUtils.isBlank(uri.getHost())) {
                     throw new CustomException("redirectUris中存在非法地址");
                 }
             } catch (IllegalArgumentException exception) {

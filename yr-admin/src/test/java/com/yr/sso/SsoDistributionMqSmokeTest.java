@@ -54,6 +54,7 @@ import static org.mockito.Mockito.doReturn;
                 "spring.datasource.druid.statViewServlet.enabled=false",
                 "spring.datasource.druid.webStatFilter.enabled=false",
                 "spring.liquibase.enabled=false",
+                "token.secret=test-only-local-jwt-secret-for-distribution-smoke",
                 "rocketmq.enabled=true"
         }
 )

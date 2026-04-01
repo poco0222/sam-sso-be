@@ -37,7 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         properties = {
                 "spring.datasource.druid.statViewServlet.enabled=false",
                 "spring.datasource.druid.webStatFilter.enabled=false",
-                "spring.liquibase.enabled=false"
+                "spring.liquibase.enabled=false",
+                "token.secret=test-only-local-jwt-secret-for-init-import"
         }
 )
 @ActiveProfiles("local")

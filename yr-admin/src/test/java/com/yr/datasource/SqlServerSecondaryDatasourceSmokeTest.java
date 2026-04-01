@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "spring.datasource.druid.initExceptionThrow=false",
                 "spring.datasource.druid.statViewServlet.enabled=false",
                 "spring.datasource.druid.webStatFilter.enabled=false",
+                "token.secret=test-only-local-jwt-secret-for-sqlserver-smoke",
                 "spring.datasource.druid.slaveec.enabled=true"
         }
 )

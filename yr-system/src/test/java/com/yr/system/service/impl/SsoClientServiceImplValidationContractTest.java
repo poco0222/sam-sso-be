@@ -118,6 +118,20 @@ class SsoClientServiceImplValidationContractTest {
     }
 
     /**
+     * 验证 redirectUris 不允许使用 host 为空的 http/https 地址。
+     */
+    @Test
+    void shouldRejectRedirectUriWithoutHost() {
+        SsoClientServiceImpl service = new SsoClientServiceImpl();
+        SsoClient ssoClient = buildValidClient();
+        ssoClient.setRedirectUris("https:///callback");
+
+        assertThatThrownBy(() -> service.insertSsoClient(ssoClient))
+                .isInstanceOf(CustomException.class)
+                .hasMessage("redirectUris中存在非法地址");
+    }
+
+    /**
      * 验证轮换客户端密钥时如果数据库更新失败，必须返回受控业务错误。
      */
     @Test

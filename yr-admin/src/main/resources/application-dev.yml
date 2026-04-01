@@ -195,7 +195,7 @@ token:
   # 令牌自定义标识
   header: ${TOKEN_HEADER:Authorization}
   # 令牌密钥
-  secret: ${TOKEN_SECRET:382445a45321449383602d027a22652d82f977c7d7718337b9ec378ae2800c24f8ac2dbea7a32277ad45218a154eed6c87e7d66ebd5ea6d95256eba99c5af71a}
+  secret: ${TOKEN_SECRET:}
   # 令牌有效期（默认30分钟）
   expireTime: ${TOKEN_EXPIRE_TIME:600}
   # 单点登录加密盐
