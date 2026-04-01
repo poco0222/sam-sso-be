@@ -81,6 +81,11 @@ class SsoSyncTaskFailurePersistenceTest {
         SsoSyncTask existingTask = buildExistingTask();
 
         when(ssoSyncTaskMapper.selectById(11L)).thenReturn(existingTask);
+        when(ssoSyncTaskMapper.update(any(), any())).thenAnswer(invocation -> {
+            persistedStatuses.add(SsoSyncTask.STATUS_RUNNING);
+            persistedSummaries.add(null);
+            return 1;
+        });
         when(ssoSyncTaskMapper.updateById(any(SsoSyncTask.class))).thenAnswer(invocation -> {
             SsoSyncTask persistedTask = invocation.getArgument(0);
             persistedStatuses.add(persistedTask.getStatus());

@@ -9,8 +9,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yr.common.core.domain.entity.SysUser;
-import com.yr.common.core.domain.model.LoginUser;
 import com.yr.common.core.redis.RedisCache;
 import com.yr.common.exception.CustomException;
 import org.junit.jupiter.api.AfterEach;
@@ -30,15 +28,17 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -187,6 +187,35 @@ class SysLoginServiceWxworkStateContractTest {
     }
 
     /**
+     * 验证企业微信 HTTP 客户端会设置显式 timeout，并在同一次登录流程中复用已构建实例。
+     */
+    @Test
+    void shouldConfigureTimeoutsAndReuseRestTemplateAcrossWxworkRequests() {
+        SysLoginService service = new SysLoginService();
+        RestTemplate restTemplate = mock(RestTemplate.class);
+        RestTemplateBuilder restTemplateBuilder = mock(RestTemplateBuilder.class);
+        String accessTokenUrl = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=corp-id-123&corpsecret=corp-secret-123";
+        String userInfoUrl = "https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo?access_token=access-token-123&code=wx-code-123";
+
+        when(restTemplateBuilder.setConnectTimeout(Duration.ofSeconds(5))).thenReturn(restTemplateBuilder);
+        when(restTemplateBuilder.setReadTimeout(Duration.ofSeconds(5))).thenReturn(restTemplateBuilder);
+        when(restTemplateBuilder.build()).thenReturn(restTemplate);
+        when(restTemplate.getForObject(anyString(), eq(String.class)))
+                .thenReturn("{\"errcode\":0,\"access_token\":\"access-token-123\",\"expires_in\":7200}")
+                .thenReturn("{\"errcode\":0,\"userid\":\"wx-user-1\"}");
+        ReflectionTestUtils.setField(service, "restTemplateBuilder", restTemplateBuilder);
+        ReflectionTestUtils.setField(service, "objectMapper", new ObjectMapper());
+
+        ReflectionTestUtils.invokeMethod(service, "requestWxworkJson", accessTokenUrl, "获取企业微信 access_token");
+        ReflectionTestUtils.invokeMethod(service, "requestWxworkJson", userInfoUrl, "获取企业微信用户身份");
+
+        verify(restTemplateBuilder).setConnectTimeout(Duration.ofSeconds(5));
+        verify(restTemplateBuilder).setReadTimeout(Duration.ofSeconds(5));
+        verify(restTemplateBuilder, times(1)).build();
+        verify(restTemplate, times(2)).getForObject(anyString(), eq(String.class));
+    }
+
+    /**
      * 创建待测服务，并注入默认 HTTP 客户端桩。
      *
      * @return 待测服务
@@ -206,6 +235,8 @@ class SysLoginServiceWxworkStateContractTest {
         RestTemplateBuilder restTemplateBuilder = mock(RestTemplateBuilder.class);
         Environment environment = mock(Environment.class);
 
+        when(restTemplateBuilder.setConnectTimeout(any(Duration.class))).thenReturn(restTemplateBuilder);
+        when(restTemplateBuilder.setReadTimeout(any(Duration.class))).thenReturn(restTemplateBuilder);
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
         when(stringRedisTemplate.opsForValue()).thenReturn(stringValueOperations);
         when(environment.getProperty("wxwork.corp-id")).thenReturn(CORP_ID);

@@ -36,6 +36,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -110,6 +111,38 @@ class SsoIdentityImportServiceImplTest {
         verify(sysUserMapper).insertUser(any(SysUser.class));
         verify(sysUserOrgMapper).insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class));
         verify(sysUserDeptMapper).insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class));
+    }
+
+    /**
+     * 验证关联表审计字段会优先使用任务 createBy 中可解析的真实用户 ID。
+     */
+    @Test
+    void shouldUseNumericCreateByAsOperatorUserIdForRelationAuditFields() {
+        SsoIdentityImportServiceImpl service = createService();
+        SsoSyncTask task = buildTask();
+
+        task.setCreateBy("9527");
+        when(ssoLegacyIdentitySourceService.loadSnapshot()).thenReturn(buildSnapshot());
+        when(sysOrgMapper.selectSysOrgById(101L)).thenReturn(null);
+        when(sysDeptMapper.selectSysDeptByDeptId(201L)).thenReturn(null);
+        when(sysUserMapper.selectSysUserByUserId(301L)).thenReturn(null);
+        SysUserOrg persistedUserOrg = new SysUserOrg();
+        persistedUserOrg.setId(401L);
+        persistedUserOrg.setUserId(301L);
+        persistedUserOrg.setOrgId(101L);
+        SysUserDept persistedUserDept = new SysUserDept();
+        persistedUserDept.setId(501L);
+        persistedUserDept.setUserId(301L);
+        persistedUserDept.setDeptId(201L);
+        when(sysUserOrgMapper.selectOne(any())).thenReturn(null, persistedUserOrg);
+        when(sysUserDeptMapper.selectOne(any())).thenReturn(null, persistedUserDept);
+        when(sysUserOrgMapper.insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class))).thenReturn(1);
+        when(sysUserDeptMapper.insertInitImport(anyLong(), anyLong(), any(), any(), anyLong(), any(Date.class))).thenReturn(1);
+
+        service.execute(task, null);
+
+        verify(sysUserOrgMapper).insertInitImport(anyLong(), anyLong(), any(), any(), eq(9527L), any(Date.class));
+        verify(sysUserDeptMapper).insertInitImport(anyLong(), anyLong(), any(), any(), eq(9527L), any(Date.class));
     }
 
     /**

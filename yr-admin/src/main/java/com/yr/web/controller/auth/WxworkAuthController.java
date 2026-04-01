@@ -10,6 +10,7 @@ import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.core.domain.model.LoginBody;
 import com.yr.framework.web.service.SysLoginService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,7 +47,7 @@ public class WxworkAuthController {
      * @return 登录结果
      */
     @PostMapping("/login")
-    public AjaxResult login(@RequestBody LoginBody loginBody) {
+    public AjaxResult login(@Validated(LoginBody.WxworkLoginValidation.class) @RequestBody LoginBody loginBody) {
         AjaxResult ajaxResult = AjaxResult.success("登录成功");
         ajaxResult.put(Constants.TOKEN, loginService.loginByWxworkCode(loginBody.getCode(), loginBody.getState()));
         return ajaxResult;

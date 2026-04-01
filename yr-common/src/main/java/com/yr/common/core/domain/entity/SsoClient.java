@@ -11,11 +11,13 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.yr.common.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 /**
  * 身份中心客户端实体，承载一期客户端管理控制台的最小字段集。
  */
 @Data
+@ToString(exclude = "clientSecret")
 @EqualsAndHashCode(callSuper = false)
 @TableName("sso_client")
 public class SsoClient extends BaseEntity {

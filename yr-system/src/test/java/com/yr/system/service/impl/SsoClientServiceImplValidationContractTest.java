@@ -14,12 +14,26 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 锁定客户端状态与布尔型开关的 allowed value（允许值）校验。
  */
 class SsoClientServiceImplValidationContractTest {
+
+    /**
+     * 验证实体调试输出不会把 clientSecret 直接带入日志上下文。
+     */
+    @Test
+    void shouldExcludeClientSecretFromEntityToString() {
+        SsoClient ssoClient = buildValidClient();
+        ssoClient.setClientSecret("secret-123");
+
+        assertThat(ssoClient.toString())
+                .doesNotContain("secret-123")
+                .doesNotContain("clientSecret");
+    }
 
     /**
      * 验证 changeStatus 不允许写入非法状态值。

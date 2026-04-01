@@ -5,23 +5,44 @@
  */
 package com.yr.common.core.domain.model;
 
+import javax.validation.constraints.NotBlank;
+
 /**
  * 登录请求体模型。
  */
 public class LoginBody {
     /**
+     * 标准账号密码登录校验分组。
+     *
+     * @author PopoY
+     */
+    public interface PasswordLoginValidation {
+    }
+
+    /**
+     * 企业微信授权登录校验分组。
+     *
+     * @author PopoY
+     */
+    public interface WxworkLoginValidation {
+    }
+
+    /**
      * 用户名
      */
+    @NotBlank(message = "username不能为空", groups = PasswordLoginValidation.class)
     private String username;
 
     /**
      * 用户密码
      */
+    @NotBlank(message = "password不能为空", groups = PasswordLoginValidation.class)
     private String password;
 
     /**
      * 验证码
      */
+    @NotBlank(message = "code不能为空", groups = WxworkLoginValidation.class)
     private String code;
 
     /**
@@ -38,6 +59,7 @@ public class LoginBody {
     /**
      * 企业微信 OAuth（授权）state，用于防止重放与 CSRF。
      */
+    @NotBlank(message = "state不能为空", groups = WxworkLoginValidation.class)
     private String state;
 
     /**

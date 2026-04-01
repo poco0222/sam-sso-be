@@ -5,10 +5,14 @@
  */
 package com.yr.framework.web.exception;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.yr.common.constant.HttpStatus;
 import com.yr.common.core.domain.AjaxResult;
 import com.yr.common.exception.CustomException;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -18,6 +22,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +56,22 @@ class GlobalExceptionHandlerContractTest {
 
         assertThat(result.get(AjaxResult.CODE_TAG)).isEqualTo(HttpStatus.ERROR);
         assertThat(result.get(AjaxResult.MSG_TAG)).isEqualTo("系统繁忙，请稍后再试");
+    }
+
+    /**
+     * 验证未知异常日志不会再直接打印原始异常消息。
+     */
+    @Test
+    void shouldNotLogUnexpectedExceptionMessageVerbatim() {
+        ListAppender<ILoggingEvent> listAppender = attachLogAppender();
+
+        handler.handleException(new RuntimeException("jdbc password leaked"));
+
+        String logs = joinLogs(listAppender.list);
+        assertThat(logs).doesNotContain("jdbc password leaked");
+        assertThat(logs).contains("未处理异常");
+
+        detachLogAppender(listAppender);
     }
 
     /**
@@ -188,5 +209,41 @@ class GlobalExceptionHandlerContractTest {
         public void setClientCode(String clientCode) {
             this.clientCode = clientCode;
         }
+    }
+
+    /**
+     * 挂接 GlobalExceptionHandler 的日志捕获器。
+     *
+     * @return ListAppender 日志捕获器
+     */
+    private ListAppender<ILoggingEvent> attachLogAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        return listAppender;
+    }
+
+    /**
+     * 卸载日志捕获器，避免影响后续测试。
+     *
+     * @param listAppender 当前日志捕获器
+     */
+    private void detachLogAppender(ListAppender<ILoggingEvent> listAppender) {
+        Logger logger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        logger.detachAppender(listAppender);
+        listAppender.stop();
+    }
+
+    /**
+     * 拼接日志文本，便于集中断言。
+     *
+     * @param events 日志事件
+     * @return 拼接后的日志文本
+     */
+    private String joinLogs(List<ILoggingEvent> events) {
+        return events.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .reduce("", (left, right) -> left + "\n" + right);
     }
 }

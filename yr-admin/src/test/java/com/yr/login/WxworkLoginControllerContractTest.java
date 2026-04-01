@@ -6,6 +6,7 @@
 package com.yr.login;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yr.framework.web.exception.GlobalExceptionHandler;
 import com.yr.framework.web.service.SysLoginService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class WxworkLoginControllerContractTest {
         Object controller = instantiateWxworkAuthController();
         ReflectionTestUtils.setField(controller, "loginService", loginService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
     }
@@ -76,6 +78,36 @@ class WxworkLoginControllerContractTest {
         mockMvc.perform(get("/auth/wxwork/pre-login"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.authorizeUrl").value("https://open.weixin.qq.com/connect/oauth2/authorize?state=state-123#wechat_redirect"));
+    }
+
+    /**
+     * 验证企业微信登录缺少 code 时会在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankCodeWhenWxworkLoginRequestIsInvalid() throws Exception {
+        mockMvc.perform(post("/auth/wxwork/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"\",\"state\":\"state-123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("code不能为空"));
+    }
+
+    /**
+     * 验证企业微信登录缺少 state 时会在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankStateWhenWxworkLoginRequestIsInvalid() throws Exception {
+        mockMvc.perform(post("/auth/wxwork/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"wx-code-123\",\"state\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("state不能为空"));
     }
 
     /**

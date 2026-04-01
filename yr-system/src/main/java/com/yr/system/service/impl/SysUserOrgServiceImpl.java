@@ -66,7 +66,13 @@ public class SysUserOrgServiceImpl extends CustomServiceImpl<SysUserOrgMapper, S
         if (one != null) {
             throw new CustomException("该用户已经在组织下");
         }
-        this.save(sysUserOrg);
+        // 新增入口只接受 userId/orgId，enabled/isDefault 统一由服务端兜底，避免客户端覆盖专用入口语义。
+        SysUserOrg relationToSave = new SysUserOrg();
+        relationToSave.setUserId(sysUserOrg.getUserId());
+        relationToSave.setOrgId(sysUserOrg.getOrgId());
+        relationToSave.setEnabled(1);
+        relationToSave.setIsDefault(0);
+        this.save(relationToSave);
     }
 
     @Override
@@ -76,6 +82,9 @@ public class SysUserOrgServiceImpl extends CustomServiceImpl<SysUserOrgMapper, S
         }
         if (enable == null) {
             throw new CustomException("需要改变的状态不能为空");
+        }
+        if (enable != 0 && enable != 1) {
+            throw new CustomException("enabled只允许为0或1");
         }
         SysUserOrg sysUserOrg = new SysUserOrg();
         sysUserOrg.setId(id);

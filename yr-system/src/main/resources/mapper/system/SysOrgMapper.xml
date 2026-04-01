@@ -152,8 +152,16 @@
             <if test="leader != null and orgName != ''">leader = #{leader},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="status != null">status = #{status},</if>
-            <if test="createBy != null">create_by = #{createBy},</if>
-            <if test="createAt != null">create_at = #{createAt},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateAt != null">update_at = #{updateAt},</if>
+        </trim>
+        where org_id = #{orgId}
+    </update>
+
+    <update id="updateOrgStatus" parameterType="SysOrg">
+        update sys_org
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="status != null">status = #{status},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateAt != null">update_at = #{updateAt},</if>
         </trim>

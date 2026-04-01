@@ -5,6 +5,7 @@
  */
 package com.yr.system.service.impl;
 
+import com.yr.common.constant.UserConstants;
 import com.yr.common.exception.CustomException;
 import com.yr.common.core.domain.entity.SysDept;
 import com.yr.system.mapper.SysDeptMapper;
@@ -13,6 +14,8 @@ import com.yr.system.service.ISysDeptService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,5 +49,33 @@ class SysDeptServiceImplSafetyTest {
 
         verify(deptMapper).selectDeptById(88L);
         verify(deptMapper, never()).insertDept(command);
+    }
+
+    /**
+     * 验证新增部门时即使请求体携带了其它 orgId，服务端仍会以父部门 orgId 为真值来源。
+     */
+    @Test
+    void shouldDeriveOrgIdFromParentDeptWhenInsertingDept() {
+        SysDeptMapper deptMapper = mock(SysDeptMapper.class);
+        SysUserDeptMapper sysUserDeptMapper = mock(SysUserDeptMapper.class);
+        ISysDeptService selfProxy = mock(ISysDeptService.class);
+        SysDeptServiceImpl service = new SysDeptServiceImpl(deptMapper, sysUserDeptMapper, selfProxy);
+        SysDept parentDept = new SysDept();
+        SysDept command = new SysDept();
+        parentDept.setDeptId(88L);
+        parentDept.setOrgId(20L);
+        parentDept.setStatus(UserConstants.DEPT_NORMAL);
+        parentDept.setAncestors("0");
+        command.setParentId(88L);
+        command.setOrgId(999L);
+
+        when(deptMapper.selectDeptById(88L)).thenReturn(parentDept);
+        when(deptMapper.insertDept(any(SysDept.class))).thenReturn(1);
+
+        service.insertDept(command);
+
+        verify(deptMapper).insertDept(argThat(dept ->
+                Long.valueOf(20L).equals(dept.getOrgId())
+                        && "0,88".equals(dept.getAncestors())));
     }
 }

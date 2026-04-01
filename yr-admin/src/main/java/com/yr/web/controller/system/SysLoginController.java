@@ -17,6 +17,7 @@ import com.yr.framework.web.service.TokenService;
 import com.yr.system.domain.vo.RouterVo;
 import com.yr.web.service.PhaseOneConsoleRouteService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,7 +56,7 @@ public class SysLoginController {
      * @return 登录结果
      */
     @PostMapping("/login")
-    public AjaxResult login(@RequestBody LoginBody loginBody) {
+    public AjaxResult login(@Validated(LoginBody.PasswordLoginValidation.class) @RequestBody LoginBody loginBody) {
         AjaxResult ajaxResult = AjaxResult.success("登录成功");
         String token = loginService.login(
                 loginBody.getUsername(),

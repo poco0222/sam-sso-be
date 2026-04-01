@@ -63,31 +63,31 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public AjaxResult handlerNoFoundException(Exception e) {
-        log.error(e.getMessage(), e);
+        log.warn("请求路径不存在", e);
         return AjaxResult.error(HttpStatus.NOT_FOUND, "路径不存在，请检查路径是否正确");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public AjaxResult handleAuthorizationException(AccessDeniedException e) {
-        log.error(e.getMessage());
+        log.warn("访问被拒绝", e);
         return AjaxResult.error(HttpStatus.FORBIDDEN, "没有权限，请联系管理员授权");
     }
 
     @ExceptionHandler(AccountExpiredException.class)
     public AjaxResult handleAccountExpiredException(AccountExpiredException e) {
-        log.error(e.getMessage(), e);
+        log.warn("登录状态已过期", e);
         return AjaxResult.error(LOGIN_EXPIRED_MESSAGE);
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public AjaxResult handleUsernameNotFoundException(UsernameNotFoundException e) {
-        log.error(e.getMessage(), e);
+        log.warn("登录账号不存在或不可用", e);
         return AjaxResult.error(INVALID_LOGIN_MESSAGE);
     }
 
     @ExceptionHandler(Exception.class)
     public AjaxResult handleException(Exception e) {
-        log.error(e.getMessage(), e);
+        log.error("未处理异常", e);
         return AjaxResult.error(GENERIC_ERROR_MESSAGE);
     }
 

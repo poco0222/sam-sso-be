@@ -111,9 +111,6 @@ public class SysDeptController extends BaseController {
     @Log(title = "部门管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDept dept) {
-        if (dept.getOrgId() == null) {
-            dept.setOrgId(SecurityUtils.getOrgId());
-        }
         if (UserConstants.NOT_UNIQUE.equals(deptService.checkDeptCodeUnique(dept))) {
             return AjaxResult.error("新增部门'" + dept.getDeptCode() + "'失败，部门编码已存在");
         }

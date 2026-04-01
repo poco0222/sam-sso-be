@@ -136,6 +136,36 @@ class SysLoginControllerContractTest {
     }
 
     /**
+     * 验证标准登录缺少 username 时会在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankUsernameAtControllerLevel() throws Exception {
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"\",\"password\":\"cipher\",\"platform\":\"mgmt\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value(containsString("username不能为空")));
+    }
+
+    /**
+     * 验证标准登录缺少 password 时会在 controller 层返回 400。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldRejectBlankPasswordAtControllerLevel() throws Exception {
+        mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"\",\"platform\":\"mgmt\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value(containsString("password不能为空")));
+    }
+
+    /**
      * 验证登录链路出现未知异常时，不会把底层异常文本直接透传给前端。
      *
      * @throws Exception MockMvc 调用失败时抛出

@@ -72,6 +72,9 @@ public class SsoIdentityImportServiceImpl implements ISsoIdentityImportService {
     /** task item 错误信息列长度上限，与 `sso_sync_task_item.error_message` 保持一致。 */
     private static final int MAX_ITEM_ERROR_MESSAGE_LENGTH = 500;
 
+    /** 兼容 legacy 导入审计字段的默认操作人 ID。 */
+    private static final String DEFAULT_OPERATOR_USER_ID = "1";
+
     /** legacy source 读取服务。 */
     private final ISsoLegacyIdentitySourceService ssoLegacyIdentitySourceService;
 
@@ -466,7 +469,17 @@ public class SsoIdentityImportServiceImpl implements ISsoIdentityImportService {
      * 当前导入流程没有强依赖用户 ID；这里只在关联表审计字段上做兼容兜底。
      */
     private String resolveOperatorUserId(SsoSyncTask task) {
-        return "1";
+        String createBy = task == null ? null : task.getCreateBy();
+
+        if (createBy == null || createBy.isBlank()) {
+            return DEFAULT_OPERATOR_USER_ID;
+        }
+        try {
+            Long.parseLong(createBy);
+            return createBy;
+        } catch (NumberFormatException exception) {
+            return DEFAULT_OPERATOR_USER_ID;
+        }
     }
 
     /**

@@ -201,8 +201,27 @@ public class SysOrgServiceImpl implements ISysOrgService {
      * @return
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int updateOrgStatus(SysOrg sysOrg) {
-        return sysOrgMapper.updateSysOrg(sysOrg);
+        SysOrg currentOrg = sysOrgMapper.selectSysOrgById(sysOrg.getOrgId());
+        if (currentOrg == null) {
+            throw new CustomException("组织不存在");
+        }
+        if (StringUtils.equals(UserConstants.DEPT_DISABLE, sysOrg.getStatus())
+                && selectNormalChildrenOrgById(sysOrg.getOrgId()) > 0) {
+            throw new CustomException("该组织包含未停用的子组织！");
+        }
+        if (StringUtils.isBlank(sysOrg.getUpdateBy())) {
+            sysOrg.setUpdateBy(SecurityUtils.getUsername());
+        }
+        sysOrg.setUpdateAt(DateUtils.getNowDate());
+        int result = sysOrgMapper.updateOrgStatus(sysOrg);
+        if (UserConstants.DEPT_NORMAL.equals(sysOrg.getStatus())
+                && UserConstants.DEPT_DISABLE.equals(currentOrg.getStatus())) {
+            sysOrg.setAncestors(currentOrg.getAncestors());
+            updateParentOrgStatusNormal(sysOrg);
+        }
+        return result;
     }
 
     /**

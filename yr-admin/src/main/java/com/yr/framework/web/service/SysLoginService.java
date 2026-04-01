@@ -44,10 +44,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -96,6 +98,12 @@ public class SysLoginService {
     /** 企业微信 OAuth state 无效时的受控提示。 */
     private static final String INVALID_WXWORK_STATE_MESSAGE = "授权状态无效或已过期";
 
+    /** 企业微信 HTTP 连接超时时间。 */
+    private static final Duration WXWORK_HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+    /** 企业微信 HTTP 读取超时时间。 */
+    private static final Duration WXWORK_HTTP_READ_TIMEOUT = Duration.ofSeconds(5);
+
     /** 服务日志。 */
     private static final Logger LOGGER = LoggerFactory.getLogger(SysLoginService.class);
 
@@ -138,6 +146,9 @@ public class SysLoginService {
     /** Spring Boot 提供的 RestTemplateBuilder，用于访问企业微信 HTTP API。 */
     @Autowired
     private RestTemplateBuilder restTemplateBuilder;
+
+    /** 企业微信 HTTP 客户端，按服务单例懒加载并复用。 */
+    private volatile RestTemplate wxworkRestTemplate;
 
     /** Spring 注入的 Jackson ObjectMapper，用于解析企业微信响应。 */
     @Autowired
@@ -435,7 +446,7 @@ public class SysLoginService {
      */
     private JsonNode requestWxworkJson(String requestUrl, String scene) {
         try {
-            String responseBody = restTemplateBuilder.build().getForObject(requestUrl, String.class);
+            String responseBody = getWxworkRestTemplate().getForObject(requestUrl, String.class);
             if (StringUtils.isBlank(responseBody)) {
                 throw new CustomException(scene + "失败");
             }
@@ -494,6 +505,26 @@ public class SysLoginService {
                 .replaceAll("(?i)(corpsecret=)[^&]*", "$1[REDACTED]")
                 .replaceAll("(?i)(code=)[^&]*", "$1[REDACTED]")
                 .replaceAll("(?i)(access_token=)[^&]*", "$1[REDACTED]");
+    }
+
+    /**
+     * 获取企业微信 HTTP 客户端，并统一设置外部调用 timeout。
+     *
+     * @author PopoY
+     * @return 复用的 RestTemplate 客户端
+     */
+    private RestTemplate getWxworkRestTemplate() {
+        if (wxworkRestTemplate == null) {
+            synchronized (this) {
+                if (wxworkRestTemplate == null) {
+                    wxworkRestTemplate = restTemplateBuilder
+                            .setConnectTimeout(WXWORK_HTTP_CONNECT_TIMEOUT)
+                            .setReadTimeout(WXWORK_HTTP_READ_TIMEOUT)
+                            .build();
+                }
+            }
+        }
+        return wxworkRestTemplate;
     }
 
     /**

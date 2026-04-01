@@ -5,6 +5,7 @@
  */
 package com.yr.system.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -160,10 +161,30 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
     @Transactional(rollbackFor = Exception.class)
     public SsoSyncTask retryTask(Long taskId) {
         SsoSyncTask task = requireTask(taskId);
-        task.setRetryCount(task.getRetryCount() == null ? 1 : task.getRetryCount() + 1);
+        int nextRetryCount;
+        Date retryExecuteAt;
+        UpdateWrapper<SsoSyncTask> retryUpdateWrapper;
+        int affectedRows;
+
+        if (!SsoSyncTask.STATUS_FAILED.equals(task.getStatus())) {
+            throw new CustomException("只有失败态任务允许重试");
+        }
+        nextRetryCount = task.getRetryCount() == null ? 1 : task.getRetryCount() + 1;
+        retryExecuteAt = new Date();
+        retryUpdateWrapper = new UpdateWrapper<SsoSyncTask>()
+                .eq("task_id", taskId)
+                .eq("status", SsoSyncTask.STATUS_FAILED)
+                .set("retry_count", nextRetryCount)
+                .set("status", SsoSyncTask.STATUS_RUNNING)
+                .set("execute_at", retryExecuteAt)
+                .set("update_time", retryExecuteAt);
+        affectedRows = this.getBaseMapper().update(null, retryUpdateWrapper);
+        if (affectedRows != 1) {
+            throw new CustomException("任务状态已变化，请刷新后重试");
+        }
+        task.setRetryCount(nextRetryCount);
         task.setStatus(SsoSyncTask.STATUS_RUNNING);
-        task.setExecuteAt(new Date());
-        this.updateById(task);
+        task.setExecuteAt(retryExecuteAt);
         List<SsoSyncTaskItem> scopedItems = SsoSyncTask.TASK_TYPE_COMPENSATION.equals(task.getTaskType()) && ssoSyncTaskItemService != null
                 ? ssoSyncTaskItemService.selectByTaskId(taskId)
                 : null;

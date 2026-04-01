@@ -87,8 +87,10 @@ mvn -pl yr-system test
 ## 说明
 
 - 数据库脚本本次未作为模板收敛依据，需要后续按新项目实际情况自行整理
-- `SSO` backend 当前最新执行入口见 `docs/review_plans/2026-03-31-sso-backend-comprehensive-best-practice-audit-remediation-plan.md`
-- 上述 comprehensive audit remediation plan 是当前 canonical entrypoint（权威执行入口）；新开对话时应从该文档的 `Task 1` 顺序执行
+- `SSO` backend 当前最新执行入口见 `docs/review_plans/2026-04-01-sso-backend-fourth-pass-best-practice-audit-remediation-plan.md`
+- 上述 comprehensive audit remediation plan 是当前 canonical entrypoint（权威执行入口）；截至 `2026-04-01`，文档内 `Task 1` 到 `Task 6` 已顺序执行完成
+- 新开对话时应先复用该文档里的 execution status（执行状态）与验证结果，再决定是进入 merge/finalization（合并/收尾）还是开启下一轮增量 audit（审计）
+- `docs/review_plans/2026-03-31-sso-backend-comprehensive-best-practice-audit-remediation-plan.md` 仅保留上一轮 comprehensive audit 快照，不再作为当前执行入口
 - `docs/review_plans/2026-03-30-sso-backend-second-pass-gap-remediation-plan.md` 仅保留上一轮最新收口快照，不再作为当前执行入口
 - `docs/review_plans/2026-03-30-sso-backend-third-pass-fresh-review-remediation-plan.md` 仅保留上一轮 fresh review 快照，不再作为当前执行入口
 - `docs/review_plans/2026-03-30-sso-backend-tail-closure-remediation-plan.md` 仅保留上一轮收口快照，不再作为当前执行入口

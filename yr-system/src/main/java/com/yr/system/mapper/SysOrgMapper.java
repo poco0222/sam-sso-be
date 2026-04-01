@@ -45,6 +45,14 @@ public interface SysOrgMapper {
     public int updateSysOrg(SysOrg sysOrg);
 
     /**
+     * 专用状态修改，仅允许更新状态与审计字段。
+     *
+     * @param sysOrg 组织状态写入对象
+     * @return 更新结果
+     */
+    int updateOrgStatus(SysOrg sysOrg);
+
+    /**
      * 删除组织信息
      *
      * @param orgId 组织信息ID

@@ -14,6 +14,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
+import com.yr.common.core.domain.entity.SysDept;
+import com.yr.common.core.domain.entity.SysUser;
+import com.yr.common.core.domain.model.LoginUser;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +27,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 
 /**
  * Redis（缓存）基础配置。
@@ -107,11 +115,16 @@ public class RedisConfig extends CachingConfigurerSupport {
      */
     private PolymorphicTypeValidator buildRedisTypeValidator() {
         return BasicPolymorphicTypeValidator.builder()
-                .allowIfSubType("com.yr.common.core.domain.")
-                .allowIfSubType("java.lang.")
-                .allowIfSubType("java.util.")
-                .allowIfSubType("java.time.")
-                .allowIfSubType("org.springframework.security.core.authority.")
+                // 兼容历史 NON_FINAL payload，同时把新写入多态面收敛到 live 代码已证实的最小类型集合。
+                .allowIfSubType(LoginUser.class)
+                .allowIfSubType(SysUser.class)
+                .allowIfSubType(SysDept.class)
+                .allowIfSubType(LinkedHashSet.class)
+                .allowIfSubType(ArrayList.class)
+                .allowIfSubType(HashMap.class)
+                .allowIfSubType(Date.class)
+                .allowIfSubType(Long.class)
+                .allowIfSubType(SimpleGrantedAuthority.class)
                 .build();
     }
 

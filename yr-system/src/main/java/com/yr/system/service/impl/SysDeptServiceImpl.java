@@ -212,10 +212,8 @@ public class SysDeptServiceImpl implements ISysDeptService {
         }
         dept.setAncestors(info.getAncestors() + "," + dept.getParentId());
 
-        // 如果组织ID为空，取父部门的组织ID
-        if (dept.getOrgId() == null) {
-            dept.setOrgId(info.getOrgId());
-        }
+        // 组织归属必须以父部门为真值来源，不能信任请求体自带的 orgId。
+        dept.setOrgId(info.getOrgId());
         return deptMapper.insertDept(dept);
     }
 

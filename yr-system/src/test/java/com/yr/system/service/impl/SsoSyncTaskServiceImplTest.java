@@ -13,6 +13,7 @@ import com.yr.common.exception.CustomException;
 import com.yr.common.mapper.MqMessageLogMapper;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.mapper.SsoSyncTaskMapper;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -80,13 +81,15 @@ class SsoSyncTaskServiceImplTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
+        SsoSyncTaskMapper ssoSyncTaskMapper = mock(SsoSyncTaskMapper.class);
         SsoSyncTask existingTask = buildExistingTask();
         SsoIdentityImportExecutionResult executionResult = buildExecutionResult("SUCCESS", 2, 2, 0);
 
         ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
+        ReflectionTestUtils.setField(service, "baseMapper", ssoSyncTaskMapper);
         doReturn(existingTask).when(service).getById(11L);
-        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
+        when(ssoSyncTaskMapper.update(any(), any())).thenReturn(1);
         when(ssoIdentityImportService.execute(eq(existingTask), eq(null))).thenReturn(executionResult);
 
         SsoSyncTask result = service.retryTask(11L);
@@ -153,13 +156,15 @@ class SsoSyncTaskServiceImplTest {
         ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        SsoSyncTaskMapper ssoSyncTaskMapper = mock(SsoSyncTaskMapper.class);
         SsoSyncTask existingTask = buildExistingTask();
 
         ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
+        ReflectionTestUtils.setField(service, "baseMapper", ssoSyncTaskMapper);
         doReturn(existingTask).when(service).getById(11L);
-        doReturn(true).when(service).updateById(any(SsoSyncTask.class));
+        when(ssoSyncTaskMapper.update(any(), any())).thenReturn(1);
         doThrow(new RuntimeException("legacy source unavailable")).when(ssoIdentityImportService).execute(eq(existingTask), eq(null));
         doAnswer(invocation -> {
             SsoSyncTask failedTask = invocation.getArgument(0);
