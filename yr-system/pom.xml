@@ -30,6 +30,13 @@
         <dependency>
             <groupId>org.apache.rocketmq</groupId>
             <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <exclusions>
+                <!-- @author PopoY @date 2026-04-01: 排除 RocketMQ 传入的旧版 Tomcat annotations-api，避免启动时覆盖带 lookup() 的 JSR-250 注解定义 -->
+                <exclusion>
+                    <groupId>org.apache.tomcat</groupId>
+                    <artifactId>annotations-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

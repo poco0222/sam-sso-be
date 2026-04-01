@@ -39,6 +39,11 @@ class YrSystemBuildContractTest {
     // 需要显式声明的 groupId，artifactId 组合，以防止传递依赖被误判为直接依赖。
     private static final String GROUP_ID = "com.baomidou";
     private static final String ARTIFACT_ID = "mybatis-plus-boot-starter";
+    // RocketMQ starter 必须显式排除 Tomcat 6 annotations-api，避免运行时覆盖 JSR-250 新接口。
+    private static final String ROCKETMQ_GROUP_ID = "org.apache.rocketmq";
+    private static final String ROCKETMQ_ARTIFACT_ID = "rocketmq-spring-boot-starter";
+    private static final String EXCLUDED_GROUP_ID = "org.apache.tomcat";
+    private static final String EXCLUDED_ARTIFACT_ID = "annotations-api";
 
     /**
      * 确认 yr-system/pom.xml 经过结构化解析后包含指定的 groupId/artifactId 依赖，并在报错中揭示 pom 路径。
@@ -53,6 +58,31 @@ class YrSystemBuildContractTest {
         assertThat(hasDeclaredDependency(document))
                 .as("%s 必须显式声明在 %s", ARTIFACT_ID, pomPath)
                 .isTrue();
+    }
+
+    /**
+     * 确认 RocketMQ starter 已显式排除 Tomcat 6 annotations-api，避免启动时把旧版 `javax.annotation.Resource` 放到前面。
+     *
+     * @throws Exception 解析 pom 或查找 exclusion 失败时抛出
+     */
+    @Test
+    void shouldExcludeTomcatAnnotationsApiFromRocketMqStarter() throws Exception {
+        Path pomPath = resolveModulePom();
+        Document document = parsePom(pomPath);
+
+        assertThat(hasDeclaredDependencyExclusion(
+                document,
+                ROCKETMQ_GROUP_ID,
+                ROCKETMQ_ARTIFACT_ID,
+                EXCLUDED_GROUP_ID,
+                EXCLUDED_ARTIFACT_ID
+        )).as("%s:%s 必须在 %s 中排除 %s:%s",
+                ROCKETMQ_GROUP_ID,
+                ROCKETMQ_ARTIFACT_ID,
+                pomPath,
+                EXCLUDED_GROUP_ID,
+                EXCLUDED_ARTIFACT_ID
+        ).isTrue();
     }
 
     /**
@@ -202,6 +232,63 @@ class YrSystemBuildContractTest {
      * @return 如果找到了预期依赖则返回 true
      */
     private boolean hasDeclaredDependency(Document document) {
+        return findDependencyElement(document, GROUP_ID, ARTIFACT_ID) != null;
+    }
+
+    /**
+     * 遍历解析后的 pom 文档，确认目标依赖下是否存在指定 exclusion。
+     *
+     * @param document pom Document
+     * @param dependencyGroupId 目标依赖 groupId
+     * @param dependencyArtifactId 目标依赖 artifactId
+     * @param exclusionGroupId 期望排除的 groupId
+     * @param exclusionArtifactId 期望排除的 artifactId
+     * @return 如果目标 exclusion 已声明则返回 true
+     */
+    private boolean hasDeclaredDependencyExclusion(
+            Document document,
+            String dependencyGroupId,
+            String dependencyArtifactId,
+            String exclusionGroupId,
+            String exclusionArtifactId
+    ) {
+        Element dependency = findDependencyElement(document, dependencyGroupId, dependencyArtifactId);
+        if (dependency == null) {
+            return false;
+        }
+        try {
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            NodeList exclusionNodes = (NodeList) xpath.evaluate(
+                    "exclusions/exclusion",
+                    dependency,
+                    XPathConstants.NODESET
+            );
+            for (int i = 0; i < exclusionNodes.getLength(); i++) {
+                Node node = exclusionNodes.item(i);
+                if (!(node instanceof Element exclusion)) {
+                    continue;
+                }
+                String actualGroupId = xpath.evaluate("groupId", exclusion).trim();
+                String actualArtifactId = xpath.evaluate("artifactId", exclusion).trim();
+                if (exclusionGroupId.equals(actualGroupId) && exclusionArtifactId.equals(actualArtifactId)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (XPathExpressionException ex) {
+            throw new IllegalStateException("无法在 pom 中定位 exclusion 定义", ex);
+        }
+    }
+
+    /**
+     * 遍历解析后的 pom 文档，定位指定的直接依赖节点。
+     *
+     * @param document pom Document
+     * @param expectedGroupId 依赖 groupId
+     * @param expectedArtifactId 依赖 artifactId
+     * @return 命中的 dependency 元素；未找到时返回 null
+     */
+    private Element findDependencyElement(Document document, String expectedGroupId, String expectedArtifactId) {
         try {
             XPath xpath = XPathFactory.newInstance().newXPath();
             NodeList dependencyNodes = (NodeList) xpath.evaluate(
@@ -216,11 +303,11 @@ class YrSystemBuildContractTest {
                 }
                 String actualGroupId = xpath.evaluate("groupId", dependency).trim();
                 String actualArtifactId = xpath.evaluate("artifactId", dependency).trim();
-                if (GROUP_ID.equals(actualGroupId) && ARTIFACT_ID.equals(actualArtifactId)) {
-                    return true;
+                if (expectedGroupId.equals(actualGroupId) && expectedArtifactId.equals(actualArtifactId)) {
+                    return dependency;
                 }
             }
-            return false;
+            return null;
         } catch (XPathExpressionException ex) {
             throw new IllegalStateException("无法在 pom 中定位直接依赖定义", ex);
         }
