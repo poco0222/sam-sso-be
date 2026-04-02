@@ -14,6 +14,7 @@ import com.yr.framework.config.SecurityConfig;
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
 import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
+import com.yr.system.domain.dto.SsoSyncTaskClientSummaryView;
 import com.yr.system.service.ISsoSyncTaskService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -119,6 +120,35 @@ class SsoSyncTaskControllerContractTest {
         mockMvc.perform(get("/sso/sync-task/list"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rows[0].taskType").value("INIT_IMPORT"));
+    }
+
+    /**
+     * 验证客户端观测摘要接口会返回最近批次、最近成功时间与失败任务数。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldReturnClientSummaryList() throws Exception {
+        SsoSyncTaskClientSummaryView summary = new SsoSyncTaskClientSummaryView();
+        summary.setClientCode("sam-mgmt");
+        summary.setLatestTaskId(31L);
+        summary.setLatestBatchNo("DIST-20260402-01");
+        summary.setLatestFailedTaskId(31L);
+        summary.setLatestFailedBatchNo("DIST-20260402-01");
+        summary.setFailedTaskCount(2L);
+        summary.setLatestSuccessTime(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse("2026-04-02 11:30:00"));
+        when(ssoSyncTaskService.selectSsoSyncTaskClientSummaryList(any(SsoSyncTask.class))).thenReturn(List.of(summary));
+
+        mockMvc.perform(get("/sso/sync-task/client-summary")
+                        .param("targetClientCode", "sam-mgmt"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].clientCode").value("sam-mgmt"))
+                .andExpect(jsonPath("$.data[0].latestTaskId").value(31))
+                .andExpect(jsonPath("$.data[0].latestBatchNo").value("DIST-20260402-01"))
+                .andExpect(jsonPath("$.data[0].latestFailedTaskId").value(31))
+                .andExpect(jsonPath("$.data[0].latestFailedBatchNo").value("DIST-20260402-01"))
+                .andExpect(jsonPath("$.data[0].failedTaskCount").value(2))
+                .andExpect(jsonPath("$.data[0].latestSuccessTime").value("2026-04-02 11:30:00"));
     }
 
     /**

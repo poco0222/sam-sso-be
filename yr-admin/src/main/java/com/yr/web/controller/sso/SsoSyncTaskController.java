@@ -12,6 +12,7 @@ import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.page.TableDataInfo;
 import com.yr.common.enums.BusinessType;
 import com.yr.common.utils.SecurityUtils;
+import com.yr.system.domain.dto.SsoSyncTaskClientSummaryView;
 import com.yr.system.service.ISsoSyncTaskService;
 import com.yr.web.controller.sso.dto.SsoSyncTaskDistributionRequest;
 import com.yr.web.controller.sso.dto.SsoSyncTaskInitImportRequest;
@@ -50,6 +51,19 @@ public class SsoSyncTaskController extends BaseController {
         startPage();
         List<SsoSyncTask> list = ssoSyncTaskService.selectSsoSyncTaskList(query);
         return getDataTable(list);
+    }
+
+    /**
+     * 查询客户端维度的同步投递观测摘要。
+     *
+     * @param query 查询条件
+     * @return 客户端观测摘要
+     */
+    @PreAuthorize("@ss.hasPermi('sso:sync-task:list')")
+    @GetMapping("/client-summary")
+    public AjaxResult clientSummary(SsoSyncTask query) {
+        List<SsoSyncTaskClientSummaryView> summaryList = ssoSyncTaskService.selectSsoSyncTaskClientSummaryList(query);
+        return AjaxResult.success(summaryList);
     }
 
     /**

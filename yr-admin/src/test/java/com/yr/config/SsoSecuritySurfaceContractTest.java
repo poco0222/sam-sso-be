@@ -65,6 +65,22 @@ class SsoSecuritySurfaceContractTest {
     }
 
     /**
+     * 验证认证接入协议匿名入口已被显式加入安全放行范围，避免运行态被 Security 预先拦截。
+     *
+     * @throws IOException 读取源码失败时抛出
+     */
+    @Test
+    void shouldExposeAuthAccessProtocolEndpointsThroughSecurityConfig() throws IOException {
+        String securityConfigSource = Files.readString(
+                REPOSITORY_ROOT.resolve("yr-framework/src/main/java/com/yr/framework/config/SecurityConfig.java"),
+                StandardCharsets.UTF_8
+        );
+
+        assertThat(securityConfigSource).contains("\"/auth/authorize\"");
+        assertThat(securityConfigSource).contains("\"/auth/exchange\"");
+    }
+
+    /**
      * 验证配置文件不再保留弱默认值与可直接使用的生产密钥兜底。
      *
      * @throws IOException 读取配置文件失败时抛出

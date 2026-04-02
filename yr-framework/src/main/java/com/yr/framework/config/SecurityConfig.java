@@ -99,6 +99,8 @@ public class SecurityConfig {
                 .authorizeRequests()
                 // 一期认证面只保留账号密码登录、验证码与企业微信登录相关匿名入口。
                 .antMatchers("/login", "/captchaImage", "/auth/wxwork/pre-login", "/auth/wxwork/login").anonymous()
+                // 二期认证接入协议需要允许匿名发起 authorize/exchange，再由控制器自行执行登录跳转或客户端密钥校验。
+                .antMatchers("/auth/authorize", "/auth/exchange").permitAll()
                 // Swagger / springdoc / Druid 不再默认匿名开放，必须经过认证后才能访问。
                 .antMatchers(
                         "/swagger-ui.html",

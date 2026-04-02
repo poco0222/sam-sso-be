@@ -12,12 +12,17 @@ import com.yr.common.exception.CustomException;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
 import com.yr.common.utils.SecurityUtils;
 import com.yr.common.utils.StringUtils;
+import com.yr.system.domain.dto.SsoClientIntegrationGuideView;
 import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.mapper.SsoClientMapper;
 import com.yr.system.service.ISsoClientService;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +41,28 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
 
     /** 允许的回调地址协议。 */
     private static final Set<String> ALLOWED_REDIRECT_URI_SCHEME = Set.of("http", "https");
+
+    /** 授权跳转路径。 */
+    private static final String AUTHORIZE_PATH = "/auth/authorize";
+
+    /** 换票路径。 */
+    private static final String EXCHANGE_PATH = "/auth/exchange";
+
+    /** 当客户端尚未配置回调地址时的说明示例。 */
+    private static final String REDIRECT_URI_PLACEHOLDER = "https://your-app.example.com/callback";
+
+    /** 标准化身份载荷字段说明。 */
+    private static final List<String> IDENTITY_PAYLOAD_FIELDS = List.of(
+            "userId",
+            "userName",
+            "nickName",
+            "orgInfo",
+            "deptInfo",
+            "orgRelations",
+            "deptRelations",
+            "traceId",
+            "exchangeId"
+    );
 
     /**
      * 查询客户端列表。
@@ -85,10 +112,37 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
             return null;
         }
         QueryWrapper<SsoClient> queryWrapper = new QueryWrapper<SsoClient>()
-                .select("client_id", "client_code", "status", "sync_enabled")
+                .select(
+                        "client_id",
+                        "client_code",
+                        "client_name",
+                        "redirect_uris",
+                        "allow_password_login",
+                        "allow_wxwork_login",
+                        "status",
+                        "sync_enabled"
+                )
                 .eq("client_code", clientCode.trim())
                 .last("limit 1");
         return this.getOne(queryWrapper);
+    }
+
+    /**
+     * 构建客户端接入治理说明，给控制台直接展示与复制。
+     *
+     * @param clientId 客户端ID
+     * @return 接入说明视图
+     */
+    @Override
+    public SsoClientIntegrationGuideView buildIntegrationGuide(Long clientId) {
+        if (clientId == null) {
+            throw new CustomException("客户端ID不能为空");
+        }
+        SsoClient ssoClient = this.getById(clientId);
+        if (ssoClient == null) {
+            throw new CustomException("客户端不存在");
+        }
+        return toIntegrationGuideView(ssoClient);
     }
 
     /**
@@ -175,6 +229,134 @@ public class SsoClientServiceImpl extends CustomServiceImpl<SsoClientMapper, Sso
      */
     private String generateClientSecret() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 把客户端实体映射为接入说明视图，集中导出 client governance（客户端治理）需要的信息。
+     *
+     * @param ssoClient 客户端实体
+     * @return 接入说明视图
+     */
+    private SsoClientIntegrationGuideView toIntegrationGuideView(SsoClient ssoClient) {
+        SsoClientIntegrationGuideView view = new SsoClientIntegrationGuideView();
+        view.setClientId(ssoClient.getClientId());
+        view.setClientCode(ssoClient.getClientCode());
+        view.setClientName(ssoClient.getClientName());
+        view.setRedirectUris(ssoClient.getRedirectUris());
+        view.setAllowPasswordLogin(ssoClient.getAllowPasswordLogin());
+        view.setAllowWxworkLogin(ssoClient.getAllowWxworkLogin());
+        view.setSyncEnabled(ssoClient.getSyncEnabled());
+        view.setStatus(ssoClient.getStatus());
+        view.setRedirectUriConfigured(hasConfiguredRedirectUri(ssoClient.getRedirectUris()));
+        view.setLoginMethodConfigured(isLoginMethodConfigured(ssoClient));
+        view.setClientEnabled("0".equals(ssoClient.getStatus()));
+        view.setSyncEnabledReady("Y".equals(ssoClient.getSyncEnabled()));
+        view.setAuthorizePath(AUTHORIZE_PATH);
+        view.setExchangePath(EXCHANGE_PATH);
+        view.setAuthorizeExample(buildAuthorizeExample(ssoClient));
+        view.setExchangeRequestExample(buildExchangeRequestExample(ssoClient));
+        view.setIdentityPayloadFields(IDENTITY_PAYLOAD_FIELDS);
+        view.setLatestKnownSecretOperationTime(resolveLatestKnownSecretOperationTime(ssoClient));
+        view.setSecretRotationInfo(buildSecretRotationInfo());
+        return view;
+    }
+
+    /**
+     * 判断客户端是否至少配置了一条回调地址。
+     *
+     * @param redirectUris 回调地址白名单原始文本
+     * @return 是否已配置
+     */
+    private boolean hasConfiguredRedirectUri(String redirectUris) {
+        if (StringUtils.isBlank(redirectUris)) {
+            return false;
+        }
+        for (String redirectUri : redirectUris.split("[,\\n]")) {
+            if (StringUtils.isNotBlank(redirectUri == null ? null : redirectUri.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断客户端是否至少启用了一个登录入口。
+     *
+     * @param ssoClient 客户端实体
+     * @return 是否已配置登录方式
+     */
+    private boolean isLoginMethodConfigured(SsoClient ssoClient) {
+        return "Y".equals(ssoClient.getAllowPasswordLogin()) || "Y".equals(ssoClient.getAllowWxworkLogin());
+    }
+
+    /**
+     * 生成授权跳转示例，帮助下游系统直接验证 redirect/code/state 三元组。
+     *
+     * @param ssoClient 客户端实体
+     * @return 授权跳转示例
+     */
+    private String buildAuthorizeExample(SsoClient ssoClient) {
+        return UriComponentsBuilder
+                .fromPath(AUTHORIZE_PATH)
+                .queryParam("clientCode", UriUtils.encodeQueryParam(ssoClient.getClientCode(), StandardCharsets.UTF_8))
+                .queryParam("redirectUri", UriUtils.encodeQueryParam(resolveGuideRedirectUri(ssoClient.getRedirectUris()), StandardCharsets.UTF_8))
+                .queryParam("state", UriUtils.encodeQueryParam("demo-state", StandardCharsets.UTF_8))
+                .build(false)
+                .toUriString();
+    }
+
+    /**
+     * 生成换票请求示例，明确 SSO 只交换标准化身份载荷，不直接签发下游 JWT。
+     *
+     * @param ssoClient 客户端实体
+     * @return 换票请求示例 JSON
+     */
+    private String buildExchangeRequestExample(SsoClient ssoClient) {
+        return """
+                {
+                  "clientCode":"%s",
+                  "clientSecret":"<创建或轮换后获取的一次性明文>",
+                  "code":"<浏览器回跳得到的一次性code>"
+                }
+                """.formatted(ssoClient.getClientCode());
+    }
+
+    /**
+     * 解析接入说明要展示的示例回调地址；未配置时回退到固定占位示例，便于下游先对接。
+     *
+     * @param redirectUris 原始白名单文本
+     * @return 首条回调地址或占位示例
+     */
+    private String resolveGuideRedirectUri(String redirectUris) {
+        if (StringUtils.isBlank(redirectUris)) {
+            return REDIRECT_URI_PLACEHOLDER;
+        }
+        for (String redirectUri : redirectUris.split("[,\\n]")) {
+            String candidate = redirectUri == null ? null : redirectUri.trim();
+            if (StringUtils.isNotBlank(candidate)) {
+                return candidate;
+            }
+        }
+        return REDIRECT_URI_PLACEHOLDER;
+    }
+
+    /**
+     * 解析最近已知密钥操作时间。当前版本未引入独立轮换时间字段，因此取最近一次管理时间做 honest（诚实）展示。
+     *
+     * @param ssoClient 客户端实体
+     * @return 最近已知操作时间
+     */
+    private Date resolveLatestKnownSecretOperationTime(SsoClient ssoClient) {
+        return ssoClient.getUpdateTime() != null ? ssoClient.getUpdateTime() : ssoClient.getCreateTime();
+    }
+
+    /**
+     * 构造密钥轮换提示语，明确当前时间语义是“最近已知操作时间”而不是精确轮换审计时间。
+     *
+     * @return 提示语
+     */
+    private String buildSecretRotationInfo() {
+        return "当前版本未单独记录密钥轮换时间；请以最近一次客户端管理时间作为最近已知操作时间，并在轮换后立即同步下游配置。";
     }
 
     /**

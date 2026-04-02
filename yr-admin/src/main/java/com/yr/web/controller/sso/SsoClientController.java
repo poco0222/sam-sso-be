@@ -87,6 +87,18 @@ public class SsoClientController extends BaseController {
     }
 
     /**
+     * 查询客户端接入说明，供接入治理控制台直接展示。
+     *
+     * @param clientId 客户端ID
+     * @return 接入说明载荷
+     */
+    @PreAuthorize("@ss.hasPermi('sso:client:list')")
+    @GetMapping("/{clientId}/integration-guide")
+    public AjaxResult integrationGuide(@PathVariable Long clientId) {
+        return AjaxResult.success(ssoClientService.buildIntegrationGuide(clientId));
+    }
+
+    /**
      * 新增客户端。
      *
      * @param ssoClient 客户端信息

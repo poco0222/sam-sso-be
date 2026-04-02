@@ -13,6 +13,7 @@ import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.exception.CustomException;
 import com.yr.common.mapper.MqMessageLogMapper;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
+import com.yr.system.domain.dto.SsoSyncTaskClientSummaryView;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.mapper.SsoSyncTaskMapper;
 import com.yr.system.service.ISsoClientService;
@@ -60,6 +61,7 @@ class SsoSyncTaskServiceImplTest {
         query.setTaskType(SsoSyncTask.TASK_TYPE_DISTRIBUTION);
         query.setStatus(SsoSyncTask.STATUS_FAILED);
         query.setTargetClientCode("sam-mgmt");
+        query.setBatchNo("DIST-20260402-01");
         doAnswer(invocation -> {
             Wrapper<SsoSyncTask> wrapper = invocation.getArgument(0);
             sqlSegmentRef.set(wrapper.getSqlSegment());
@@ -73,7 +75,48 @@ class SsoSyncTaskServiceImplTest {
                 .contains("task_type")
                 .contains("status")
                 .contains("target_client_code")
+                .contains("batch_no")
                 .contains("ORDER BY");
+    }
+
+    /**
+     * 验证客户端观测摘要会按客户端聚合最近批次、最近成功时间与失败任务数。
+     */
+    @Test
+    void selectSsoSyncTaskClientSummaryListShouldAggregateRecentBatchAndFailures() {
+        SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        AtomicReference<String> sqlSegmentRef = new AtomicReference<>();
+        SsoSyncTask query = new SsoSyncTask();
+        SsoSyncTask samMgmtLatestFailed = buildObservationTask(31L, "sam-mgmt", "DIST-20260402-02", SsoSyncTask.STATUS_FAILED, "2026-04-02 12:30:00");
+        SsoSyncTask samMgmtLatestSuccess = buildObservationTask(29L, "sam-mgmt", "DIST-20260402-01", SsoSyncTask.STATUS_SUCCESS, "2026-04-02 11:30:00");
+        SsoSyncTask samMgmtPartial = buildObservationTask(27L, "sam-mgmt", "DIST-20260401-03", SsoSyncTask.STATUS_PARTIAL_SUCCESS, "2026-04-01 19:00:00");
+        SsoSyncTask samPortalSuccess = buildObservationTask(19L, "sam-portal", "DIST-20260401-02", SsoSyncTask.STATUS_SUCCESS, "2026-04-01 12:00:00");
+
+        query.setTaskType(SsoSyncTask.TASK_TYPE_DISTRIBUTION);
+        doAnswer(invocation -> {
+            Wrapper<SsoSyncTask> wrapper = invocation.getArgument(0);
+            sqlSegmentRef.set(wrapper.getSqlSegment());
+            return List.of(samMgmtLatestFailed, samMgmtLatestSuccess, samMgmtPartial, samPortalSuccess);
+        }).when(service).list(any());
+
+        List<SsoSyncTaskClientSummaryView> result = service.selectSsoSyncTaskClientSummaryList(query);
+
+        assertThat(sqlSegmentRef.get())
+                .contains("task_type")
+                .contains("ORDER BY");
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(SsoSyncTaskClientSummaryView::getClientCode)
+                .containsExactly("sam-mgmt", "sam-portal");
+        assertThat(result.get(0).getLatestTaskId()).isEqualTo(31L);
+        assertThat(result.get(0).getLatestBatchNo()).isEqualTo("DIST-20260402-02");
+        assertThat(result.get(0).getLatestFailedTaskId()).isEqualTo(31L);
+        assertThat(result.get(0).getLatestFailedBatchNo()).isEqualTo("DIST-20260402-02");
+        assertThat(result.get(0).getLatestSuccessTime()).isEqualTo(samMgmtLatestSuccess.getExecuteAt());
+        assertThat(result.get(0).getFailedTaskCount()).isEqualTo(2L);
+        assertThat(result.get(1).getLatestTaskId()).isEqualTo(19L);
+        assertThat(result.get(1).getLatestBatchNo()).isEqualTo("DIST-20260401-02");
+        assertThat(result.get(1).getLatestSuccessTime()).isEqualTo(samPortalSuccess.getExecuteAt());
+        assertThat(result.get(1).getFailedTaskCount()).isZero();
     }
 
     /**
@@ -463,5 +506,30 @@ class SsoSyncTaskServiceImplTest {
         ssoClient.setStatus("0");
         ssoClient.setSyncEnabled("Y");
         return ssoClient;
+    }
+
+    /**
+     * 构造客户端观测所需的最小任务快照。
+     *
+     * @param taskId 任务 ID
+     * @param clientCode 客户端编码
+     * @param batchNo 批次号
+     * @param status 任务状态
+     * @param executeAt 执行时间
+     * @return 最小任务快照
+     */
+    private SsoSyncTask buildObservationTask(Long taskId,
+                                             String clientCode,
+                                             String batchNo,
+                                             String status,
+                                             String executeAt) {
+        SsoSyncTask task = new SsoSyncTask();
+        task.setTaskId(taskId);
+        task.setTaskType(SsoSyncTask.TASK_TYPE_DISTRIBUTION);
+        task.setTargetClientCode(clientCode);
+        task.setBatchNo(batchNo);
+        task.setStatus(status);
+        task.setExecuteAt(java.sql.Timestamp.valueOf(executeAt));
+        return task;
     }
 }

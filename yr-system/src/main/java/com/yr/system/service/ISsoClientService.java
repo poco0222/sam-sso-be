@@ -7,6 +7,7 @@ package com.yr.system.service;
 
 import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.mybatisplus.service.ICustomService;
+import com.yr.system.domain.dto.SsoClientIntegrationGuideView;
 import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 
 import java.util.List;
@@ -38,6 +39,14 @@ public interface ISsoClientService extends ICustomService<SsoClient> {
      * @return 客户端；不存在时返回 null
      */
     SsoClient selectSsoClientByCode(String clientCode);
+
+    /**
+     * 构建客户端接入治理说明。
+     *
+     * @param clientId 客户端ID
+     * @return 接入说明视图
+     */
+    SsoClientIntegrationGuideView buildIntegrationGuide(Long clientId);
 
     /**
      * 新增客户端。

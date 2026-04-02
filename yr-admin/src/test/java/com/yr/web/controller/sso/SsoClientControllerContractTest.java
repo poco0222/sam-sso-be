@@ -14,6 +14,7 @@ import com.yr.framework.config.SecurityConfig;
 import com.yr.framework.security.filter.JwtAuthenticationTokenFilter;
 import com.yr.framework.security.handle.AuthenticationEntryPointImpl;
 import com.yr.framework.security.handle.LogoutSuccessHandlerImpl;
+import com.yr.system.domain.dto.SsoClientIntegrationGuideView;
 import com.yr.system.domain.dto.SsoClientSecretIssueResult;
 import com.yr.system.service.ISsoClientService;
 import org.junit.jupiter.api.Test;
@@ -149,6 +150,30 @@ class SsoClientControllerContractTest {
                 .andExpect(jsonPath("$.data[0].clientSecret").doesNotExist())
                 .andExpect(jsonPath("$.data[0].status").doesNotExist())
                 .andExpect(jsonPath("$.data[0].syncEnabled").doesNotExist());
+    }
+
+    /**
+     * 验证客户端接入说明接口返回治理载荷，但不会回显历史 clientSecret。
+     *
+     * @throws Exception MockMvc 调用失败时抛出
+     */
+    @Test
+    void shouldReturnIntegrationGuideWithoutHistoricalSecret() throws Exception {
+        SsoClientIntegrationGuideView guideView = new SsoClientIntegrationGuideView();
+        guideView.setClientId(7L);
+        guideView.setClientCode("sam-mgmt");
+        guideView.setClientName("SAM 管理后台");
+        guideView.setAuthorizePath("/auth/authorize");
+        guideView.setExchangePath("/auth/exchange");
+        guideView.setSecretRotationInfo("当前版本未单独记录密钥轮换时间");
+        when(ssoClientService.buildIntegrationGuide(eq(7L))).thenReturn(guideView);
+
+        mockMvc.perform(get("/sso/client/7/integration-guide"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.clientCode").value("sam-mgmt"))
+                .andExpect(jsonPath("$.data.authorizePath").value("/auth/authorize"))
+                .andExpect(jsonPath("$.data.exchangePath").value("/auth/exchange"))
+                .andExpect(jsonPath("$.data.clientSecret").doesNotExist());
     }
 
     /**

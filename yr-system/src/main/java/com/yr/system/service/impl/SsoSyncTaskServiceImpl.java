@@ -19,6 +19,7 @@ import com.yr.common.exception.CustomException;
 import com.yr.common.mapper.MqMessageLogMapper;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
 import com.yr.system.domain.dto.SsoDistributionMessagePayload;
+import com.yr.system.domain.dto.SsoSyncTaskClientSummaryView;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
 import com.yr.system.mapper.SsoSyncTaskMapper;
 import com.yr.system.service.ISsoClientService;
@@ -85,15 +86,47 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
      */
     @Override
     public List<SsoSyncTask> selectSsoSyncTaskList(SsoSyncTask query) {
-        // MyBatis-Plus 3.4.x 的 lambda wrapper 在 JDK 17 下会反射 SerializedLambda，
-        // 这里改用显式列名保持列表接口可在当前运行时稳定工作。
-        QueryWrapper<SsoSyncTask> queryWrapper = new QueryWrapper<SsoSyncTask>()
-                .eq(query != null && query.getTaskId() != null, "task_id", query == null ? null : query.getTaskId())
-                .eq(query != null && query.getTaskType() != null && !query.getTaskType().isBlank(), "task_type", query == null ? null : query.getTaskType())
-                .eq(query != null && query.getStatus() != null && !query.getStatus().isBlank(), "status", query == null ? null : query.getStatus())
-                .eq(query != null && query.getTargetClientCode() != null && !query.getTargetClientCode().isBlank(), "target_client_code", query == null ? null : query.getTargetClientCode())
-                .orderByDesc("task_id");
-        return this.list(queryWrapper);
+        return this.list(buildTaskListQueryWrapper(query));
+    }
+
+    /**
+     * 查询客户端维度的投递观测摘要。
+     *
+     * @param query 查询条件
+     * @return 客户端观测摘要
+     */
+    @Override
+    public List<SsoSyncTaskClientSummaryView> selectSsoSyncTaskClientSummaryList(SsoSyncTask query) {
+        List<SsoSyncTask> taskSnapshots = this.list(buildClientSummaryQueryWrapper(query));
+        Map<String, SsoSyncTaskClientSummaryView> summaryMap = new LinkedHashMap<>();
+
+        for (SsoSyncTask taskSnapshot : taskSnapshots) {
+            if (taskSnapshot.getTargetClientCode() == null || taskSnapshot.getTargetClientCode().isBlank()) {
+                continue;
+            }
+            SsoSyncTaskClientSummaryView summaryView = summaryMap.computeIfAbsent(taskSnapshot.getTargetClientCode(), clientCode -> {
+                SsoSyncTaskClientSummaryView createdView = new SsoSyncTaskClientSummaryView();
+                createdView.setClientCode(clientCode);
+                createdView.setFailedTaskCount(0L);
+                return createdView;
+            });
+
+            if (summaryView.getLatestTaskId() == null) {
+                summaryView.setLatestTaskId(taskSnapshot.getTaskId());
+                summaryView.setLatestBatchNo(taskSnapshot.getBatchNo());
+            }
+            if (isProblemStatus(taskSnapshot.getStatus())) {
+                summaryView.setFailedTaskCount(summaryView.getFailedTaskCount() + 1);
+                if (summaryView.getLatestFailedTaskId() == null) {
+                    summaryView.setLatestFailedTaskId(taskSnapshot.getTaskId());
+                    summaryView.setLatestFailedBatchNo(taskSnapshot.getBatchNo());
+                }
+            }
+            if (SsoSyncTask.STATUS_SUCCESS.equals(taskSnapshot.getStatus()) && isNewer(taskSnapshot.getExecuteAt(), summaryView.getLatestSuccessTime())) {
+                summaryView.setLatestSuccessTime(taskSnapshot.getExecuteAt());
+            }
+        }
+        return new ArrayList<>(summaryMap.values());
     }
 
     /**
@@ -353,6 +386,65 @@ public class SsoSyncTaskServiceImpl extends CustomServiceImpl<SsoSyncTaskMapper,
         task.setTotalItemCount(totalCount);
         task.setSuccessItemCount(successCount);
         task.setFailedItemCount(failedCount);
+    }
+
+    /**
+     * 构造列表查询 wrapper，统一收口 task list 与 log 页过滤字段。
+     *
+     * @param query 查询条件
+     * @return 查询 wrapper
+     */
+    private QueryWrapper<SsoSyncTask> buildTaskListQueryWrapper(SsoSyncTask query) {
+        // MyBatis-Plus 3.4.x 的 lambda wrapper 在 JDK 17 下会反射 SerializedLambda，
+        // 这里改用显式列名保持列表接口可在当前运行时稳定工作。
+        return new QueryWrapper<SsoSyncTask>()
+                .eq(query != null && query.getTaskId() != null, "task_id", query == null ? null : query.getTaskId())
+                .eq(query != null && query.getTaskType() != null && !query.getTaskType().isBlank(), "task_type", query == null ? null : query.getTaskType())
+                .eq(query != null && query.getStatus() != null && !query.getStatus().isBlank(), "status", query == null ? null : query.getStatus())
+                .eq(query != null && query.getTargetClientCode() != null && !query.getTargetClientCode().isBlank(), "target_client_code", query == null ? null : query.getTargetClientCode())
+                .eq(query != null && query.getBatchNo() != null && !query.getBatchNo().isBlank(), "batch_no", query == null ? null : query.getBatchNo())
+                .orderByDesc("task_id");
+    }
+
+    /**
+     * 构造客户端摘要查询 wrapper，只挑选摘要所需字段，避免把全量 payload 拉回内存。
+     *
+     * @param query 查询条件
+     * @return 摘要查询 wrapper
+     */
+    private QueryWrapper<SsoSyncTask> buildClientSummaryQueryWrapper(SsoSyncTask query) {
+        return new QueryWrapper<SsoSyncTask>()
+                .select("task_id", "task_type", "target_client_code", "batch_no", "status", "execute_at")
+                .eq(query != null && query.getTaskType() != null && !query.getTaskType().isBlank(), "task_type", query == null ? null : query.getTaskType())
+                .eq(query != null && query.getTargetClientCode() != null && !query.getTargetClientCode().isBlank(), "target_client_code", query == null ? null : query.getTargetClientCode())
+                .orderByDesc("task_id");
+    }
+
+    /**
+     * 判断任务状态是否属于需要运营关注的问题态。
+     *
+     * @param status 任务状态
+     * @return 问题态返回 true
+     */
+    private boolean isProblemStatus(String status) {
+        return SsoSyncTask.STATUS_FAILED.equals(status) || SsoSyncTask.STATUS_PARTIAL_SUCCESS.equals(status);
+    }
+
+    /**
+     * 判断当前时间是否比基准时间更新。
+     *
+     * @param candidate 候选时间
+     * @param baseline 基准时间
+     * @return 候选时间更新时返回 true
+     */
+    private boolean isNewer(Date candidate, Date baseline) {
+        if (candidate == null) {
+            return false;
+        }
+        if (baseline == null) {
+            return true;
+        }
+        return candidate.after(baseline);
     }
 
     /**
