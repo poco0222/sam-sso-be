@@ -1,6 +1,6 @@
 /**
  * @file 用户部门关联实体，描述用户与部门的归属关系
- * @author Codex
+ * @author PopoY
  * @date 2026-03-16
  */
 package com.yr.system.domain.entity;

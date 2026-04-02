@@ -14,7 +14,7 @@ import java.security.cert.X509Certificate;
 /**
  * 通用http发送方法
  *
- * @author Youngron
+ * @author PopoY
  */
 public class HttpUtils {
     private static final Logger log = LoggerFactory.getLogger(HttpUtils.class);

@@ -13,7 +13,7 @@ import java.util.Enumeration;
 /**
  * 获取IP方法
  *
- * @author Youngron
+ * @author PopoY
  */
 public class IpUtils {
     public static String getIpAddr(HttpServletRequest request) {

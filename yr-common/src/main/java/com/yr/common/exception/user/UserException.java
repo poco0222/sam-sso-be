@@ -5,7 +5,7 @@ import com.yr.common.exception.BaseException;
 /**
  * 用户信息异常类
  *
- * @author Youngron
+ * @author PopoY
  */
 public class UserException extends BaseException {
     private static final long serialVersionUID = 1L;

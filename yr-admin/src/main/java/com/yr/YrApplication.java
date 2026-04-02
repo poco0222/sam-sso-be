@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * 启动程序
  *
- * @author Youngron
+ * @author PopoY
  */
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
 //@ComponentScan(basePackages = {"com.yr",})

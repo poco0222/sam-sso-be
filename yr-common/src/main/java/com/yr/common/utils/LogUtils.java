@@ -3,7 +3,7 @@ package com.yr.common.utils;
 /**
  * 处理并记录日志文件
  *
- * @author Youngron
+ * @author PopoY
  */
 public class LogUtils {
     public static String getBlock(Object msg) {

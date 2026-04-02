@@ -8,7 +8,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 /**
  * 组织信息对象 sys_org
  *
- * @author Youngron
+ * @author PopoY
  * @date 2021-09-09
  */
 public class SysOrg extends TreeEntity {

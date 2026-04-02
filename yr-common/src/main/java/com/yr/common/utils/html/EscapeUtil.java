@@ -8,7 +8,7 @@ import com.yr.common.utils.StringUtils;
 /**
  * 转义和反转义工具类
  *
- * @author Youngron
+ * @author PopoY
  */
 public class EscapeUtil {
     /** HTML 转义工具日志。 */

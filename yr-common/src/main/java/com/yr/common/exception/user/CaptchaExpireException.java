@@ -3,7 +3,7 @@ package com.yr.common.exception.user;
 /**
  * 验证码失效异常类
  *
- * @author Youngron
+ * @author PopoY
  */
 public class CaptchaExpireException extends UserException {
     private static final long serialVersionUID = 1L;

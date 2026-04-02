@@ -3,7 +3,7 @@ package com.yr.common.exception;
 /**
  * 工具类异常
  *
- * @author Youngron
+ * @author PopoY
  */
 public class UtilException extends RuntimeException {
     private static final long serialVersionUID = 8247610319171014183L;

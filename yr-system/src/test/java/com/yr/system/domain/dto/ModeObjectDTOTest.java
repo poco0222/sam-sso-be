@@ -1,6 +1,6 @@
 /**
  * @file ModeObjectDTO JSON 契约测试
- * @author Codex
+ * @author PopoY
  * @date 2026-03-11
  */
 package com.yr.system.domain.dto;

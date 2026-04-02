@@ -10,7 +10,7 @@ import javax.validation.constraints.Size;
 /**
  * 组织对象 sys_organization
  *
- * @author Youngron
+ * @author PopoY
  */
 public class SysOrganization extends BaseEntity {
     private static final long serialVersionUID = 1L;

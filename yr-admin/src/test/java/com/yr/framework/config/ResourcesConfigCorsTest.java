@@ -1,6 +1,6 @@
 /**
  * @file 跨域资源配置回归测试
- * @author Codex
+ * @author PopoY
  * @date 2026-03-12
  */
 package com.yr.framework.config;

@@ -3,7 +3,7 @@ package com.yr.common.exception.job;
 /**
  * 计划策略异常
  *
- * @author Youngron
+ * @author PopoY
  */
 public class TaskException extends Exception {
     private static final long serialVersionUID = 1L;

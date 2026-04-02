@@ -5,7 +5,7 @@ import com.yr.common.utils.StringUtils;
 /**
  * 分页数据
  *
- * @author Youngron
+ * @author PopoY
  */
 public class PageDomain {
     /**

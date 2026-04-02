@@ -1,6 +1,6 @@
 /**
  * @file ModeObjectDTO 模式对象传输对象
- * @author Codex
+ * @author PopoY
  * @date 2026-03-11
  */
 package com.yr.system.domain.dto;

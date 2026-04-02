@@ -1,6 +1,6 @@
 /**
  * @file RocketMQ 发送链路集成烟雾测试
- * @author Codex
+ * @author PopoY
  * @date 2026-03-11
  */
 package com.yr.mq;

@@ -3,7 +3,7 @@ package com.yr.common.enums;
 /**
  * 操作人类别
  *
- * @author Youngron
+ * @author PopoY
  */
 public enum OperatorType {
     /**

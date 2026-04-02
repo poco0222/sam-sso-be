@@ -6,7 +6,7 @@ import com.yr.common.utils.StringUtils;
 /**
  * 基础异常
  *
- * @author Youngron
+ * @author PopoY
  */
 public class BaseException extends RuntimeException {
     private static final long serialVersionUID = 1L;

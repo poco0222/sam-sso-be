@@ -3,7 +3,7 @@ package com.yr.common.utils.file;
 /**
  * 媒体类型工具类
  *
- * @author Youngron
+ * @author PopoY
  */
 public class MimeTypeUtils {
     public static final String IMAGE_PNG = "image/png";

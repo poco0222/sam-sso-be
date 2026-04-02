@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * 验证码操作处理
  *
- * @author Youngron
+ * @author PopoY
  */
 @RestController
 public class CaptchaController {

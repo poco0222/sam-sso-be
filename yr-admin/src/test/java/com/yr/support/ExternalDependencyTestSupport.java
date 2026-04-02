@@ -1,6 +1,6 @@
 /**
  * @file 外部依赖连通性测试支持工具
- * @author Codex
+ * @author PopoY
  * @date 2026-03-11
  */
 package com.yr.support;

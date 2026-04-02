@@ -3,7 +3,7 @@ package com.yr.common.constant;
 /**
  * 通用常量信息
  *
- * @author Youngron
+ * @author PopoY
  */
 public class Constants {
     /**

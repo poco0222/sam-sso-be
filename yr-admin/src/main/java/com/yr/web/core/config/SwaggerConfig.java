@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * OpenAPI 接口文档配置
  *
- * @author Youngron
+ * @author PopoY
  */
 @Configuration
 @ConditionalOnProperty(prefix = "swagger", name = "enabled", havingValue = "true")
