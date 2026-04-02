@@ -6,7 +6,6 @@
 package com.yr.sso;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.yr.YrApplication;
 import com.yr.common.core.domain.MqMessageLog;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SysDept;
@@ -22,12 +21,16 @@ import com.yr.system.mapper.SsoSyncTaskMapper;
 import com.yr.system.service.ISsoSyncTaskService;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
 import com.yr.common.mapper.MqMessageLogMapper;
+import com.yr.YrApplication;
+import com.yr.quartz.service.impl.SysJobServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
@@ -48,9 +51,16 @@ import static org.mockito.Mockito.doReturn;
  */
 @SpringBootTest(
         classes = YrApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
+                // 显式清空 local profile 默认的 exclude，确保 smoke 能重新启用 RocketMQ 自动装配。
                 "spring.autoconfigure.exclude=",
+                "spring.datasource.druid.initialSize=0",
+                "spring.datasource.druid.minIdle=0",
+                "spring.datasource.druid.connectionErrorRetryAttempts=0",
+                "spring.datasource.druid.breakAfterAcquireFailure=true",
+                "spring.datasource.druid.timeBetweenConnectErrorMillis=100",
+                "spring.datasource.druid.initExceptionThrow=false",
                 "spring.datasource.druid.statViewServlet.enabled=false",
                 "spring.datasource.druid.webStatFilter.enabled=false",
                 "spring.liquibase.enabled=false",
@@ -60,10 +70,15 @@ import static org.mockito.Mockito.doReturn;
 )
 @ActiveProfiles("local")
 @EnabledIfSystemProperty(named = "runDistributionSmoke", matches = "true")
+@EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_DRUID_MASTER_PASSWORD", matches = ".+")
 class SsoDistributionMqSmokeTest {
 
     /** 本地连通性探测超时时间。 */
     private static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(1);
+
+    /** Mock Quartz 初始化服务，避免启动期抢占数据库连接影响 smoke 语义。 */
+    @MockBean
+    private SysJobServiceImpl sysJobService;
 
     @Autowired
     private ISsoSyncTaskService ssoSyncTaskService;
@@ -95,7 +110,7 @@ class SsoDistributionMqSmokeTest {
      */
     @Test
     void shouldRunDistributionTaskAgainstCurrentMasterSnapshot() {
-        Assumptions.assumeTrue(isMasterReachable(), "master 数据库未就绪，跳过 DISTRIBUTION 演练");
+        Assumptions.assumeTrue(isDataSourceReady("masterDataSource"), "master 数据库未就绪，跳过 DISTRIBUTION 演练");
         Assumptions.assumeTrue(isNameServerReachable(), "RocketMQ NameServer 未就绪，跳过 DISTRIBUTION 演练");
         Assumptions.assumeTrue(isMqMessageLogTableReady(), "mq_message_log 未就绪，跳过 DISTRIBUTION 演练");
         ensureTaskItemMsgKeyColumnReady();
@@ -135,15 +150,21 @@ class SsoDistributionMqSmokeTest {
     }
 
     /**
-     * 判断 master 是否可达。
+     * 判断指定数据源 bean 是否已启用且可成功建立连接。
      *
-     * @return master 可达时返回 true
+     * @param dataSourceBeanName 数据源 bean 名称
+     * @return 数据源可用时返回 true
      */
-    private boolean isMasterReachable() {
-        ExternalDependencyTestSupport.HostPort master = ExternalDependencyTestSupport.parseMySqlJdbcUrl(
-                environment.getProperty("spring.datasource.druid.master.url")
-        );
-        return ExternalDependencyTestSupport.isTcpReachable(master.getHost(), master.getPort(), SOCKET_TIMEOUT);
+    private boolean isDataSourceReady(String dataSourceBeanName) {
+        DataSource dataSource = dataSourceRegistry.get(dataSourceBeanName);
+        if (dataSource == null) {
+            return false;
+        }
+        try (Connection connection = dataSource.getConnection()) {
+            return connection.isValid(1);
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     /**

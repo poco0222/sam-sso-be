@@ -8,22 +8,22 @@ package com.yr.sso;
 import com.yr.YrApplication;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.enums.DataSourceType;
-import com.yr.support.ExternalDependencyTestSupport;
 import com.yr.system.config.SsoInitImportProperties;
 import com.yr.system.mapper.SsoSyncTaskItemMapper;
 import com.yr.system.mapper.SsoSyncTaskMapper;
 import com.yr.system.service.ISsoSyncTaskService;
+import com.yr.quartz.service.impl.SysJobServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.env.Environment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.sql.DataSource;
-import java.time.Duration;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,8 +33,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(
         classes = YrApplication.class,
-        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
+                "spring.datasource.druid.initialSize=0",
+                "spring.datasource.druid.minIdle=0",
+                "spring.datasource.druid.connectionErrorRetryAttempts=0",
+                "spring.datasource.druid.breakAfterAcquireFailure=true",
+                "spring.datasource.druid.timeBetweenConnectErrorMillis=100",
+                "spring.datasource.druid.initExceptionThrow=false",
                 "spring.datasource.druid.statViewServlet.enabled=false",
                 "spring.datasource.druid.webStatFilter.enabled=false",
                 "spring.liquibase.enabled=false",
@@ -43,19 +49,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 )
 @ActiveProfiles("local")
 @EnabledIfSystemProperty(named = "runInitImportRehearsal", matches = "true")
+@EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_DRUID_MASTER_PASSWORD", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "SPRING_DATASOURCE_DRUID_SLAVE_PASSWORD", matches = ".+")
 class SsoInitImportRehearsalSmokeTest {
 
-    /** 本地连通性探测超时时间。 */
-    private static final Duration SOCKET_TIMEOUT = Duration.ofSeconds(1);
+    /** Mock Quartz 初始化服务，避免启动期抢占数据库连接影响 smoke 语义。 */
+    @MockBean
+    private SysJobServiceImpl sysJobService;
 
     @Autowired
     private ISsoSyncTaskService ssoSyncTaskService;
 
     @Autowired
     private SsoInitImportProperties ssoInitImportProperties;
-
-    @Autowired
-    private Environment environment;
 
     @Autowired
     private Map<String, DataSource> dataSourceRegistry;
@@ -74,7 +80,7 @@ class SsoInitImportRehearsalSmokeTest {
      */
     @Test
     void shouldRunInitImportTaskAgainstConfiguredLegacySource() {
-        Assumptions.assumeTrue(isMasterReachable(), "master 数据库未就绪，跳过 INIT_IMPORT 演练");
+        Assumptions.assumeTrue(isDataSourceReady("masterDataSource"), "master 数据库未就绪，跳过 INIT_IMPORT 演练");
         Assumptions.assumeTrue(isConfiguredLegacySourceReady(), "legacy source datasource 未启用或不可达，跳过 INIT_IMPORT 演练");
 
         SsoSyncTask command = new SsoSyncTask();
@@ -114,15 +120,21 @@ class SsoInitImportRehearsalSmokeTest {
     }
 
     /**
-     * 判断 master 是否可达。
+     * 判断指定数据源 bean 是否已启用且可成功建立连接。
      *
-     * @return master 可达时返回 true
+     * @param dataSourceBeanName 数据源 bean 名称
+     * @return 数据源可用时返回 true
      */
-    private boolean isMasterReachable() {
-        ExternalDependencyTestSupport.HostPort master = ExternalDependencyTestSupport.parseMySqlJdbcUrl(
-                environment.getProperty("spring.datasource.druid.master.url")
-        );
-        return ExternalDependencyTestSupport.isTcpReachable(master.getHost(), master.getPort(), SOCKET_TIMEOUT);
+    private boolean isDataSourceReady(String dataSourceBeanName) {
+        DataSource dataSource = dataSourceRegistry.get(dataSourceBeanName);
+        if (dataSource == null) {
+            return false;
+        }
+        try (var connection = dataSource.getConnection()) {
+            return connection.isValid(1);
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     /**
@@ -133,41 +145,7 @@ class SsoInitImportRehearsalSmokeTest {
     private boolean isConfiguredLegacySourceReady() {
         DataSourceType legacySourceDatasource = ssoInitImportProperties.getLegacySourceDatasource();
         String dataSourceBeanName = resolveDataSourceBeanName(legacySourceDatasource);
-        if (!dataSourceRegistry.containsKey(dataSourceBeanName)) {
-            return false;
-        }
-        return switch (legacySourceDatasource) {
-            case SLAVE -> isMySqlDatasourceReachable("spring.datasource.druid.slave.url");
-            case SLAVEEC -> isSqlServerDatasourceReachable("spring.datasource.druid.slaveec.url");
-            case SLAVEXX -> isSqlServerDatasourceReachable("spring.datasource.druid.slavexx.url");
-            default -> false;
-        };
-    }
-
-    /**
-     * 判断指定 MySQL 数据源是否可达。
-     *
-     * @param jdbcPropertyKey JDBC 属性键
-     * @return 数据源可达时返回 true
-     */
-    private boolean isMySqlDatasourceReachable(String jdbcPropertyKey) {
-        ExternalDependencyTestSupport.HostPort hostPort = ExternalDependencyTestSupport.parseMySqlJdbcUrl(
-                environment.getProperty(jdbcPropertyKey)
-        );
-        return ExternalDependencyTestSupport.isTcpReachable(hostPort.getHost(), hostPort.getPort(), SOCKET_TIMEOUT);
-    }
-
-    /**
-     * 判断指定 SQL Server 数据源是否可达。
-     *
-     * @param jdbcPropertyKey JDBC 属性键
-     * @return 数据源可达时返回 true
-     */
-    private boolean isSqlServerDatasourceReachable(String jdbcPropertyKey) {
-        ExternalDependencyTestSupport.HostPort hostPort = ExternalDependencyTestSupport.parseSqlServerJdbcUrl(
-                environment.getProperty(jdbcPropertyKey)
-        );
-        return ExternalDependencyTestSupport.isTcpReachable(hostPort.getHost(), hostPort.getPort(), SOCKET_TIMEOUT);
+        return isDataSourceReady(dataSourceBeanName);
     }
 
     /**
