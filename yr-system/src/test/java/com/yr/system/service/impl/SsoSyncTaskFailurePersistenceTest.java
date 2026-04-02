@@ -6,9 +6,11 @@
 package com.yr.system.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.mybatisplus.service.impl.CustomServiceImpl;
 import com.yr.system.mapper.SsoSyncTaskMapper;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
 import com.yr.system.service.support.SsoSyncTaskFailureRecorder;
@@ -34,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -60,6 +63,9 @@ class SsoSyncTaskFailurePersistenceTest {
     private ISsoIdentityImportService ssoIdentityImportService;
 
     @Autowired
+    private ISsoClientService ssoClientService;
+
+    @Autowired
     private ISsoSyncTaskItemService ssoSyncTaskItemService;
 
     /**
@@ -68,7 +74,7 @@ class SsoSyncTaskFailurePersistenceTest {
     @AfterEach
     void tearDown() {
         transactionManager.reset();
-        Mockito.reset(ssoSyncTaskMapper, ssoIdentityImportService, ssoSyncTaskItemService);
+        Mockito.reset(ssoSyncTaskMapper, ssoIdentityImportService, ssoSyncTaskItemService, ssoClientService);
     }
 
     /**
@@ -195,6 +201,17 @@ class SsoSyncTaskFailurePersistenceTest {
         }
 
         /**
+         * @return 客户端服务 mock（模拟对象）
+         */
+        @Bean
+        ISsoClientService ssoClientService() {
+            ISsoClientService ssoClientService = mock(ISsoClientService.class);
+            when(ssoClientService.selectSsoClientByCode(anyString()))
+                    .thenAnswer(invocation -> buildEnabledDistributionClient(invocation.getArgument(0)));
+            return ssoClientService;
+        }
+
+        /**
          * @return 任务明细服务 mock
          */
         @Bean
@@ -251,6 +268,23 @@ class SsoSyncTaskFailurePersistenceTest {
             } catch (NoSuchFieldException | IllegalAccessException exception) {
                 throw new IllegalStateException("注入同步任务基类 mapper 失败", exception);
             }
+        }
+
+        /**
+         * 构造默认可用于 DISTRIBUTION 的合法客户端。
+         *
+         * @param clientCode 客户端编码
+         * @return 合法客户端
+         */
+        private SsoClient buildEnabledDistributionClient(String clientCode) {
+            SsoClient client = new SsoClient();
+            client.setClientCode(clientCode);
+            client.setClientName("test-" + clientCode);
+            client.setStatus("0");
+            client.setSyncEnabled("Y");
+            client.setAllowPasswordLogin("Y");
+            client.setAllowWxworkLogin("Y");
+            return client;
         }
     }
 

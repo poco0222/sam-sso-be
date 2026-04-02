@@ -9,6 +9,7 @@ import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.doReturn;
@@ -115,9 +117,13 @@ class SsoIdentitySkeletonContractTest {
     @Test
     void shouldLockDistributionTaskContract() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
         ISsoIdentityDistributionService ssoIdentityDistributionService = mock(ISsoIdentityDistributionService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
+        when(ssoClientService.selectSsoClientByCode(anyString()))
+                .thenAnswer(invocation -> buildEnabledDistributionClient(invocation.getArgument(0)));
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskFailureRecorder", ssoSyncTaskFailureRecorder);
         ReflectionTestUtils.setField(service, "ssoIdentityDistributionService", ssoIdentityDistributionService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
@@ -177,5 +183,22 @@ class SsoIdentitySkeletonContractTest {
         result.setStatus(SsoSyncTask.STATUS_PENDING);
         result.setResultSummary("distribution queued");
         return result;
+    }
+
+    /**
+     * 构造默认可用于 DISTRIBUTION 的合法客户端。
+     *
+     * @param clientCode 客户端编码
+     * @return 合法客户端
+     */
+    private SsoClient buildEnabledDistributionClient(String clientCode) {
+        SsoClient client = new SsoClient();
+        client.setClientCode(clientCode);
+        client.setClientName("test-" + clientCode);
+        client.setStatus("0");
+        client.setSyncEnabled("Y");
+        client.setAllowPasswordLogin("Y");
+        client.setAllowWxworkLogin("Y");
+        return client;
     }
 }

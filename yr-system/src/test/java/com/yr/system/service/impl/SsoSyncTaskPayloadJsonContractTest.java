@@ -7,10 +7,12 @@ package com.yr.system.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.system.domain.dto.SsoIdentityImportExecutionResult;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoIdentityDistributionService;
 import com.yr.system.service.ISsoIdentityImportService;
 import com.yr.system.service.ISsoSyncTaskItemService;
@@ -26,6 +28,7 @@ import java.util.stream.StreamSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -89,6 +92,7 @@ class SsoSyncTaskPayloadJsonContractTest {
     @Test
     void initImportAndDistributionPayloadShouldRemainValidJsonObjects() {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
         ISsoIdentityImportService ssoIdentityImportService = mock(ISsoIdentityImportService.class);
         ISsoIdentityDistributionService ssoIdentityDistributionService = mock(ISsoIdentityDistributionService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
@@ -98,6 +102,9 @@ class SsoSyncTaskPayloadJsonContractTest {
         SsoSyncTask distributionCommand = new SsoSyncTask();
 
         distributionCommand.setTargetClientCode("sam-mgmt");
+        when(ssoClientService.selectSsoClientByCode(anyString()))
+                .thenAnswer(invocation -> buildEnabledDistributionClient(invocation.getArgument(0)));
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
         ReflectionTestUtils.setField(service, "ssoIdentityImportService", ssoIdentityImportService);
         ReflectionTestUtils.setField(service, "ssoIdentityDistributionService", ssoIdentityDistributionService);
         ReflectionTestUtils.setField(service, "ssoSyncTaskItemService", ssoSyncTaskItemService);
@@ -204,5 +211,22 @@ class SsoSyncTaskPayloadJsonContractTest {
         result.setStatus(SsoSyncTask.STATUS_PENDING);
         result.setResultSummary("distribution queued");
         return result;
+    }
+
+    /**
+     * 构造默认可用于 DISTRIBUTION 的合法客户端。
+     *
+     * @param clientCode 客户端编码
+     * @return 合法客户端
+     */
+    private SsoClient buildEnabledDistributionClient(String clientCode) {
+        SsoClient client = new SsoClient();
+        client.setClientCode(clientCode);
+        client.setClientName("test-" + clientCode);
+        client.setStatus("0");
+        client.setSyncEnabled("Y");
+        client.setAllowPasswordLogin("Y");
+        client.setAllowWxworkLogin("Y");
+        return client;
     }
 }

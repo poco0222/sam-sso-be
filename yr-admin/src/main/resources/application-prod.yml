@@ -3,7 +3,15 @@
 # date: 2026-04-01
 # desc: 仅保留 prod profile（生产环境）的差异化配置，公共项统一收敛到 application.yml
 
+yr:
+  # 生产环境显式关闭 demo 开关，避免只依赖公共配置隐式继承
+  demoEnabled: false
+
 spring:
+  devtools:
+    restart:
+      # 生产环境显式关闭热重载，锁定 prod profile 安全基线
+      enabled: false
   datasource:
     druid:
       master:

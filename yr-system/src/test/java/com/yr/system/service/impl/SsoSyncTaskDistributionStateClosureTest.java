@@ -6,10 +6,12 @@
 package com.yr.system.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yr.common.core.domain.entity.SsoClient;
 import com.yr.common.core.domain.entity.SsoSyncTask;
 import com.yr.common.core.domain.entity.SsoSyncTaskItem;
 import com.yr.common.service.MqProducerService;
 import com.yr.system.domain.dto.SsoSyncTaskExecutionResult;
+import com.yr.system.service.ISsoClientService;
 import com.yr.system.service.ISsoSyncTaskItemService;
 import com.yr.system.service.support.SsoCurrentIdentitySnapshotLoader;
 import com.yr.system.service.support.SsoDistributionDispatchResultRecorder;
@@ -26,11 +28,13 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -46,6 +50,7 @@ class SsoSyncTaskDistributionStateClosureTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder = mock(SsoDistributionDispatchResultRecorder.class);
@@ -54,6 +59,9 @@ class SsoSyncTaskDistributionStateClosureTest {
         List<String> finalTaskStatuses = new ArrayList<>();
         List<List<String>> finalItemStatuses = new ArrayList<>();
 
+        when(ssoClientService.selectSsoClientByCode(anyString()))
+                .thenAnswer(invocation -> buildEnabledDistributionClient(invocation.getArgument(0)));
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
         ReflectionTestUtils.setField(
                 service,
                 "ssoIdentityDistributionService",
@@ -104,6 +112,7 @@ class SsoSyncTaskDistributionStateClosureTest {
         assertThat(finalItemStatuses.get(0))
                 .as("最终明细回写应体现 after-commit 成功后的 SUCCESS 终态")
                 .allMatch(SsoSyncTask.STATUS_SUCCESS::equals);
+        verify(ssoClientService).selectSsoClientByCode("sam-mgmt");
     }
 
     /**
@@ -114,6 +123,7 @@ class SsoSyncTaskDistributionStateClosureTest {
         SsoSyncTaskServiceImpl service = spy(new SsoSyncTaskServiceImpl());
         ProbeTransactionManager transactionManager = new ProbeTransactionManager();
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        ISsoClientService ssoClientService = mock(ISsoClientService.class);
         ISsoSyncTaskItemService ssoSyncTaskItemService = mock(ISsoSyncTaskItemService.class);
         SsoSyncTaskFailureRecorder ssoSyncTaskFailureRecorder = mock(SsoSyncTaskFailureRecorder.class);
         SsoDistributionDispatchResultRecorder ssoDistributionDispatchResultRecorder = mock(SsoDistributionDispatchResultRecorder.class);
@@ -122,6 +132,9 @@ class SsoSyncTaskDistributionStateClosureTest {
         List<String> finalTaskStatuses = new ArrayList<>();
         List<List<String>> finalItemStatuses = new ArrayList<>();
 
+        when(ssoClientService.selectSsoClientByCode(anyString()))
+                .thenAnswer(invocation -> buildEnabledDistributionClient(invocation.getArgument(0)));
+        ReflectionTestUtils.setField(service, "ssoClientService", ssoClientService);
         ReflectionTestUtils.setField(
                 service,
                 "ssoIdentityDistributionService",
@@ -172,6 +185,7 @@ class SsoSyncTaskDistributionStateClosureTest {
         assertThat(finalItemStatuses.get(0))
                 .as("最终明细回写应体现 after-commit 失败后的 FAILED 终态")
                 .contains(SsoSyncTask.STATUS_FAILED);
+        verify(ssoClientService).selectSsoClientByCode("sam-mgmt");
     }
 
     /**
@@ -184,6 +198,23 @@ class SsoSyncTaskDistributionStateClosureTest {
         command.setTargetClientCode("sam-mgmt");
         command.setCreateBy("phase1");
         return command;
+    }
+
+    /**
+     * 构造默认可用于 DISTRIBUTION 的合法客户端。
+     *
+     * @param clientCode 客户端编码
+     * @return 合法客户端
+     */
+    private SsoClient buildEnabledDistributionClient(String clientCode) {
+        SsoClient client = new SsoClient();
+        client.setClientCode(clientCode);
+        client.setClientName("test-" + clientCode);
+        client.setStatus("0");
+        client.setSyncEnabled("Y");
+        client.setAllowPasswordLogin("Y");
+        client.setAllowWxworkLogin("Y");
+        return client;
     }
 
     /**
