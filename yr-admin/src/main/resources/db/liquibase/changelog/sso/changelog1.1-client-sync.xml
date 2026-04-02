@@ -10,6 +10,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
     <changeSet id="sso-client-sync-001" author="PopoY" context="一期客户端与同步任务表">
+        <validCheckSum>8:4163bb1671bc08c8e0b0fbde608da5dc</validCheckSum>
         <sql>
             CREATE TABLE IF NOT EXISTS `sso_client` (
             `client_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '客户端ID',

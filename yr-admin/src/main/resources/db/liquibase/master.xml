@@ -6,4 +6,5 @@
     <include file="classpath:db/liquibase/changelog/sso/changelog1.0-core-console.xml"/>
     <include file="classpath:db/liquibase/changelog/sso/changelog1.1-client-sync.xml"/>
     <include file="classpath:db/liquibase/changelog/sso/changelog1.2-login-audit.xml"/>
+    <include file="classpath:db/liquibase/changelog/sso/changelog1.3-operation-audit.xml"/>
 </databaseChangeLog>

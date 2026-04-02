@@ -30,6 +30,7 @@ class SsoLiquibaseBootstrapContractTest {
         assertThat(masterContent).contains("changelog/sso/changelog1.0-core-console.xml");
         assertThat(masterContent).contains("changelog/sso/changelog1.1-client-sync.xml");
         assertThat(masterContent).contains("changelog/sso/changelog1.2-login-audit.xml");
+        assertThat(masterContent).contains("changelog/sso/changelog1.3-operation-audit.xml");
         assertThat(masterContent).doesNotContain("includeAll");
         assertThat(masterContent).doesNotContain("changelog/system/changelog1.0.xml");
     }
@@ -44,6 +45,7 @@ class SsoLiquibaseBootstrapContractTest {
         String coreConsoleContent = readClasspathResource("db/liquibase/changelog/sso/changelog1.0-core-console.xml");
 
         assertThat(coreConsoleContent)
+                .contains("<validCheckSum>8:a783bb25ed537fc2de1ab216d3895bd5</validCheckSum>")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_user`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_org`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_dept`")
@@ -75,6 +77,7 @@ class SsoLiquibaseBootstrapContractTest {
         String clientSyncContent = readClasspathResource("db/liquibase/changelog/sso/changelog1.1-client-sync.xml");
 
         assertThat(clientSyncContent)
+                .contains("<validCheckSum>8:4163bb1671bc08c8e0b0fbde608da5dc</validCheckSum>")
                 .contains("CREATE TABLE IF NOT EXISTS `sso_client`")
                 .contains("CREATE TABLE IF NOT EXISTS `sso_sync_task`")
                 .contains("CREATE TABLE IF NOT EXISTS `sso_sync_task_item`")
@@ -100,6 +103,22 @@ class SsoLiquibaseBootstrapContractTest {
                 .contains("`info_id`")
                 .contains("`user_name`")
                 .contains("`login_time`");
+    }
+
+    /**
+     * 验证操作审计 changelog 会补齐 `sys_oper_log` 表，避免本地新库触发带 `@Log` 的写接口后异步日志持续报错。
+     *
+     * @throws Exception 读取资源失败时抛出
+     */
+    @Test
+    void shouldDeclareOperationAuditBootstrapArtifacts() throws Exception {
+        String operationAuditContent = readClasspathResource("db/liquibase/changelog/sso/changelog1.3-operation-audit.xml");
+
+        assertThat(operationAuditContent)
+                .contains("CREATE TABLE IF NOT EXISTS `sys_oper_log`")
+                .contains("`oper_id`")
+                .contains("`title`")
+                .contains("`oper_time`");
     }
 
     /**

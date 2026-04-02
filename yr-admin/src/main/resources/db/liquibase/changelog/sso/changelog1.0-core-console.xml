@@ -10,6 +10,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
     <changeSet id="sso-core-console-001" author="PopoY" context="一期核心表基线">
+        <validCheckSum>8:a783bb25ed537fc2de1ab216d3895bd5</validCheckSum>
         <sql>
             CREATE TABLE IF NOT EXISTS `sys_org` (
             `org_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '组织ID',
